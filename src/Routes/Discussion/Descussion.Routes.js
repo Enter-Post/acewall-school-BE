@@ -16,7 +16,7 @@ router.post("/create", isUser, upload.array("files"), createDiscussion);
 router.get("/studentDiscussion", isUser, discussionforStudent);
 router.get("/chapter/:chapterId", isUser, chapterDiscussions);
 router.get("/lesson/:lessonId", isUser, lessonDiscussions);
-router.get("/:type/:typeId", isUser, getDiscussionsOfTeacher);
+router.get("/all", isUser, getDiscussionsOfTeacher);
 router.get("/:id", isUser, getDiscussionbyId);
 
 export default router;

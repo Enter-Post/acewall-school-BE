@@ -78,16 +78,9 @@ export const createDiscussion = async (req, res) => {
 
 export const getDiscussionsOfTeacher = async (req, res) => {
   const teacherId = req.user._id;
-  const { type, typeId } = req.params;
-
-  console.log(type, "type")
-  console.log(typeId, "typeId")
-
   try {
-    const discussions = await Discussion.find({
+    const discussion = await Discussion.find({
       createdby: teacherId,
-      type: type,
-      [type]: typeId
     }).populate({
       path: "course",
       select: "courseTitle thumbnail",
@@ -95,7 +88,7 @@ export const getDiscussionsOfTeacher = async (req, res) => {
 
     res
       .status(200)
-      .json({ message: "Discussions fetched successfully here", discussions });
+      .json({ message: "Discussions fetched successfully here", discussion });
   } catch (error) {
     console.log("error in getting discussion", error);
     res.status(500).json({ message: "Internal Server Error" });
