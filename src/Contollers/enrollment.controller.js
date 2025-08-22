@@ -95,7 +95,7 @@ export const studentsEnrolledinCourse = async (req, res) => {
     const enrolledStudents = await Enrollment.find({
       course: courseId,
     })
-    .sort({ createdAt: -1 }).populate("student", "firstName middleName lastName profileImg");
+      .sort({ createdAt: -1 }).populate("student", "firstName middleName lastName profileImg");
     res.status(200).json(enrolledStudents);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -139,7 +139,8 @@ export const studentCourseDetails = async (req, res) => {
                 as: "createdby",
               },
             },
-            { $unwind: "$createdby" },
+            { $unwind: { path: "$createdby", preserveNullAndEmptyArrays: true } },
+
             {
               $lookup: {
                 from: "categories",
@@ -148,7 +149,8 @@ export const studentCourseDetails = async (req, res) => {
                 as: "category",
               },
             },
-            { $unwind: "$category" },
+            { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
+
             {
               $lookup: {
                 from: "subcategories",
@@ -157,7 +159,8 @@ export const studentCourseDetails = async (req, res) => {
                 as: "subcategory",
               },
             },
-            { $unwind: "$subcategory" },
+            { $unwind: { path: "$subcategory", preserveNullAndEmptyArrays: true } },
+
             {
               $lookup: {
                 from: "semesters",
@@ -165,12 +168,11 @@ export const studentCourseDetails = async (req, res) => {
                 foreignField: "_id",
                 as: "semester",
                 pipeline: [
-                  {
-                    $match: { isArchived: false },
-                  },
+                  { $match: { isArchived: false } },
                 ],
               },
             },
+
             {
               $lookup: {
                 from: "quarters",
@@ -178,12 +180,11 @@ export const studentCourseDetails = async (req, res) => {
                 foreignField: "_id",
                 as: "quarter",
                 pipeline: [
-                  {
-                    $match: { isArchived: false },
-                  },
+                  { $match: { isArchived: false } },
                 ],
               },
             },
+
             {
               $lookup: {
                 from: "assessments",
@@ -210,6 +211,7 @@ export const studentCourseDetails = async (req, res) => {
                 as: "finalAssessments",
               },
             },
+
             {
               $project: {
                 courseTitle: 1,
@@ -217,14 +219,13 @@ export const studentCourseDetails = async (req, res) => {
                 language: 1,
                 thumbnail: 1,
                 syllabus: 1,
-
                 createdAt: 1,
                 updatedAt: 1,
                 teachingPoints: 1,
                 semester: 1,
                 quarter: 1,
                 requirements: 1,
-                
+
                 createdby: {
                   _id: "$createdby._id",
                   firstName: "$createdby.firstName",
@@ -247,7 +248,7 @@ export const studentCourseDetails = async (req, res) => {
           ],
         },
       },
-      { $unwind: "$courseDetails" },
+      { $unwind: "$courseDetails" }, // only courseDetails must exist
     ]);
 
     if (!enrolledData || enrolledData.length === 0) {
@@ -265,6 +266,7 @@ export const studentCourseDetails = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+
 
 export const chapterDetails = async (req, res) => {
   const { chapterId } = req.params;
