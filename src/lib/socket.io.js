@@ -11,6 +11,7 @@ const io = new Server(server, {
     origin: [
       'https://acewallscholars.vercel.app',
       'https://acewall-admin.vercel.app',
+      'https://acewallscholarslearningonline.org',
       'http://localhost:5173',
       'http://localhost:5174',
     ],
