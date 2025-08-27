@@ -45,6 +45,8 @@ app.use(
     origin: [
       "https://acewallscholars.vercel.app",
       "https://acewall-admin.vercel.app",
+      "https://acewallscholarslearningonline.com",
+      "https://admin.acewallscholarslearningonline.com",
       "http://localhost:5173",
       "http://localhost:5174",
     ],
