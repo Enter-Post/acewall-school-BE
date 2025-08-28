@@ -28,6 +28,8 @@ import {
   updatePasswordOTPById,
   updatePasswordById,
   SignupwithoutOTP,
+  updatePasswordWithoutOTP,
+  updateEmailwithoutOTP,
 } from "../Contollers/auth.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { upload } from "../lib/multer.config.js";
@@ -75,6 +77,8 @@ router.put("/auth/updatePasswordOTPById/:id", updatePasswordOTPById);
 router.put("/auth/updatePasswordById/:id", updatePasswordById);
 
 
+router.put("/editemailWithoutOTP", isUser, updateEmailwithoutOTP);
+router.put("/updatePasswordWithoutOTP", isUser, updatePasswordWithoutOTP);
 
 router.delete("/users/:userId", deleteUser);
 

@@ -33,41 +33,41 @@ export const createAnnouncement = async (req, res) => {
     });
 
     // Get enrolled students
-    const enrollment = await Enrollment.find({ course: courseId }).populate("student", "email");
+    // const enrollment = await Enrollment.find({ course: courseId }).populate("student", "email");
 
-    const studentEmails = enrollment.map((enroll) => enroll.student.email);
+    // const studentEmails = enrollment.map((enroll) => enroll.student.email);
 
     // Send email to all enrolled students
-    if (studentEmails.length > 0 && process.env.MAIL_USER) {
-      const transporter = nodemailer.createTransport({
-        host: process.env.MAIL_HOST,
-        port: Number(process.env.MAIL_PORT),
-        secure: Number(process.env.MAIL_PORT) === 465,
-        auth: {
-          user: process.env.MAIL_USER,
-          pass: process.env.MAIL_PASS,
-        },
-      });
+    // if (studentEmails.length > 0 && process.env.MAIL_USER) {
+    //   const transporter = nodemailer.createTransport({
+    //     host: process.env.MAIL_HOST,
+    //     port: Number(process.env.MAIL_PORT),
+    //     secure: Number(process.env.MAIL_PORT) === 465,
+    //     auth: {
+    //       user: process.env.MAIL_USER,
+    //       pass: process.env.MAIL_PASS,
+    //     },
+    //   });
 
-      const mailOptions = {
-        from: `"${process.env.MAIL_FROM_NAME || "Course Team"}" <${process.env.MAIL_USER}>`,
-        to: studentEmails, // can be an array or comma-separated string
-        subject: `New Announcement: ${title}`,
-        html: `
-        <h2>New Announcement for ${course.courseTitle}</h2>
-        <p>${message}</p>
-        <p><em>From: ${teacher.firstName} ${teacher.lastName}</em></p>
-    `,
-      };
+    //   const mailOptions = {
+    //     from: `"${process.env.MAIL_FROM_NAME || "Course Team"}" <${process.env.MAIL_USER}>`,
+    //     to: studentEmails, // can be an array or comma-separated string
+    //     subject: `New Announcement: ${title}`,
+    //     html: `
+    //     <h2>New Announcement for ${course.courseTitle}</h2>
+    //     <p>${message}</p>
+    //     <p><em>From: ${teacher.firstName} ${teacher.lastName}</em></p>
+    // `,
+    //   };
 
-      try {
-        await transporter.sendMail(mailOptions);
-        console.log("✅ Emails sent to students");
+    //   try {
+    //     await transporter.sendMail(mailOptions);
+    //     console.log("✅ Emails sent to students");
 
-      } catch (error) {
-        console.error("❌ Error sending emails:", error);
-      }
-    }
+    //   } catch (error) {
+    //     console.error("❌ Error sending emails:", error);
+    //   }
+    // }
 
 
     await announcement.save();
@@ -75,7 +75,7 @@ export const createAnnouncement = async (req, res) => {
     res.status(201).json({
       message: "Announcement created and email sent successfully.",
       announcement,
-      studentEmails,
+      // studentEmails,
     });
   } catch (err) {
     console.error("Error creating announcement or sending email:", err);
