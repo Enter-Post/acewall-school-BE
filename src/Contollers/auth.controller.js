@@ -106,6 +106,7 @@ export const initiateSignup = async (req, res) => {
 };
 
 
+
 export const SignupwithoutOTP = async (req, res) => {
   const {
     firstName,
