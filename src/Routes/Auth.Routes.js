@@ -20,14 +20,9 @@ import {
   updateEmail,
   verifyOTPForgotPassword,
   getStudentById,
-  deleteUser,
-  updateUserById,
-  updateUserProfileImgById,
-  updateEmailOTPById,
-  updateEmailById,
-  updatePasswordOTPById,
-  updatePasswordById,
-  SignupwithoutOTP,
+  uploadTeacherDocument,
+  deleteTeacherDocument,
+  verifyTeacherDocument,
 } from "../Contollers/auth.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { upload } from "../lib/multer.config.js";
@@ -35,7 +30,6 @@ import { upload } from "../lib/multer.config.js";
 const router = express.Router();
 
 router.post("/register", initiateSignup);
-router.post("/registerwithoutOTP", SignupwithoutOTP);
 router.post("/verifyOTP", verifyOtpAndSignup);
 router.post("/resendOTP", resendOTP);
 router.post("/login", login);
@@ -47,8 +41,6 @@ router.get("/checkAuth", isUser, checkAuth);
 router.post("/check-existence", checkUser);
 router.get("/users", allUser);
 router.put("/updateuser", isUser, updateUser);
-router.put("/updateUserById/:id", updateUserById); // new endpoint
-
 router.get("/allTeacher", allTeacher);
 router.get("/getUserInfo", isUser, getUserInfo);
 router.put(
@@ -57,25 +49,20 @@ router.put(
   upload.single("profileImg"),
   updateProfileImg
 );
-router.put(
-  "/updateUserProfileImgById/:id",
-  upload.single("profileImg"),
-  updateUserProfileImgById
-);
-
 router.post("/updatePasswordOTP", isUser, updatePasswordOTP);
 router.put("/updatePassword", isUser, updatePassword);
 router.post("/updateEmailOTP", isUser, updateEmailOTP);
 router.put("/updateEmail", isUser, updateEmail);
 
 
-router.put("/auth/updateEmailOTPById/:id", updateEmailOTPById);
-router.put("/auth/updateEmailById/:id", updateEmailById);
-router.put("/auth/updatePasswordOTPById/:id", updatePasswordOTPById);
-router.put("/auth/updatePasswordById/:id", updatePasswordById);
+router.post(
+  "/uploadDocument",
+  isUser,
+  upload.single("document"), 
+  uploadTeacherDocument
+);
 
-
-
-router.delete("/users/:userId", deleteUser);
+router.delete('/teacher/document/:documentId', isUser, deleteTeacherDocument);
+router.patch("/verify-document/:userId/:documentId", verifyTeacherDocument);
 
 export default router;

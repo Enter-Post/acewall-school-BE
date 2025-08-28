@@ -2,7 +2,7 @@ import express from "express";
 import {
   allStudent,
   allTeacher,
-  deleteUser,
+  // deleteUser,
   getStudentById,
   getTeacherById,
 } from "../Contollers/auth.controller.js";
@@ -21,7 +21,7 @@ router.get("/getStudentById/:id", isUser, getStudentById);
 router.get("/getTeacherById/:id", isUser, getTeacherById);
 router.put("/updateSemArchiveStatus/:semesterId", isUser, archivedSemester);
 router.put("/updateQtrArchiveStatus/:quarterId", isUser, archivedQuarter);
-router.delete("/users/:userId", deleteUser);
+// router.delete("/users/:userId", deleteUser);
 router.get("/getCategories", isUser, getCategoriesforAdmin)
 
 export default router;

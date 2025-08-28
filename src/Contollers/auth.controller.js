@@ -15,6 +15,8 @@ export const initiateSignup = async (req, res) => {
     firstName,
     middleName,
     lastName,
+    // pronouns,
+    // gender,
     role,
     email,
     phone,
@@ -70,6 +72,8 @@ export const initiateSignup = async (req, res) => {
           firstName,
           middleName,
           lastName,
+          // pronoun: pronouns,
+          // gender,
           role,
           email,
           phone,
@@ -91,15 +95,6 @@ export const initiateSignup = async (req, res) => {
         pass: process.env.MAIL_PASS,
       },
     });
-
-    transporter.verify(function (error, success) {
-      if (error) {
-        console.error("SMTP verify error:", error);
-      } else {
-        console.log("SMTP server is ready to take messages");
-      }
-    });
-
     await transporter.sendMail({
       from: `"OTP Verification" <${process.env.MAIL_USER}>`,
       to: email,
@@ -113,65 +108,6 @@ export const initiateSignup = async (req, res) => {
     res.status(500).json({ message: "Internal server error." });
   }
 };
-
-
-
-export const SignupwithoutOTP = async (req, res) => {
-  const {
-    firstName,
-    middleName,
-    lastName,
-    role,
-    email,
-    phone,
-    homeAddress,
-    mailingAddress,
-    password,
-  } = req.body;
-
-  try {
-    // Required field validation
-    if (!firstName || !lastName || !email || !password || !role || !phone) {
-      return res.status(400).json({ message: "All required fields must be filled." });
-    }
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "User with this email already exists." });
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 11);
-
-    // Create new user
-    const newUser = new User({
-      firstName,
-      middleName,
-      lastName,
-      role,
-      email,
-      phone,
-      homeAddress,
-      mailingAddress,
-      password: hashedPassword,
-    });
-
-    await newUser.save();
-
-    // Generate JWT or session
-    generateToken(newUser._id, newUser.role, res);
-
-    res.status(201).json({
-      message: "Your account has been created successfully.",
-      user: newUser,
-    });
-  } catch (error) {
-    console.error("Signup error:", error.message);
-    res.status(500).json({ message: "Internal server error." });
-  }
-};
-
 
 export const resendOTP = async (req, res) => {
   const { email } = req.body;
@@ -233,6 +169,9 @@ export const resendOTP = async (req, res) => {
   }
 };
 
+
+
+
 export const verifyOtpAndSignup = async (req, res) => {
   const { email, otp } = req.body;
 
@@ -253,12 +192,57 @@ export const verifyOtpAndSignup = async (req, res) => {
 
     const userData = otpEntry.userData;
 
-    const newUser = new User({
-      ...userData,
-    });
-
+    const newUser = new User({ ...userData });
     await newUser.save();
     await OTP.deleteOne({ email });
+
+    // 🔔 Send welcome email if role is teacher
+    if (newUser.role === "teacher" && process.env.MAIL_USER) {
+      const transporter = nodemailer.createTransport({
+        host: process.env.MAIL_HOST,
+        port: Number(process.env.MAIL_PORT),
+        secure: Number(process.env.MAIL_PORT) === 465,
+        auth: {
+          user: process.env.MAIL_USER,
+          pass: process.env.MAIL_PASS,
+        },
+      });
+
+      const mailOptions = {
+        from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars"}" <${process.env.MAIL_USER}>`,
+        to: newUser.email,
+        subject: `Welcome to Acewall Scholars as an Instructor`,
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h2>Welcome to Acewall Scholars, ${newUser.firstName}!</h2>
+            <p>Thank you for registering to be an instructor on the <strong>Acewall Scholars Learning Platform</strong>. We are excited to partner with you.</p>
+            <p>You can start creating your course now! Before it can be published for purchase, please submit the required documents:</p>
+            <ul>
+              <li>University Transcripts</li>
+              <li>Teachers License or Certifications in field of instruction</li>
+              <li>Two Forms of ID:
+                <ul>
+                  <li>Passport</li>
+                  <li>Government issued ID</li>
+                  <li>Driver’s License</li>
+                  <li>Birth Certificate</li>
+                </ul>
+              </li>
+              <li>Resume/CV</li>
+            </ul>
+            <p><em>(File types allowed: JPG, JPEG, PDF)</em></p>
+            <p>We look forward to seeing the impact you will make!</p>
+          </div>
+        `,
+      };
+
+      try {
+        await transporter.sendMail(mailOptions);
+        console.log("✅ Instructor welcome email sent to:", newUser.email);
+      } catch (emailErr) {
+        console.error("❌ Error sending instructor email:", emailErr.message);
+      }
+    }
 
     generateToken(newUser._id, newUser.role, res);
 
@@ -266,11 +250,15 @@ export const verifyOtpAndSignup = async (req, res) => {
       message: "Your account has been created successfully.",
       newUser,
     });
+
   } catch (error) {
     console.error("OTP verification error:", error.message);
     res.status(500).json({ message: "Internal server error." });
   }
 };
+
+
+
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
@@ -313,8 +301,6 @@ export const login = async (req, res) => {
 export const forgetPassword = async (req, res) => {
   const { email } = req.body;
 
-  console.log("working 1");
-
   try {
     const isExist = await User.findOne({ email });
 
@@ -323,7 +309,6 @@ export const forgetPassword = async (req, res) => {
         message: "User with this email does not exist",
       });
     }
-    console.log("working 2");
 
     function generateOTP(length = 6) {
       const digits = "0123456789";
@@ -336,10 +321,8 @@ export const forgetPassword = async (req, res) => {
 
       return otp;
     }
-    console.log("working 3");
 
     const otp = generateOTP();
-    console.log("otp", otp);
 
     const hashedOTP = await bcrypt.hash(otp, 10);
 
@@ -355,8 +338,6 @@ export const forgetPassword = async (req, res) => {
       { upsert: true }
     );
 
-    console.log("working 4");
-
     const transporter = nodemailer.createTransport({
       host: process.env.MAIL_HOST,
       port: Number(process.env.MAIL_PORT),
@@ -366,9 +347,6 @@ export const forgetPassword = async (req, res) => {
         pass: process.env.MAIL_PASS,
       },
     });
-    console.log("working 5", transporter);
-
-
     await transporter.sendMail({
       from: `"OTP Verification" <${process.env.MAIL_USER}>`,
       to: email,
@@ -506,6 +484,8 @@ export const checkAuth = (req, res) => {
 export const updateUser = async (req, res) => {
   const userId = req.user._id;
 
+  console.log(req.body, "body");
+
   try {
     let updatedFields = { ...req.body };
 
@@ -521,38 +501,6 @@ export const updateUser = async (req, res) => {
     res.status(500).json({ message: "Update failed", error: err.message });
   }
 };
-
-export const updateUserById = async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const updatedFields = req.body;
-
-    const updatedUser = await User.findByIdAndUpdate(
-      id,
-      { $set: updatedFields },
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    res.json({
-      message: "User updated successfully",
-      updatedUser,
-    });
-  } catch (err) {
-    console.error("Admin Update Error:", err);
-    if (err.code === 11000) {
-      res.status(409).json({ message: "Duplicate field value", error: err.keyValue });
-    } else {
-      res.status(500).json({ message: "Update failed", error: err.message });
-    }
-  }
-};
-
-
 export const checkUser = async (req, res) => {
   const { email } = req.body;
 
@@ -576,18 +524,9 @@ export const checkUser = async (req, res) => {
 
 export const allTeacher = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1; // default to page 1
-    const limit = parseInt(req.query.limit) || 6; // default to 6 per page
-    const skip = (page - 1) * limit;
-
-    const totalTeachers = await User.countDocuments({ role: "teacher" });
-
-    const teachers = await User.find({ role: "teacher" })
-      .sort({ createdAt: -1 })
-
-      .select("firstName lastName email createdAt profileImg _id")
-      .skip(skip)
-      .limit(limit);
+    const teachers = await User.find({ role: "teacher" }).select(
+      "firstName lastName email createdAt profileImg _id isVarified"
+    );
 
     const formattedTeachers = await Promise.all(
       teachers.map(async (teacher) => {
@@ -602,16 +541,12 @@ export const allTeacher = async (req, res) => {
           courses: courseCount,
           profileImg: teacher.profileImg,
           id: teacher._id,
+          isVarified: teacher.isVarified, // ✅ Include this
         };
       })
     );
 
-    res.status(200).json({
-      total: totalTeachers,
-      currentPage: page,
-      totalPages: Math.ceil(totalTeachers / limit),
-      teachers: formattedTeachers,
-    });
+    res.status(200).json(formattedTeachers);
   } catch (err) {
     res.status(500).json({ message: "Server Error", error: err.message });
   }
@@ -620,38 +555,24 @@ export const allTeacher = async (req, res) => {
 
 export const allStudent = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 6;
-    const skip = (page - 1) * limit;
+    const students = await User.find({ role: "student" }).select(
+      "firstName lastName email createdAt courses profileImg id"
+    );
 
-    const totalStudents = await User.countDocuments({ role: "student" });
-
-    const students = await User.find({ role: "student" })
-      .sort({ createdAt: -1 })
-      .select("firstName lastName email createdAt courses profileImg _id")
-      .skip(skip)
-      .limit(limit);
-
-    const formattedStudents = students.map((student) => ({
+    const formattedStudent = students.map((student) => ({
       name: `${student.firstName} ${student.lastName}`,
       email: student.email,
-      joiningDate: student.createdAt,
+      joiningDate: student.createdAt, // from timestamps
       numberOfCourses: student.courses?.length || 0,
       profileImg: student.profileImg,
       id: student._id,
     }));
 
-    res.status(200).json({
-      total: totalStudents,
-      currentPage: page,
-      totalPages: Math.ceil(totalStudents / limit),
-      students: formattedStudents,
-    });
+    res.status(200).json(formattedStudent);
   } catch (err) {
     res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
-
 
 export const getStudentById = async (req, res) => {
   try {
@@ -659,7 +580,7 @@ export const getStudentById = async (req, res) => {
 
     // Get student/user info
     const user = await User.findById(id).select(
-      " id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role"
+      "firstName middleName lastName email profileImg createdAt"
     );
     if (!user) {
       return res.status(404).json({ message: "Student not found." });
@@ -724,7 +645,7 @@ export const getTeacherById = async (req, res) => {
   const { id } = req.params;
   try {
     const teacher = await User.findById(id).select(
-      " id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role"
+      "firstName lastName email profileImg createdAt documents isVarified"
     );
     if (!teacher) {
       return res.status(404).json({ message: "Teacher not found." });
@@ -798,78 +719,6 @@ export const updateProfileImg = async (req, res) => {
   }
 };
 
-export const updateUserProfileImgById = async (req, res) => {
-  const userId = req.params.id; // Admin-specified user ID
-  const file = req.file;
-
-  try {
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Delete previous image from Cloudinary
-    if (user.profileImg?.publicId) {
-      try {
-        await cloudinary.uploader.destroy(user.profileImg.publicId);
-      } catch (err) {
-        console.warn(
-          "Failed to delete previous image from Cloudinary:",
-          err.message
-        );
-      }
-    }
-
-    // Upload new image
-    const result = await uploadToCloudinary(file.buffer, "profile_images");
-
-    // Update user's profileImg field
-    user.profileImg = {
-      url: result.secure_url,
-      filename: result.original_filename,
-      publicId: result.public_id,
-    };
-
-    await user.save();
-
-    return res.status(200).json({
-      message: "Profile image updated successfully",
-      user,
-    });
-  } catch (error) {
-    console.error("Error in updateUserProfileImgById:", error);
-    return res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
-export const deleteUser = async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    // Check if user exists
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Optional: delete user's profile image if using cloud storage like Cloudinary
-    if (user.profileImg?.publicId) {
-      // Example:
-      // await cloudinary.v2.uploader.destroy(user.profileImg.publicId);
-      console.log(`Deleted profile image with publicId: ${user.profileImg.publicId}`);
-    }
-
-    // Delete user
-    await User.findByIdAndDelete(userId);
-
-    res.status(200).json({ message: "User deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting user:", error.message);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-
 
 export const updatePasswordOTP = async (req, res) => {
   const userId = req.user._id;
@@ -890,18 +739,12 @@ export const updatePasswordOTP = async (req, res) => {
     // Reject if newPassword === old password
     const isSameAsOld = await bcrypt.compare(newPassword, user.password);
     if (isSameAsOld) {
-      return res
-        .status(400)
-        .json({
-          message: "New password must be different from the old password",
-        });
+      return res.status(400).json({ message: "New password must be different from the old password" });
     }
 
     // Check if new and confirm password match
     if (newPassword !== confirmPassword) {
-      return res
-        .status(400)
-        .json({ message: "New password and confirm password do not match" });
+      return res.status(400).json({ message: "New password and confirm password do not match" });
     }
 
     // Hash new password
@@ -955,11 +798,13 @@ export const updatePasswordOTP = async (req, res) => {
     });
 
     return res.status(200).json({ message: "OTP sent successfully" });
+
   } catch (error) {
     console.error("Error in updatePasswordOTP:", error.message);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 export const updatePassword = async (req, res) => {
   const { email, otp } = req.body;
@@ -1106,46 +951,194 @@ export const updateEmail = async (req, res) => {
 };
 
 
-export const updateEmailOTPById = async (req, res) => {
-  const { id } = req.params;
-  const { newEmail } = req.body;
+
+
+
+
+export const uploadTeacherDocument = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const file = req.file;
+    const { category } = req.body;
+
+    if (!file || !category) {
+      return res.status(400).json({ message: "Category and file are required" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user || user.role !== "teacher") {
+      return res.status(403).json({ message: "Unauthorized or not a teacher" });
+    }
+
+    // Document category limits
+    const documentCategories = {
+      universityTranscripts: 4,
+      teacherLicenses: 4,
+      ids: 2,
+      resume: 2,
+      portfolio: 1,
+    };
+
+    if (!documentCategories.hasOwnProperty(category)) {
+      return res.status(400).json({ message: "Invalid document category" });
+    }
+
+    // Ensure document storage structure exists
+    if (!user.documents) user.documents = {};
+    if (!Array.isArray(user.documents[category])) {
+      user.documents[category] = [];
+    }
+
+    // Check limit
+    if (user.documents[category].length >= documentCategories[category]) {
+      return res.status(400).json({
+        message: `Maximum upload limit reached for ${category}`,
+      });
+    }
+
+    // Upload file
+    const uploaded = await uploadToCloudinary(file.buffer, "teacher_documents");
+
+    // Format category name (e.g., universityTranscripts => University Transcripts)
+    const formattedCategoryName = category
+
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/^./, (str) => str.toUpperCase());
+
+    const index = user.documents[category].length + 1;
+
+    const document = {
+      name: `${formattedCategoryName} ${index}`,
+      url: uploaded.secure_url,
+      filename: uploaded.public_id,
+      uploadedAt: new Date(),
+    };
+
+    user.documents[category].push(document);
+    await user.save();
+
+    res.status(200).json({
+      message: "Document uploaded successfully",
+      documents: user.documents,
+    });
+
+  } catch (err) {
+    console.error("Error uploading document:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+export const deleteTeacherDocument = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { documentId } = req.params;
+
+    const user = await User.findById(userId);
+    if (!user || user.role !== "teacher") {
+      return res.status(403).json({ message: "Unauthorized or not a teacher" });
+    }
+
+    // Find and remove document from nested categories
+    let deleted = false;
+    for (const category in user.documents) {
+      const index = user.documents[category].findIndex(
+        (doc) => doc._id.toString() === documentId
+      );
+      if (index !== -1) {
+        const [docToDelete] = user.documents[category].splice(index, 1);
+
+        // Delete from Cloudinary
+        await cloudinary.uploader.destroy(docToDelete.filename);
+
+        // Re-index document names
+        const label = {
+          universityTranscripts: "University Transcripts",
+          teacherLicenses: "Teacher Licenses",
+          ids: "Identification Documents",
+          resume: "Resume",
+          portfolio: "Portfolio"
+        }[category] || category;
+
+        user.documents[category] = user.documents[category].map((doc, i) => ({
+          ...doc,
+          name: `${label} ${i + 1}`,
+        }));
+
+        deleted = true;
+        break;
+      }
+    }
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Document not found" });
+    }
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "Document deleted and reindexed successfully",
+      documents: user.documents,
+    });
+
+  } catch (err) {
+    console.error("Error deleting document:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+
+
+export const verifyTeacherDocument = async (req, res) => {
+  const { userId, documentId } = req.params;
+  const { status } = req.body;
+
+  if (!["verified", "not_verified"].includes(status)) {
+    return res.status(400).json({
+      message: "Invalid status value. Must be 'verified' or 'not_verified'.",
+    });
+  }
 
   try {
-    const user = await User.findById(id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found." });
 
-    const isExist = await User.findOne({ email: newEmail });
-    if (isExist) {
-      return res.status(400).json({ message: "Email already exists" });
-    }
+    // Documents are stored per category, so we need to find the document by its _id in any category array
+    let foundDoc = null;
+    let foundCategory = null;
 
-    function generateOTP(length = 6) {
-      const digits = "0123456789";
-      let otp = "";
-      const bytes = crypto.randomBytes(length);
-      for (let i = 0; i < length; i++) {
-        otp += digits[bytes[i] % digits.length];
+    for (const [category, docs] of Object.entries(user.documents || {})) {
+      const doc = docs.find((d) => d._id.toString() === documentId);
+      if (doc) {
+        foundDoc = doc;
+        foundCategory = category;
+        break;
       }
-      return otp;
     }
 
-    const otp = generateOTP();
-    const hashedOTP = await bcrypt.hash(otp, 10);
+    if (!foundDoc) return res.status(404).json({ message: "Document not found." });
 
-    await OTP.findOneAndUpdate(
-      { email: user.email },
-      {
-        otp: hashedOTP,
-        expiresAt: Date.now() + 10 * 60 * 1000,
-        userData: {
-          newEmail,
-        },
-      },
-      { upsert: true }
-    );
+    // Update document verification status
+    foundDoc.verificationStatus = status;
 
+    // Check if all documents across all categories are verified
+    const allDocs = Object.values(user.documents || {}).flat();
+    const allVerified = allDocs.length > 0 && allDocs.every(d => d.verificationStatus === "verified");
+
+    user.isVarified = allVerified; // keep your existing naming if you want
+
+    await user.save();
+
+    // Prepare email transporter (single instance)
     const transporter = nodemailer.createTransport({
       host: process.env.MAIL_HOST,
       port: Number(process.env.MAIL_PORT),
@@ -1156,181 +1149,59 @@ export const updateEmailOTPById = async (req, res) => {
       },
     });
 
-    await transporter.sendMail({
-      from: `"OTP Verification" <${process.env.MAIL_USER}>`,
-      to: user.email,
-      subject: "Your OTP Code",
-      text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
-    });
-
-    return res
-      .status(200)
-      .json({ message: "OTP sent successfully to previous email" });
-  } catch (error) {
-    console.error("Error in updateEmailOTPById:", error.message);
-    return res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
-export const updateEmailById = async (req, res) => {
-  const { id } = req.params;
-  const { otp } = req.body;
-
-  try {
-    const user = await User.findById(id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const otpEntry = await OTP.findOne({ email: user.email });
-
-    if (!otpEntry) {
-      return res.status(400).json({ message: "OTP not found or already used." });
-    }
-
-    const isExpired = Date.now() > otpEntry.expiresAt;
-    const isValid = await bcrypt.compare(otp, otpEntry.otp);
-
-    if (!isValid || isExpired) {
-      return res.status(400).json({ message: "Invalid or expired OTP." });
-    }
-
-    const { newEmail } = otpEntry.userData;
-
-    await OTP.updateOne(
-      { email: user.email },
-      {
-        $set: { isVerified: true },
+    // Send email if user is fully verified
+    if (user.isVarified && status === "verified") {
+      try {
+        await transporter.sendMail({
+          from: `"Admin Team" <${process.env.MAIL_USER}>`,
+          to: user.email,
+          subject: "You Are Now Verified!",
+          html: `
+            <h2>Congratulations, ${user.firstName}!</h2>
+            <p>Your documents have been successfully verified by the admin team.</p>
+            <p>You are now a verified teacher on our platform and can start your journey.</p>
+            <br/>
+            <p>Best regards,<br/>Team LMS</p>
+          `,
+        });
+      } catch (mailError) {
+        console.error("Error sending verification email:", mailError);
       }
-    );
-
-    await User.findByIdAndUpdate(id, { email: newEmail });
-
-    return res.status(200).json({ message: "Email updated successfully" });
-  } catch (error) {
-    console.log("Error in updateEmailById:", error);
-    return res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
-
-export const updatePasswordOTPById = async (req, res) => {
-  const { id } = req.params;
-  const { oldPassword, newPassword, confirmPassword } = req.body;
-
-  try {
-    const user = await User.findById(id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
     }
 
-    const isOldPasswordMatch = await bcrypt.compare(oldPassword, user.password);
-    if (!isOldPasswordMatch) {
-      return res.status(400).json({ message: "Old password is incorrect" });
-    }
-
-    const isSameAsOld = await bcrypt.compare(newPassword, user.password);
-    if (isSameAsOld) {
-      return res.status(400).json({
-        message: "New password must be different from the old password",
-      });
-    }
-
-    if (newPassword !== confirmPassword) {
-      return res.status(400).json({
-        message: "New password and confirm password do not match",
-      });
-    }
-
-    const newHashedPassword = await bcrypt.hash(newPassword, 11);
-
-    function generateOTP(length = 6) {
-      const digits = "0123456789";
-      let otp = "";
-      const bytes = crypto.randomBytes(length);
-      for (let i = 0; i < length; i++) {
-        otp += digits[bytes[i] % digits.length];
+    // Send email if any document is rejected
+    if (status === "not_verified") {
+      try {
+        await transporter.sendMail({
+          from: `"Admin Team" <${process.env.MAIL_USER}>`,
+          to: user.email,
+          subject: "Document Rejected",
+          html: `
+            <h2>Hello, ${user.firstName}</h2>
+            <p>One of your submitted documents has been <strong>rejected</strong> by the admin team.</p>
+            <p>Please review your document and upload a valid one to proceed with verification.</p>
+            <br/>
+            <p>If you have any questions, feel free to reach out to support.</p>
+            <p>Best regards,<br/>Team LMS</p>
+          `,
+        });
+      } catch (mailError) {
+        console.error("Error sending rejection email:", mailError);
       }
-      return otp;
     }
 
-    const otp = generateOTP();
-    const hashedOTP = await bcrypt.hash(otp, 10);
-
-    await OTP.findOneAndUpdate(
-      { email: user.email },
-      {
-        otp: hashedOTP,
-        expiresAt: Date.now() + 10 * 60 * 1000,
-        userData: {
-          newPassword: newHashedPassword,
-        },
-      },
-      { upsert: true }
-    );
-
-    const transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST,
-      port: Number(process.env.MAIL_PORT),
-      secure: Number(process.env.MAIL_PORT) === 465,
-      auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
-      },
+    return res.status(200).json({
+      message: `Document ${status === "verified" ? "verified" : "rejected"} successfully.`,
+      isVarified: user.isVarified,
+      document: foundDoc,
+      documents: user.documents, // send back updated documents to frontend
     });
-
-    await transporter.sendMail({
-      from: `"OTP Verification" <${process.env.MAIL_USER}>`,
-      to: user.email,
-      subject: "Your OTP Code",
-      text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
-    });
-
-    return res.status(200).json({ message: "OTP sent successfully" });
   } catch (error) {
-    console.error("Error in updatePasswordOTPById:", error.message);
-    return res.status(500).json({ message: "Internal Server Error" });
+    console.error("Verification error:", error);
+    return res.status(500).json({ message: "Internal server error." });
   }
 };
 
 
-export const updatePasswordById = async (req, res) => {
-  const { id } = req.params;
-  const { otp } = req.body;
-
-  try {
-    const user = await User.findById(id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const otpEntry = await OTP.findOne({ email: user.email });
-
-    if (!otpEntry) {
-      return res.status(400).json({ message: "OTP not found or already used." });
-    }
-
-    const isExpired = Date.now() > otpEntry.expiresAt;
-    const isValid = await bcrypt.compare(otp, otpEntry.otp);
-
-    if (!isValid || isExpired) {
-      return res.status(400).json({ message: "Invalid or expired OTP." });
-    }
-
-    const { newPassword } = otpEntry.userData;
-
-    await User.updateOne({ _id: id }, { password: newPassword });
-
-    await OTP.updateOne(
-      { email: user.email },
-      { $set: { isVerified: true } }
-    );
-
-    return res.status(200).json({ message: "Password updated successfully" });
-  } catch (error) {
-    console.error("Error in updatePasswordById:", error.message);
-    return res.status(500).json({ message: "Internal Server Error" });
-  }
-};
 
 
