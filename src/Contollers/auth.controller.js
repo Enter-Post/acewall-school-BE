@@ -91,6 +91,15 @@ export const initiateSignup = async (req, res) => {
         pass: process.env.MAIL_PASS,
       },
     });
+
+    transporter.verify(function (error, success) {
+      if (error) {
+        console.error("SMTP verify error:", error);
+      } else {
+        console.log("SMTP server is ready to take messages");
+      }
+    });
+
     await transporter.sendMail({
       from: `"OTP Verification" <${process.env.MAIL_USER}>`,
       to: email,
