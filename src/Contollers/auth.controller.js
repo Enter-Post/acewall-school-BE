@@ -9,6 +9,7 @@ import crypto from "crypto";
 import { v2 as cloudinary } from "cloudinary";
 import Enrollment from "../Models/Enrollement.model.js";
 import mongoose from "mongoose";
+import twilio from "twilio";
 
 export const initiateSignup = async (req, res) => {
   const {
@@ -224,16 +225,17 @@ export const resendOTP = async (req, res) => {
   }
 };
 
-export const verifyOtpAndSignup = async (req, res) => {
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_ACCOUNT_TOKEN
+);
+
+export const verifyEmailOtp = async (req, res) => {
   const { email, otp } = req.body;
 
   try {
     const otpEntry = await OTP.findOne({ email });
-    if (!otpEntry) {
-      return res
-        .status(400)
-        .json({ message: "OTP not found or already used." });
-    }
+    if (!otpEntry) return res.status(400).json({ message: "OTP not found or already used." });
 
     const isExpired = Date.now() > otpEntry.expiresAt;
     const isValid = await bcrypt.compare(otp, otpEntry.otp);
@@ -242,26 +244,192 @@ export const verifyOtpAndSignup = async (req, res) => {
       return res.status(400).json({ message: "Invalid or expired OTP." });
     }
 
+    // ✅ mark email as verified in OTP entry
+    otpEntry.isVerified = true;
+    await otpEntry.save();
+
+    // 📲 Generate phone OTP manually
+    function generateOTP(length = 6) {
+      const digits = "0123456789";
+      let otp = "";
+      const bytes = crypto.randomBytes(length);
+
+      for (let i = 0; i < length; i++) {
+        otp += digits[bytes[i] % digits.length];
+      }
+
+      return otp;
+    }
+
+    const phoneOtp = generateOTP();
+
+    const hashedOTP = await bcrypt.hash(phoneOtp, 10);
+
+    // Save to DB with expiry (5 min)
+    otpEntry.phoneOtp = await bcrypt.hash(hashedOTP, 10);
+    otpEntry.expiresAt = Date.now() + 10 * 60 * 1000;
+    await otpEntry.save();
+
     const userData = otpEntry.userData;
+    const phoneNumUpdated = `+${userData.phone.replace(/\D+/g, "")}`;
 
-    const newUser = new User({
-      ...userData,
+    // 🚀 Send SMS using purchased number
+    await twilioClient.messages.create({
+      body: `Your Acewall Scholars phone verification code is: ${phoneOtp}`,
+      from: process.env.TWILIO_PHONE_NUMBER, // purchased Twilio number
+      to: phoneNumUpdated,
     });
 
-    await newUser.save();
-    await OTP.deleteOne({ email });
-
-    generateToken(newUser._id, newUser.role, res);
-
-    res.status(201).json({
-      message: "Your account has been created successfully.",
-      newUser,
-    });
+    res.json({ message: "Email verified. Phone OTP sent." });
   } catch (error) {
-    console.error("OTP verification error:", error.message);
+    console.error("verifyEmailOtp error:", error.message);
     res.status(500).json({ message: "Internal server error." });
   }
 };
+
+export const verifyPhoneOtp = async (req, res) => {
+  const { email, otp } = req.body;
+
+  try {
+    const otpEntry = await OTP.findOne({ email });
+    if (!otpEntry || !otpEntry.isVerified) {
+      return res.status(400).json({ message: "Email not verified yet." });
+    }
+
+    const isExpired = Date.now() > otpEntry.expiresAt;
+    const isValid = bcrypt.compare(otp, otpEntry.phoneOtp);
+
+    if (!isValid || isExpired) {
+      return res.status(400).json({ message: "Invalid or expired phone OTP." });
+    }
+
+    // ✅ Create real user only now
+    const newUser = new User({ ...otpEntry.userData });
+    await newUser.save();
+
+    // Delete OTP entry since it's used
+    await OTP.deleteOne({ email });
+
+    // 🔔 Send welcome email if teacher
+    if (newUser.role === "teacher" && process.env.MAIL_USER) {
+      const transporter = nodemailer.createTransport({
+        host: process.env.MAIL_HOST,
+        port: Number(process.env.MAIL_PORT),
+        secure: Number(process.env.MAIL_PORT) === 465,
+        auth: {
+          user: process.env.MAIL_USER,
+          pass: process.env.MAIL_PASS,
+        },
+      });
+
+      const mailOptions = {
+        from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars"}" <${process.env.MAIL_USER}>`,
+        to: newUser.email,
+        subject: `Welcome to Acewall Scholars as an Instructor`,
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h2>Welcome to Acewall Scholars, ${newUser.firstName}!</h2>
+            <p>Thank you for registering to be an instructor on the <strong>Acewall Scholars Learning Platform</strong>. We are excited to partner with you.</p>
+            <p>You can start creating your course now! Before it can be published for purchase, please submit the required documents:</p>
+            <ul>
+              <li>University Transcripts</li>
+              <li>Teachers License or Certifications in field of instruction</li>
+              <li>Two Forms of ID:
+                <ul>
+                  <li>Passport</li>
+                  <li>Government issued ID</li>
+                  <li>Driver's License</li>
+                  <li>Birth Certificate</li>
+                </ul>
+              </li>
+              <li>Resume/CV</li>
+            </ul>
+            <p><em>(File types allowed: JPG, JPEG, PDF)</em></p>
+            <p>We look forward to seeing the impact you will make!</p>
+          </div>
+        `,
+      };
+
+      try {
+        await transporter.sendMail(mailOptions);
+        console.log("✅ Instructor welcome email sent to:", newUser.email);
+      } catch (emailErr) {
+        console.error("❌ Error sending instructor email:", emailErr.message);
+      }
+    }
+
+    // ✅ issue token
+    generateToken(newUser._id, newUser.role, res);
+
+    res.status(201).json({ message: "User created successfully.", newUser });
+  } catch (error) {
+    console.error("verifyPhoneOtp error:", error.message);
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+
+export const resendPhoneOTP = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    if (!email) {
+      return res.status(400).json({ message: "Email is required." });
+    }
+
+    const otpRecord = await OTP.findOne({ email });
+
+    if (!otpRecord) {
+      return res.status(404).json({
+        message: "No OTP record found for this email. Please sign up again.",
+      });
+    }
+
+    function generateOTP(length = 6) {
+      const digits = "0123456789";
+      let otp = "";
+      const bytes = crypto.randomBytes(length);
+
+      for (let i = 0; i < length; i++) {
+        otp += digits[bytes[i] % digits.length];
+      }
+
+      return otp;
+    }
+
+    const phoneOtp = generateOTP();
+    const hashedOTP = await bcrypt.hash(phoneOtp, 10);
+
+    otpRecord.phoneOtp = hashedOTP;
+    otpRecord.expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+    await otpRecord.save();
+
+    // Resend email
+    const userData = otpRecord.userData;
+    const phoneNumUpdated = `+${userData.phone.replace(/\D+/g, "")}`;
+
+    // 🚀 Send SMS using purchased number
+    await twilioClient.messages.create({
+      body: `Your Acewall Scholars phone verification code is: ${phoneOtp}`,
+      from: process.env.TWILIO_PHONE_NUMBER, // purchased Twilio number
+      to: phoneNumUpdated,
+    });
+
+    res.status(200).json({ message: "New OTP has been sent to your phone number." });
+  } catch (error) {
+    console.error("Resend OTP error:", error.message);
+    res.status(500).json({ message: "Internal server error." });
+  }
+}
+
+
+
+
+
+
+
+
+
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
@@ -300,7 +468,6 @@ export const login = async (req, res) => {
     });
   }
 };
-
 export const forgetPassword = async (req, res) => {
   const { email } = req.body;
 
@@ -447,6 +614,14 @@ export const resetPassword = async (req, res) => {
     });
   }
 };
+
+
+
+
+
+
+
+
 
 export const logout = async (req, res) => {
   try {
