@@ -16,6 +16,8 @@ export const initiateSignup = async (req, res) => {
     firstName,
     middleName,
     lastName,
+    // pronouns,
+    // gender,
     role,
     email,
     phone,
@@ -57,10 +59,9 @@ export const initiateSignup = async (req, res) => {
       return otp;
     }
     const hashedPassword = await bcrypt.hash(password, 11);
-
     const otp = generateOTP();
-
     const hashedOTP = await bcrypt.hash(otp, 10);
+    const phoneNumUpdated = `+${phone.replace(/\D+/g, "")}`;
 
     await OTP.findOneAndUpdate(
       { email },
@@ -71,9 +72,11 @@ export const initiateSignup = async (req, res) => {
           firstName,
           middleName,
           lastName,
+          // pronoun: pronouns,
+          // gender,
           role,
           email,
-          phone,
+          phone: phoneNumUpdated,
           homeAddress,
           mailingAddress,
           password: hashedPassword,
@@ -271,13 +274,12 @@ export const verifyEmailOtp = async (req, res) => {
     await otpEntry.save();
 
     const userData = otpEntry.userData;
-    const phoneNumUpdated = `+${userData.phone.replace(/\D+/g, "")}`;
 
     // 🚀 Send SMS using purchased number
     await twilioClient.messages.create({
       body: `Your Acewall Scholars phone verification code is: ${phoneOtp}`,
       from: process.env.TWILIO_PHONE_NUMBER, // purchased Twilio number
-      to: phoneNumUpdated,
+      to: userData.phone,
     });
 
     res.json({ message: "Email verified. Phone OTP sent." });
@@ -295,9 +297,6 @@ export const verifyPhoneOtp = async (req, res) => {
     if (!otpEntry || !otpEntry.isVerified) {
       return res.status(400).json({ message: "Email not verified yet." });
     }
-
-    const isExpired = Date.now() > otpEntry.expiresAt;
-    const isValid = bcrypt.compare(otp, otpEntry.phoneOtp);
 
     if (!isValid || isExpired) {
       return res.status(400).json({ message: "Invalid or expired phone OTP." });
@@ -406,13 +405,14 @@ export const resendPhoneOTP = async (req, res) => {
 
     // Resend email
     const userData = otpRecord.userData;
-    const phoneNumUpdated = `+${userData.phone.replace(/\D+/g, "")}`;
+
+    console.log(userData, "userData")
 
     // 🚀 Send SMS using purchased number
     await twilioClient.messages.create({
       body: `Your Acewall Scholars phone verification code is: ${phoneOtp}`,
       from: process.env.TWILIO_PHONE_NUMBER, // purchased Twilio number
-      to: phoneNumUpdated,
+      to: userData.phone,
     });
 
     res.status(200).json({ message: "New OTP has been sent to your phone number." });
@@ -422,12 +422,104 @@ export const resendPhoneOTP = async (req, res) => {
   }
 }
 
+export const updatePhoneOTP = async (req, res) => {
+  const userId = req.user._id;
+  const { newPhone } = req.body;
 
+  console.log(newPhone, "newPhone");
 
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
+    function generateOTP(length = 6) {
+      const digits = "0123456789";
+      let otp = "";
+      const bytes = crypto.randomBytes(length);
 
+      for (let i = 0; i < length; i++) {
+        otp += digits[bytes[i] % digits.length];
+      }
 
+      return otp;
+    }
 
+    const phoneOtp = generateOTP();
+    const hashedOTP = await bcrypt.hash(phoneOtp, 10);
+
+    const phoneNumUpdated = `+${newPhone.replace(/\D+/g, "")}`;
+
+    await OTP.findOneAndUpdate(
+      { email: user.email },
+      {
+        phoneOtp: hashedOTP,
+        expiresAt: Date.now() + 10 * 60 * 1000,
+        userData: {
+          phone: phoneNumUpdated,
+        },
+      },
+      { upsert: true }
+    );
+
+    // 🚀 Send SMS using purchased number
+    await twilioClient.messages.create({
+      body: `Your Acewall Scholars phone verification code is: ${phoneOtp}`,
+      from: process.env.TWILIO_PHONE_NUMBER, // purchased Twilio number
+      to: phoneNumUpdated,
+    });
+
+    return res
+      .status(200)
+      .json({ message: "OTP sent successfully to new phone number" });
+  } catch (error) {
+    console.error("Error in updatePasswordOTP:", error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const updatePhone = async (req, res) => {
+  const { email, otp } = req.body;
+  try {
+    const otpEntry = await OTP.findOne({ email });
+
+    console.log(otpEntry, "otpEntry");
+
+    if (!otpEntry) {
+      return res
+        .status(400)
+        .json({ message: "OTP not found or already used." });
+    }
+
+    const isExpired = Date.now() > otpEntry.expiresAt;
+    const isValid = await bcrypt.compare(otp, otpEntry.phoneOtp);
+
+    if (!isValid || isExpired) {
+      return res.status(400).json({ message: "Invalid or expired OTP." });
+    }
+
+    await OTP.updateOne(
+      { email },
+      {
+        $set: {
+          isVerified: true,
+        },
+      }
+    );
+
+    const { phone } = otpEntry.userData;
+
+    console.log(otpEntry.userData, "otpEntry.userData")
+
+    await User.findOneAndUpdate({ email: email }, { phone });
+
+    return res.status(200).json({ message: "Phone number updated successfully" });
+  } catch (error) {
+    console.log("error in updatePassword:", error);
+    return res.status(500).json("Internal Server Error");
+  }
+};
 
 
 
