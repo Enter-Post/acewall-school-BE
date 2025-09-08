@@ -837,12 +837,24 @@ export const allTeacher = async (req, res) => {
     const page = parseInt(req.query.page) || 1; // default to page 1
     const limit = parseInt(req.query.limit) || 6; // default to 6 per page
     const skip = (page - 1) * limit;
+    const search = req.query.search || "";
 
-    const totalTeachers = await User.countDocuments({ role: "teacher" });
+    // Base query
+    const query = { role: "teacher" };
 
-    const teachers = await User.find({ role: "teacher" })
+    // If search provided, filter by firstName, lastName, or email (case-insensitive)
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: "i" } },
+        { lastName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const totalTeachers = await User.countDocuments(query);
+
+    const teachers = await User.find(query)
       .sort({ createdAt: -1 })
-
       .select("firstName lastName email createdAt profileImg _id")
       .skip(skip)
       .limit(limit);
@@ -876,15 +888,29 @@ export const allTeacher = async (req, res) => {
 };
 
 
+
 export const allStudent = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 6;
     const skip = (page - 1) * limit;
+    const search = req.query.search || ""; // get search term
 
-    const totalStudents = await User.countDocuments({ role: "student" });
+    // Base query
+    const query = { role: "student" };
 
-    const students = await User.find({ role: "student" })
+    // If search provided, add filter (case-insensitive)
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: "i" } },
+        { lastName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const totalStudents = await User.countDocuments(query);
+
+    const students = await User.find(query)
       .sort({ createdAt: -1 })
       .select("firstName lastName email createdAt courses profileImg _id")
       .skip(skip)
@@ -909,6 +935,7 @@ export const allStudent = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
+
 
 
 export const getStudentById = async (req, res) => {
