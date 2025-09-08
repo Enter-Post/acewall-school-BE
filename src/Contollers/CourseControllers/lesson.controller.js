@@ -27,7 +27,7 @@ export const createLesson = async (req, res) => {
       description,
       youtubeLinks,
       otherLink,
-      pdfFiles: uploadedFiles,
+      pdfFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined, // If no PDF files, set as undefined
       chapter,
       createdby,
     });
@@ -36,7 +36,7 @@ export const createLesson = async (req, res) => {
 
     res.status(201).json({ message: "Lesson created successfully", newLesson });
   } catch (error) {
-    console.log("error in creating chapter", error);
+    console.log("error in creating lesson", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };

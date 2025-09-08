@@ -6,9 +6,9 @@ const LessonSchema = new mongoose.Schema(
     description: { type: String, required: true },
     pdfFiles: [
       {
-        url: { type: String, required: true },
-        public_id: { type: String, required: true },
-        filename: { type: String, required: true },
+        url: { type: String},
+        public_id: { type: String },
+        filename: { type: String },
         uploadedAt: { type: Date, default: Date.now },
       },
     ],
