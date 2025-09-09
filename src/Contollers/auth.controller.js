@@ -616,14 +616,13 @@ export const updatePhone = async (req, res) => {
 export const login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    if (!password || !email) {
+    if (!email || !password) {
       return res.status(400).json({
-        message: "all fields must be filled",
+        message: "All fields must be filled",
       });
     }
 
     const user = await User.findOne({ email });
-
     if (!user) {
       return res.status(400).json({
         error: true,
@@ -632,24 +631,28 @@ export const login = async (req, res) => {
     }
 
     const isAuthorized = await bcrypt.compare(password, user.password);
-
     if (!isAuthorized) {
-      return res.status(500).json({
+      return res.status(401).json({
         error: true,
         message: "Invalid Credentials",
       });
     }
-    generateToken(user._id, user.role, res);
+
+    // ✅ Pass both req and res here
+    const token = generateToken(user._id, user.role, req, res);
+
     return res.status(200).json({
-      message: "Login Successfull",
+      message: "Login Successful",
+      token, // optional, since cookie is already set
     });
   } catch (error) {
-    console.log("error in login==>", error.message);
+    console.error("error in login==>", error.message);
     return res.status(500).json({
-      message: "Some this Went Wrong, sorry for inconvenience",
+      message: "Something went wrong, sorry for inconvenience",
     });
   }
 };
+
 export const forgetPassword = async (req, res) => {
   const { email } = req.body;
 
