@@ -9,12 +9,105 @@ import crypto from "crypto";
 import { v2 as cloudinary } from "cloudinary";
 import Enrollment from "../Models/Enrollement.model.js";
 import mongoose from "mongoose";
+import twilio from "twilio";
+
+
+import multer from "multer";
+import xlsx from "xlsx";
+
+export const bulkSignup = async (req, res) => {
+  try {
+    const role = req.body.role;
+    if (!role) {
+      return res.status(400).json({ message: "Role is required." });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "File is required." });
+    }
+
+    console.log("Uploaded File:", req.file);
+
+    // Read file from buffer instead of path
+    const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const users = xlsx.utils.sheet_to_json(sheet);
+
+    let created = [];
+    let failed = [];
+
+    for (let row of users) {
+      try {
+        const { firstName, middleName, lastName, email, phone, password } = row;
+
+        if (!firstName || !lastName || !email || !phone || !password) {
+          failed.push({
+            email: email || "N/A",
+            reason: "Missing required fields",
+          });
+          continue;
+        }
+
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+          failed.push({ email, reason: "Email already exists" });
+          continue;
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 11);
+
+        const newUser = new User({
+          firstName,
+          middleName,
+          lastName,
+          role, // from admin's selection
+          email,
+          phone,
+          password: hashedPassword,
+        });
+
+        await newUser.save();
+        created.push(newUser.email);
+      } catch (err) {
+        failed.push({ email: row.email || "N/A", reason: err.message });
+      }
+    }
+
+    return res.status(201).json({
+      message: "Bulk upload completed.",
+      createdCount: created.length,
+      failedCount: failed.length,
+      created,
+      failed,
+    });
+  } catch (error) {
+    console.error("Bulk Signup Error:", error.message);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 export const initiateSignup = async (req, res) => {
   const {
     firstName,
     middleName,
     lastName,
+    // pronouns,
+    // gender,
     role,
     email,
     phone,
@@ -56,10 +149,9 @@ export const initiateSignup = async (req, res) => {
       return otp;
     }
     const hashedPassword = await bcrypt.hash(password, 11);
-
     const otp = generateOTP();
-
     const hashedOTP = await bcrypt.hash(otp, 10);
+    const phoneNumUpdated = `+${phone.replace(/\D+/g, "")}`;
 
     await OTP.findOneAndUpdate(
       { email },
@@ -70,9 +162,11 @@ export const initiateSignup = async (req, res) => {
           firstName,
           middleName,
           lastName,
+          // pronoun: pronouns,
+          // gender,
           role,
           email,
-          phone,
+          phone: phoneNumUpdated,
           homeAddress,
           mailingAddress,
           password: hashedPassword,
@@ -224,16 +318,17 @@ export const resendOTP = async (req, res) => {
   }
 };
 
-export const verifyOtpAndSignup = async (req, res) => {
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_ACCOUNT_TOKEN
+);
+
+export const verifyEmailOtp = async (req, res) => {
   const { email, otp } = req.body;
 
   try {
     const otpEntry = await OTP.findOne({ email });
-    if (!otpEntry) {
-      return res
-        .status(400)
-        .json({ message: "OTP not found or already used." });
-    }
+    if (!otpEntry) return res.status(400).json({ message: "OTP not found or already used." });
 
     const isExpired = Date.now() > otpEntry.expiresAt;
     const isValid = await bcrypt.compare(otp, otpEntry.otp);
@@ -242,38 +337,292 @@ export const verifyOtpAndSignup = async (req, res) => {
       return res.status(400).json({ message: "Invalid or expired OTP." });
     }
 
+    // ✅ mark email as verified in OTP entry
+    otpEntry.isVerified = true;
+    await otpEntry.save();
+
+    // 📲 Generate phone OTP manually
+    function generateOTP(length = 6) {
+      const digits = "0123456789";
+      let otp = "";
+      const bytes = crypto.randomBytes(length);
+
+      for (let i = 0; i < length; i++) {
+        otp += digits[bytes[i] % digits.length];
+      }
+
+      return otp;
+    }
+
+    const phoneOtp = generateOTP();
+
+    const hashedOTP = await bcrypt.hash(phoneOtp, 10);
+
+    // Save to DB with expiry (5 min)
+    otpEntry.phoneOtp = await bcrypt.hash(hashedOTP, 10);
+    otpEntry.expiresAt = Date.now() + 10 * 60 * 1000;
+    await otpEntry.save();
+
     const userData = otpEntry.userData;
 
-    const newUser = new User({
-      ...userData,
+    // 🚀 Send SMS using purchased number
+    await twilioClient.messages.create({
+      body: `Your Acewall Scholars phone verification code is: ${phoneOtp}`,
+      from: process.env.TWILIO_PHONE_NUMBER, // purchased Twilio number
+      to: userData.phone,
     });
 
-    await newUser.save();
-    await OTP.deleteOne({ email });
-
-    generateToken(newUser._id, newUser.role, res);
-
-    res.status(201).json({
-      message: "Your account has been created successfully.",
-      newUser,
-    });
+    res.json({ message: "Email verified. Phone OTP sent." });
   } catch (error) {
-    console.error("OTP verification error:", error.message);
+    console.error("verifyEmailOtp error:", error.message);
     res.status(500).json({ message: "Internal server error." });
   }
 };
 
+export const verifyPhoneOtp = async (req, res) => {
+  const { email, otp } = req.body;
+
+  try {
+    const otpEntry = await OTP.findOne({ email });
+    if (!otpEntry || !otpEntry.isVerified) {
+      return res.status(400).json({ message: "Email not verified yet." });
+    }
+
+    if (!isValid || isExpired) {
+      return res.status(400).json({ message: "Invalid or expired phone OTP." });
+    }
+
+    // ✅ Create real user only now
+    const newUser = new User({ ...otpEntry.userData });
+    await newUser.save();
+
+    // Delete OTP entry since it's used
+    await OTP.deleteOne({ email });
+
+    // 🔔 Send welcome email if teacher
+    if (newUser.role === "teacher" && process.env.MAIL_USER) {
+      const transporter = nodemailer.createTransport({
+        host: process.env.MAIL_HOST,
+        port: Number(process.env.MAIL_PORT),
+        secure: Number(process.env.MAIL_PORT) === 465,
+        auth: {
+          user: process.env.MAIL_USER,
+          pass: process.env.MAIL_PASS,
+        },
+      });
+
+      const mailOptions = {
+        from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars"}" <${process.env.MAIL_USER}>`,
+        to: newUser.email,
+        subject: `Welcome to Acewall Scholars as an Instructor`,
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h2>Welcome to Acewall Scholars, ${newUser.firstName}!</h2>
+            <p>Thank you for registering to be an instructor on the <strong>Acewall Scholars Learning Platform</strong>. We are excited to partner with you.</p>
+            <p>You can start creating your course now! Before it can be published for purchase, please submit the required documents:</p>
+            <ul>
+              <li>University Transcripts</li>
+              <li>Teachers License or Certifications in field of instruction</li>
+              <li>Two Forms of ID:
+                <ul>
+                  <li>Passport</li>
+                  <li>Government issued ID</li>
+                  <li>Driver's License</li>
+                  <li>Birth Certificate</li>
+                </ul>
+              </li>
+              <li>Resume/CV</li>
+            </ul>
+            <p><em>(File types allowed: JPG, JPEG, PDF)</em></p>
+            <p>We look forward to seeing the impact you will make!</p>
+          </div>
+        `,
+      };
+
+      try {
+        await transporter.sendMail(mailOptions);
+        console.log("✅ Instructor welcome email sent to:", newUser.email);
+      } catch (emailErr) {
+        console.error("❌ Error sending instructor email:", emailErr.message);
+      }
+    }
+
+    // ✅ issue token
+    generateToken(newUser._id, newUser.role, res);
+
+    res.status(201).json({ message: "User created successfully.", newUser });
+  } catch (error) {
+    console.error("verifyPhoneOtp error:", error.message);
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+
+export const resendPhoneOTP = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    if (!email) {
+      return res.status(400).json({ message: "Email is required." });
+    }
+
+    const otpRecord = await OTP.findOne({ email });
+
+    if (!otpRecord) {
+      return res.status(404).json({
+        message: "No OTP record found for this email. Please sign up again.",
+      });
+    }
+
+    function generateOTP(length = 6) {
+      const digits = "0123456789";
+      let otp = "";
+      const bytes = crypto.randomBytes(length);
+
+      for (let i = 0; i < length; i++) {
+        otp += digits[bytes[i] % digits.length];
+      }
+
+      return otp;
+    }
+
+    const phoneOtp = generateOTP();
+    const hashedOTP = await bcrypt.hash(phoneOtp, 10);
+
+    otpRecord.phoneOtp = hashedOTP;
+    otpRecord.expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+    await otpRecord.save();
+
+    // Resend email
+    const userData = otpRecord.userData;
+
+    console.log(userData, "userData")
+
+    // 🚀 Send SMS using purchased number
+    await twilioClient.messages.create({
+      body: `Your Acewall Scholars phone verification code is: ${phoneOtp}`,
+      from: process.env.TWILIO_PHONE_NUMBER, // purchased Twilio number
+      to: userData.phone,
+    });
+
+    res.status(200).json({ message: "New OTP has been sent to your phone number." });
+  } catch (error) {
+    console.error("Resend OTP error:", error.message);
+    res.status(500).json({ message: "Internal server error." });
+  }
+}
+
+export const updatePhoneOTP = async (req, res) => {
+  const userId = req.user._id;
+  const { newPhone } = req.body;
+
+  console.log(newPhone, "newPhone");
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    function generateOTP(length = 6) {
+      const digits = "0123456789";
+      let otp = "";
+      const bytes = crypto.randomBytes(length);
+
+      for (let i = 0; i < length; i++) {
+        otp += digits[bytes[i] % digits.length];
+      }
+
+      return otp;
+    }
+
+    const phoneOtp = generateOTP();
+    const hashedOTP = await bcrypt.hash(phoneOtp, 10);
+
+    const phoneNumUpdated = `+${newPhone.replace(/\D+/g, "")}`;
+
+    await OTP.findOneAndUpdate(
+      { email: user.email },
+      {
+        phoneOtp: hashedOTP,
+        expiresAt: Date.now() + 10 * 60 * 1000,
+        userData: {
+          phone: phoneNumUpdated,
+        },
+      },
+      { upsert: true }
+    );
+
+    // 🚀 Send SMS using purchased number
+    await twilioClient.messages.create({
+      body: `Your Acewall Scholars phone verification code is: ${phoneOtp}`,
+      from: process.env.TWILIO_PHONE_NUMBER, // purchased Twilio number
+      to: phoneNumUpdated,
+    });
+
+    return res
+      .status(200)
+      .json({ message: "OTP sent successfully to new phone number" });
+  } catch (error) {
+    console.error("Error in updatePasswordOTP:", error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const updatePhone = async (req, res) => {
+  const { email, otp } = req.body;
+  try {
+    const otpEntry = await OTP.findOne({ email });
+
+    console.log(otpEntry, "otpEntry");
+
+    if (!otpEntry) {
+      return res
+        .status(400)
+        .json({ message: "OTP not found or already used." });
+    }
+
+    const isExpired = Date.now() > otpEntry.expiresAt;
+    const isValid = await bcrypt.compare(otp, otpEntry.phoneOtp);
+
+    if (!isValid || isExpired) {
+      return res.status(400).json({ message: "Invalid or expired OTP." });
+    }
+
+    await OTP.updateOne(
+      { email },
+      {
+        $set: {
+          isVerified: true,
+        },
+      }
+    );
+
+    const { phone } = otpEntry.userData;
+
+    console.log(otpEntry.userData, "otpEntry.userData")
+
+    await User.findOneAndUpdate({ email: email }, { phone });
+
+    return res.status(200).json({ message: "Phone number updated successfully" });
+  } catch (error) {
+    console.log("error in updatePassword:", error);
+    return res.status(500).json("Internal Server Error");
+  }
+};
+
+
+
 export const login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    if (!password || !email) {
+    if (!email || !password) {
       return res.status(400).json({
-        message: "all fields must be filled",
+        message: "All fields must be filled",
       });
     }
 
     const user = await User.findOne({ email });
-
     if (!user) {
       return res.status(400).json({
         error: true,
@@ -282,21 +631,24 @@ export const login = async (req, res) => {
     }
 
     const isAuthorized = await bcrypt.compare(password, user.password);
-
     if (!isAuthorized) {
-      return res.status(500).json({
+      return res.status(401).json({
         error: true,
         message: "Invalid Credentials",
       });
     }
-    generateToken(user._id, user.role, res);
+
+    // ✅ Pass both req and res here
+    const token = generateToken(user._id, user.role, req, res);
+
     return res.status(200).json({
-      message: "Login Successfull",
+      message: "Login Successful",
+      token, // optional, since cookie is already set
     });
   } catch (error) {
-    console.log("error in login==>", error.message);
+    console.error("error in login==>", error.message);
     return res.status(500).json({
-      message: "Some this Went Wrong, sorry for inconvenience",
+      message: "Something went wrong, sorry for inconvenience",
     });
   }
 };
@@ -448,6 +800,14 @@ export const resetPassword = async (req, res) => {
   }
 };
 
+
+
+
+
+
+
+
+
 export const logout = async (req, res) => {
   try {
     res.clearCookie("jwt", {
@@ -570,12 +930,24 @@ export const allTeacher = async (req, res) => {
     const page = parseInt(req.query.page) || 1; // default to page 1
     const limit = parseInt(req.query.limit) || 6; // default to 6 per page
     const skip = (page - 1) * limit;
+    const search = req.query.search || "";
 
-    const totalTeachers = await User.countDocuments({ role: "teacher" });
+    // Base query
+    const query = { role: "teacher" };
 
-    const teachers = await User.find({ role: "teacher" })
+    // If search provided, filter by firstName, lastName, or email (case-insensitive)
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: "i" } },
+        { lastName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const totalTeachers = await User.countDocuments(query);
+
+    const teachers = await User.find(query)
       .sort({ createdAt: -1 })
-
       .select("firstName lastName email createdAt profileImg _id")
       .skip(skip)
       .limit(limit);
@@ -609,15 +981,29 @@ export const allTeacher = async (req, res) => {
 };
 
 
+
 export const allStudent = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 6;
     const skip = (page - 1) * limit;
+    const search = req.query.search || ""; // get search term
 
-    const totalStudents = await User.countDocuments({ role: "student" });
+    // Base query
+    const query = { role: "student" };
 
-    const students = await User.find({ role: "student" })
+    // If search provided, add filter (case-insensitive)
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: "i" } },
+        { lastName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const totalStudents = await User.countDocuments(query);
+
+    const students = await User.find(query)
       .sort({ createdAt: -1 })
       .select("firstName lastName email createdAt courses profileImg _id")
       .skip(skip)
@@ -642,6 +1028,7 @@ export const allStudent = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
+
 
 
 export const getStudentById = async (req, res) => {

@@ -28,6 +28,8 @@
     "pdfkit": "^0.17.1",
     "socket.io": "^4.8.1",
     "streamifier": "^0.1.1",
-    "stripe": "^18.1.0"
+    "stripe": "^18.1.0",
+    "twilio": "^5.8.2",
+    "xlsx": "^0.18.5"
   }
 }

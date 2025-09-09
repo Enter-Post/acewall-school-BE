@@ -7,7 +7,7 @@ import {
   updateUser,
   checkUser,
   allTeacher,
-  verifyOtpAndSignup,
+  // verifyOtpAndSignup,
   initiateSignup,
   resendOTP,
   forgetPassword,
@@ -28,16 +28,30 @@ import {
   updatePasswordOTPById,
   updatePasswordById,
   SignupwithoutOTP,
+  verifyEmailOtp,
+  verifyPhoneOtp,
+  resendPhoneOTP,
+  updatePhoneOTP,
+  updatePhone,
+  bulkSignup,
 } from "../Contollers/auth.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { upload } from "../lib/multer.config.js";
 // import { checkRole, isAllowed } from "../Middlewares/admins.Middleware.js";
 const router = express.Router();
 
+
+router.post("/bulk-signup", upload.single("file"), bulkSignup);
+
+
 router.post("/register", initiateSignup);
 router.post("/registerwithoutOTP", SignupwithoutOTP);
-router.post("/verifyOTP", verifyOtpAndSignup);
+// router.post("/verifyOTP", verifyOtpAndSignup);
+router.post("/verifyOTP", verifyEmailOtp);
+router.post("/verifyPhoneOTP", verifyPhoneOtp);
+router.post("/resendPhoneOTP", resendPhoneOTP);
 router.post("/resendOTP", resendOTP);
+
 router.post("/login", login);
 router.post("/forgotPassword", forgetPassword);
 router.post("/verifyForgotPassOTP", verifyOTPForgotPassword);
@@ -67,7 +81,8 @@ router.post("/updatePasswordOTP", isUser, updatePasswordOTP);
 router.put("/updatePassword", isUser, updatePassword);
 router.post("/updateEmailOTP", isUser, updateEmailOTP);
 router.put("/updateEmail", isUser, updateEmail);
-
+router.post("/updatePhoneOTP", isUser, updatePhoneOTP)
+router.put("/updatePhone", isUser, updatePhone)
 
 router.put("/auth/updateEmailOTPById/:id", updateEmailOTPById);
 router.put("/auth/updateEmailById/:id", updateEmailById);
