@@ -33,11 +33,16 @@ import {
   resendPhoneOTP,
   updatePhoneOTP,
   updatePhone,
+  bulkSignup,
 } from "../Contollers/auth.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { upload } from "../lib/multer.config.js";
 // import { checkRole, isAllowed } from "../Middlewares/admins.Middleware.js";
 const router = express.Router();
+
+
+router.post("/bulk-signup", upload.single("file"), bulkSignup);
+
 
 router.post("/register", initiateSignup);
 router.post("/registerwithoutOTP", SignupwithoutOTP);

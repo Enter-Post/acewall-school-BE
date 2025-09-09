@@ -11,6 +11,96 @@ import Enrollment from "../Models/Enrollement.model.js";
 import mongoose from "mongoose";
 import twilio from "twilio";
 
+
+import multer from "multer";
+import xlsx from "xlsx";
+
+export const bulkSignup = async (req, res) => {
+  try {
+    const role = req.body.role;
+    if (!role) {
+      return res.status(400).json({ message: "Role is required." });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "File is required." });
+    }
+
+    console.log("Uploaded File:", req.file);
+
+    // Read file from buffer instead of path
+    const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const users = xlsx.utils.sheet_to_json(sheet);
+
+    let created = [];
+    let failed = [];
+
+    for (let row of users) {
+      try {
+        const { firstName, middleName, lastName, email, phone, password } = row;
+
+        if (!firstName || !lastName || !email || !phone || !password) {
+          failed.push({
+            email: email || "N/A",
+            reason: "Missing required fields",
+          });
+          continue;
+        }
+
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+          failed.push({ email, reason: "Email already exists" });
+          continue;
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 11);
+
+        const newUser = new User({
+          firstName,
+          middleName,
+          lastName,
+          role, // from admin's selection
+          email,
+          phone,
+          password: hashedPassword,
+        });
+
+        await newUser.save();
+        created.push(newUser.email);
+      } catch (err) {
+        failed.push({ email: row.email || "N/A", reason: err.message });
+      }
+    }
+
+    return res.status(201).json({
+      message: "Bulk upload completed.",
+      createdCount: created.length,
+      failedCount: failed.length,
+      created,
+      failed,
+    });
+  } catch (error) {
+    console.error("Bulk Signup Error:", error.message);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 export const initiateSignup = async (req, res) => {
   const {
     firstName,
