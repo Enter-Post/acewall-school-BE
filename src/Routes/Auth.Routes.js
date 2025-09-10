@@ -34,6 +34,7 @@ import {
   updatePhoneOTP,
   updatePhone,
   bulkSignup,
+  logoutAdmin,
 } from "../Contollers/auth.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { upload } from "../lib/multer.config.js";
@@ -57,6 +58,7 @@ router.post("/forgotPassword", forgetPassword);
 router.post("/verifyForgotPassOTP", verifyOTPForgotPassword);
 router.post("/resetPassword", resetPassword);
 router.post("/logout", logout);
+router.post("/logoutAdmin", logoutAdmin);
 router.get("/checkAuth", isUser, checkAuth);
 router.post("/check-existence", checkUser);
 router.get("/users", allUser);

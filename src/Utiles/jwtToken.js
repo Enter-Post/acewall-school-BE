@@ -16,10 +16,16 @@ export const generateToken = (userID, role, req, res) => {
     host = req.hostname;
   }
 
-  const portal = host && host.startsWith("admin.") ? "admin" : "client";
+  console.log(role, "role in the JWTTOKEN");
+
+  const portal = (role === "teacher" || role === "student") ? "client" : "admin";
+
+  console.log(portal, "portal in the JWTTOKEN");
 
   // ----------------- Cookie name based on portal -----------------
   const cookieName = portal === "admin" ? "admin_jwt" : "client_jwt";
+
+  console.log(cookieName, "cookieName");
 
   // ----------------- Sign JWT -----------------
   const token = jwt.sign(
