@@ -810,22 +810,49 @@ export const resetPassword = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
-    res.clearCookie("jwt", {
+    // Detect portal like in generateToken/isUser
+    let host = "";
+    const origin = req.get("origin");
+
+    if (origin) {
+      try {
+        host = new URL(origin).hostname;
+      } catch (err) {
+        console.error("Invalid origin header:", origin);
+      }
+    }
+    if (!host && req.hostname) {
+      host = req.hostname;
+    }
+
+    const portal = host && host.startsWith("admin.") ? "admin" : "client";
+    const cookieName = portal === "admin" ? "admin_jwt" : "client_jwt";
+
+    // Clear the cookie
+    res.clearCookie(cookieName, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // true on production (HTTPS)
+      secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      path: "/", // must match the original cookie path
+      path: "/", // Must match original cookie path
     });
+
     return res.status(200).json({
-      message: "User Logged Out Successfully",
+      message: `User logged out successfully from ${portal} portal`,
     });
   } catch (error) {
-    console.log("error in logout==>", error.message);
+    console.error("Error in logout =>", error.message);
     return res.status(500).json({
-      message: "Some this Went Wrong, sorry for inconvenience",
+      message: "Something went wrong, sorry for the inconvenience",
     });
   }
 };
+
+
+
+
+
+
+
 
 export const allUser = async (req, res) => {
   try {
