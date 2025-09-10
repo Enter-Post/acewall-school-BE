@@ -359,7 +359,7 @@ export const verifyEmailOtp = async (req, res) => {
     const hashedOTP = await bcrypt.hash(phoneOtp, 10);
 
     // Save to DB with expiry (5 min)
-    otpEntry.phoneOtp = await bcrypt.hash(hashedOTP, 10);
+    otpEntry.phoneOtp = hashedOTP
     otpEntry.expiresAt = Date.now() + 10 * 60 * 1000;
     await otpEntry.save();
 
@@ -387,6 +387,12 @@ export const verifyPhoneOtp = async (req, res) => {
     if (!otpEntry || !otpEntry.isVerified) {
       return res.status(400).json({ message: "Email not verified yet." });
     }
+
+    const isExpired = Date.now() > otpEntry.expiresAt;
+    const isValid = await bcrypt.compare(otp, otpEntry.phoneOtp);
+
+    console.log(isExpired, "isExpired")
+    console.log(isValid, "isValid")
 
     if (!isValid || isExpired) {
       return res.status(400).json({ message: "Invalid or expired phone OTP." });
@@ -447,15 +453,17 @@ export const verifyPhoneOtp = async (req, res) => {
       }
     }
 
+    
+
     // ✅ issue token
-    generateToken(newUser._id, newUser.role, res);
+    generateToken(newUser._id, newUser.role, req, res);
 
     res.status(201).json({ message: "User created successfully.", newUser });
   } catch (error) {
     console.error("verifyPhoneOtp error:", error.message);
     res.status(500).json({ message: "Internal server error." });
   }
-};
+};  
 
 
 export const resendPhoneOTP = async (req, res) => {
