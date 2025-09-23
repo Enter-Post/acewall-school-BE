@@ -33,6 +33,7 @@ import semesterRoutes from "./Routes/CourseRoutes/semester.Routes.js";
 import quarterRoutes from "./Routes/CourseRoutes/Quarter.Routes.js";
 import pagesRoutes from "./Routes/Pages.Routes.js";
 import gpaRoutes from "./Routes/GPA.Routes.js";
+import contactRoutes from "./Routes/Contact.Routes.js";
 
 dotenv.config();
 
@@ -76,6 +77,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/newsletter", newsletter);
 app.use("/api/support", supportRoutes);
 app.use("/api/pages", pagesRoutes);
+app.use("/api/contact", contactRoutes);
 
 app.use("/api/discussion", discussionRoutes);
 app.use("/api/discussionComment", discussionCommentRoutes);
