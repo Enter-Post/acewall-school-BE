@@ -1,8 +1,6 @@
 import nodemailer from "nodemailer";
 
 export const sendSchoolcontactmail = async (req, res) => {
-
-    console.log(process.env.MAIL_USER, process.env.MAIL_PASS, process.env.MAIL_HOST);
     try {
         const {
             organization,
@@ -18,11 +16,11 @@ export const sendSchoolcontactmail = async (req, res) => {
         // Transporter setup (replace with your SMTP)
         const transporter = nodemailer.createTransport({
             host: process.env.MAIL_HOST,
-            port: 465,
-            secure: true, // true for port 465, false for 587
+            port: process.env.MAIL_PORT,
+            secure: true,
             auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS,
+                user: process.env.MAIL_USER,
+                pass: process.env.MAIL_PASS,
             },
         });
 
@@ -37,11 +35,11 @@ export const sendSchoolcontactmail = async (req, res) => {
 
         // Mail options
         const mailOptions = {
-            from: `"Acewall Scholars Contact" <${process.env.EMAIL_USER}>`, // sender address
-            to: "imtalha995@gmail.com", // where to receive the form data
+            from: `"Acewall Scholars Contact" <${process.env.MAIL_USER}>`, // sender address
+            to: ["support@acewallscholars.org", "programs@acewallscholars.org"], 
             subject: `New Contact Submission from ${organization}`,
             html: `
-        <h2>New Contact Submission</h2>
+        <h2>New School Contact Information</h2>
         <p><b>Organization:</b> ${organization}</p>
         <p><b>Contact Person:</b> ${contactPerson}</p>
         <p><b>Contact Number:</b> ${contactNumber}</p>
