@@ -88,19 +88,6 @@ export const bulkSignup = async (req, res) => {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 export const initiateSignup = async (req, res) => {
   const {
     firstName,
@@ -244,11 +231,8 @@ export const SignupwithoutOTP = async (req, res) => {
 
     await newUser.save();
 
-    // Generate JWT or session
-    generateToken(newUser._id, newUser.role, res);
-
     res.status(201).json({
-      message: "Your account has been created successfully.",
+      message: "Account has been created successfully.",
       user: newUser,
     });
   } catch (error) {
@@ -366,11 +350,18 @@ export const verifyEmailOtp = async (req, res) => {
     const userData = otpEntry.userData;
 
     // 🚀 Send SMS using purchased number
-    await twilioClient.messages.create({
-      body: `Your Acewall Scholars phone verification code is: ${phoneOtp}`,
-      from: process.env.TWILIO_PHONE_NUMBER, // purchased Twilio number
-      to: userData.phone,
-    });
+
+
+    try {
+      await twilioClient.messages.create({
+        body: `Your Acewall Scholars phone verification code is: ${phoneOtp}`,
+        from: process.env.TWILIO_PHONE_NUMBER, // purchased Twilio number
+        to: userData.phone,
+      });
+    } catch (error) {
+      console.error("Error sending SMS:", error);
+      return res.status(500).json({ message: "please check your phone number and try again. Failed to send SMS." });
+    }
 
     res.json({ message: "Email verified. Phone OTP sent." });
   } catch (error) {
@@ -453,7 +444,7 @@ export const verifyPhoneOtp = async (req, res) => {
       }
     }
 
-    
+
 
     // ✅ issue token
     generateToken(newUser._id, newUser.role, req, res);
@@ -463,7 +454,7 @@ export const verifyPhoneOtp = async (req, res) => {
     console.error("verifyPhoneOtp error:", error.message);
     res.status(500).json({ message: "Internal server error." });
   }
-};  
+};
 
 
 export const resendPhoneOTP = async (req, res) => {
