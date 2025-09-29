@@ -45,7 +45,7 @@ export const createAnnouncement = async (req, res) => {
         secure: true,
         auth: {
           user: "support@acewallscholars.org",
-          pass: "F@soptipas03",
+          pass: "ecgdupvzkfmbqrrq",
         },
       });
 

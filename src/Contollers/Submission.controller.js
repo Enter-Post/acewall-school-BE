@@ -138,7 +138,7 @@ export const submission = async (req, res) => {
           secure: true,
           auth: {
             user: "support@acewallscholars.org",
-            pass: "F@soptipas03",
+            pass: "ecgdupvzkfmbqrrq",
           },
         });
 
@@ -397,7 +397,7 @@ export const teacherGrading = async (req, res) => {
         secure: true,
         auth: {
           user: "support@acewallscholars.org",
-          pass: "F@soptipas03",
+          pass: "ecgdupvzkfmbqrrq",
         },
       });
 
