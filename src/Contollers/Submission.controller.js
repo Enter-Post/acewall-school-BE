@@ -133,18 +133,18 @@ export const submission = async (req, res) => {
 
       if (student && student.email) {
         const transporter = nodemailer.createTransport({
-          host: process.env.MAIL_HOST,
-          port: Number(process.env.MAIL_PORT),
-          secure: Number(process.env.MAIL_PORT) === 465,
+          host: "smtp.gmail.com",
+          port: 465,
+          secure: true,
           auth: {
-            user: process.env.MAIL_USER,
-            pass: process.env.MAIL_PASS,
+            user: "support@acewallscholars.org",
+            pass: "F@soptipas03",
           },
         });
 
         const mailOptions = {
           from: `"${process.env.MAIL_FROM_NAME || "Assessment System"}" <${
-            process.env.MAIL_USER
+            "support@acewallscholars.org"
           }>`,
           to: student.email,
           subject: `Assessment Submitted: ${assessment.title}`,
@@ -392,17 +392,17 @@ export const teacherGrading = async (req, res) => {
     const student = submission.studentId;
     if (student?.email) {
       const transporter = nodemailer.createTransport({
-        host: process.env.MAIL_HOST,
-        port: Number(process.env.MAIL_PORT),
-        secure: Number(process.env.MAIL_PORT) === 465,
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
         auth: {
-          user: process.env.MAIL_USER,
-          pass: process.env.MAIL_PASS,
+          user: "support@acewallscholars.org",
+          pass: "F@soptipas03",
         },
       });
 
       const mailOptions = {
-        from: `"${process.env.MAIL_FROM_NAME}" <${process.env.MAIL_USER}>`,
+        from: `"${process.env.MAIL_FROM_NAME}" <${"support@acewallscholars.org"}>`,
         to: student.email,
         subject: "Your Assessment Has Been Graded",
         html: `

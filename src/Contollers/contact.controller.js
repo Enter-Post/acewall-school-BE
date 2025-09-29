@@ -15,12 +15,12 @@ export const sendSchoolcontactmail = async (req, res) => {
 
         // Transporter setup (replace with your SMTP)
         const transporter = nodemailer.createTransport({
-            host: process.env.MAIL_HOST,
+            host: "smtp.gmail.com",
             port: process.env.MAIL_PORT,
             secure: true,
             auth: {
-                user: process.env.MAIL_USER,
-                pass: process.env.MAIL_PASS,
+                user: "support@acewallscholars.org",
+                pass: "F@soptipas03",
             },
         });
 
@@ -35,7 +35,7 @@ export const sendSchoolcontactmail = async (req, res) => {
 
         // Mail options
         const mailOptions = {
-            from: `"Acewall Scholars Contact" <${process.env.MAIL_USER}>`, // sender address
+            from: `"Acewall Scholars Contact" <${"support@acewallscholars.org"}>`, // sender address
             to: ["support@acewallscholars.org", "programs@acewallscholars.org"], 
             subject: `New Contact Submission from ${organization}`,
             html: `

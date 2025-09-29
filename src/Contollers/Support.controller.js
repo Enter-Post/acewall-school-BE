@@ -10,23 +10,19 @@ export const sendSupportMail = async (req, res) => {
   }
 
   try {
-    if (!process.env.MAIL_SUPPORT_TO) {
-      return res.status(500).json({ message: "Support recipient email is not configured." });
-    }
-
     const transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST,
-      port: Number(process.env.MAIL_PORT),
-      secure: Number(process.env.MAIL_PORT) === 465, // true for 465, false for 587
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true, // true for 465, false for 587
       auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
+        user: "support@acewallscholars.org",
+        pass: "F@soptipas03",
       },
     });
 
     const mailOptions = {
-      from: `"Support Inquiry" <${process.env.MAIL_USER}>`,
-      to: process.env.MAIL_SUPPORT_TO,
+      from: `"Support Inquiry" <${"support@acewallscholars.org"}>`,
+      to: "support@acewallscholars.org",
       subject: "New Support Request",
       html: `
         <h3>Support Request</h3>
@@ -58,23 +54,19 @@ export const sendContactMail = async (req, res) => {
   }
 
   try {
-    if (!process.env.MAIL_CONTACT_TO) {
-      return res.status(500).json({ message: "Contact recipient email is not configured." });
-    }
-
     const transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST,
-      port: Number(process.env.MAIL_PORT),
-      secure: Number(process.env.MAIL_PORT) === 465,
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
       auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
+        user: "support@acewallscholars.org",
+        pass: "F@soptipas03",
       },
     });
 
     const mailOptions = {
-      from: `"Contact Form" <${process.env.MAIL_USER}>`,
-      to: process.env.MAIL_CONTACT_TO,
+      from: `"Contact Form" <${"support@acewallscholars.org"}>`,
+      to: "support@acewallscholars.org",
       subject: `Contact Us: ${subject}`,
       html: `
         <h3>Contact Form Submission</h3>

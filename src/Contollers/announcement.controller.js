@@ -38,19 +38,19 @@ export const createAnnouncement = async (req, res) => {
     const studentEmails = enrollment.map((enroll) => enroll.student.email);
 
     // Send email to all enrolled students
-    if (studentEmails.length > 0 && process.env.MAIL_USER) {
+    if (studentEmails.length > 0 ) {
       const transporter = nodemailer.createTransport({
-        host: process.env.MAIL_HOST,
-        port: Number(process.env.MAIL_PORT),
-        secure: Number(process.env.MAIL_PORT) === 465,
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
         auth: {
-          user: process.env.MAIL_USER,
-          pass: process.env.MAIL_PASS,
+          user: "support@acewallscholars.org",
+          pass: "F@soptipas03",
         },
       });
 
       const mailOptions = {
-        from: `"${process.env.MAIL_FROM_NAME || "Course Team"}" <${process.env.MAIL_USER}>`,
+        from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars Team"}" <${"support@acewallscholars.org"}>`,
         to: studentEmails, // can be an array or comma-separated string
         subject: `New Announcement: ${title}`,
         html: `

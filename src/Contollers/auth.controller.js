@@ -164,16 +164,16 @@ export const initiateSignup = async (req, res) => {
 
     // Send OTP via email (or SMS)
     const transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST,
-      port: Number(process.env.MAIL_PORT),
-      secure: Number(process.env.MAIL_PORT) === 465, // true for 465, false for 587
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true, // true for 465, false for 587
       auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
+        user: "support@acewallscholars.org",
+        pass: "F@soptipas03",
       },
     });
     await transporter.sendMail({
-      from: `"OTP Verification" <${process.env.MAIL_USER}>`,
+      from: `"OTP Verification" <${"support@acewallscholars.org"}>`,
       to: email,
       subject: "Your OTP Code",
       text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
@@ -279,17 +279,17 @@ export const resendOTP = async (req, res) => {
 
     // Resend email
     const transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST,
-      port: Number(process.env.MAIL_PORT),
-      secure: Number(process.env.MAIL_PORT) === 465,
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
       auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
+        user: "support@acewallscholars.org",
+        pass: "F@soptipas03",
       },
     });
 
     await transporter.sendMail({
-      from: `"OTP Verification" <${process.env.MAIL_USER}>`,
+      from: `"OTP Verification" <${"support@acewallscholars.org"}>`,
       to: email,
       subject: "Your New OTP Code",
       text: `Your new OTP code is ${otp}. It will expire in 10 minutes.`,
@@ -397,19 +397,19 @@ export const verifyPhoneOtp = async (req, res) => {
     await OTP.deleteOne({ email });
 
     // 🔔 Send welcome email if teacher
-    if (newUser.role === "teacher" && process.env.MAIL_USER) {
+    if (newUser.role === "teacher" && "support@acewallscholars.org") {
       const transporter = nodemailer.createTransport({
-        host: process.env.MAIL_HOST,
-        port: Number(process.env.MAIL_PORT),
-        secure: Number(process.env.MAIL_PORT) === 465,
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
         auth: {
-          user: process.env.MAIL_USER,
-          pass: process.env.MAIL_PASS,
+          user: "support@acewallscholars.org",
+          pass: "F@soptipas03",
         },
       });
 
       const mailOptions = {
-        from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars"}" <${process.env.MAIL_USER}>`,
+        from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars"}" <${"support@acewallscholars.org"}>`,
         to: newUser.email,
         subject: `Welcome to Acewall Scholars as an Instructor`,
         html: `
@@ -700,19 +700,19 @@ export const forgetPassword = async (req, res) => {
     console.log("working 4");
 
     const transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST,
-      port: Number(process.env.MAIL_PORT),
-      secure: Number(process.env.MAIL_PORT) === 465, // true for 465, false for 587
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true, // true for 465, false for 587
       auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
+        user: "support@acewallscholars.org",
+        pass: "F@soptipas03",
       },
     });
     console.log("working 5", transporter);
 
 
     await transporter.sendMail({
-      from: `"OTP Verification" <${process.env.MAIL_USER}>`,
+      from: `"OTP Verification" <${"support@acewallscholars.org"}>`,
       to: email,
       subject: "Your OTP Code",
       text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
@@ -1342,17 +1342,17 @@ export const updatePasswordOTP = async (req, res) => {
 
     // Send OTP via email
     const transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST,
-      port: Number(process.env.MAIL_PORT),
-      secure: Number(process.env.MAIL_PORT) === 465,
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
       auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
+        user: "support@acewallscholars.org",
+        pass: "F@soptipas03",
       },
     });
 
     await transporter.sendMail({
-      from: `"OTP Verification" <${process.env.MAIL_USER}>`,
+      from: `"OTP Verification" <${"support@acewallscholars.org"}>`,
       to: user.email,
       subject: "Your OTP Code",
       text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
@@ -1446,17 +1446,17 @@ export const updateEmailOTP = async (req, res) => {
     );
 
     const transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST,
-      port: Number(process.env.MAIL_PORT),
-      secure: Number(process.env.MAIL_PORT) === 465,
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
       auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
+        user: "support@acewallscholars.org",
+        pass: "F@soptipas03",
       },
     });
 
     await transporter.sendMail({
-      from: `"OTP Verification" <${process.env.MAIL_USER}>`,
+      from: `"OTP Verification" <${"support@acewallscholars.org"}>`,
       to: user.email,
       subject: "Your OTP Code",
       text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
@@ -1551,17 +1551,17 @@ export const updateEmailOTPById = async (req, res) => {
     );
 
     const transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST,
-      port: Number(process.env.MAIL_PORT),
-      secure: Number(process.env.MAIL_PORT) === 465,
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
       auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
+        user: "support@acewallscholars.org",
+        pass: "F@soptipas03",
       },
     });
 
     await transporter.sendMail({
-      from: `"OTP Verification" <${process.env.MAIL_USER}>`,
+      from: `"OTP Verification" <${"support@acewallscholars.org"}>`,
       to: user.email,
       subject: "Your OTP Code",
       text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
@@ -1674,17 +1674,17 @@ export const updatePasswordOTPById = async (req, res) => {
     );
 
     const transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST,
-      port: Number(process.env.MAIL_PORT),
-      secure: Number(process.env.MAIL_PORT) === 465,
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
       auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
+        user: "support@acewallscholars.org",
+        pass: "F@soptipas03",
       },
     });
 
     await transporter.sendMail({
-      from: `"OTP Verification" <${process.env.MAIL_USER}>`,
+      from: `"OTP Verification" <${"support@acewallscholars.org"}>`,
       to: user.email,
       subject: "Your OTP Code",
       text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
