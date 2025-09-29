@@ -70,6 +70,8 @@ export const createCourseSch = async (req, res) => {
       quarter: parsedQuarter,
     });
 
+    await Enrollment.create({ student: createdby, course: course._id });
+
     res.status(201).json({ course, message: "Course created successfully" });
   } catch (error) {
     console.log("Error in createCourseSch:", error);

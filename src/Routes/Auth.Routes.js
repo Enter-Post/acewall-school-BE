@@ -34,6 +34,8 @@ import {
   updatePhoneOTP,
   updatePhone,
   bulkSignup,
+  previewSignIn,
+  previewSignOut,
 } from "../Contollers/auth.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { upload } from "../lib/multer.config.js";
@@ -88,9 +90,9 @@ router.put("/auth/updateEmailOTPById/:id", updateEmailOTPById);
 router.put("/auth/updateEmailById/:id", updateEmailById);
 router.put("/auth/updatePasswordOTPById/:id", updatePasswordOTPById);
 router.put("/auth/updatePasswordById/:id", updatePasswordById);
-
-
-
 router.delete("/users/:userId", deleteUser);
+
+router.post("/previewSignIn", isUser, previewSignIn)
+router.post("/previewSignOut", isUser, previewSignOut)
 
 export default router;

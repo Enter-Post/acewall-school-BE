@@ -447,7 +447,7 @@ export const verifyPhoneOtp = async (req, res) => {
 
 
     // ✅ issue token
-    generateToken(newUser._id, newUser.role, req, res);
+    generateToken(newUser, newUser.role, req, res);
 
     res.status(201).json({ message: "User created successfully.", newUser });
   } catch (error) {
@@ -638,7 +638,7 @@ export const login = async (req, res) => {
     }
 
     // ✅ Pass both req and res here
-    const token = generateToken(user._id, user.role, req, res);
+    const token = generateToken(user, user.role, req, res);
 
     return res.status(200).json({
       message: "Login Successful",
@@ -1737,4 +1737,80 @@ export const updatePasswordById = async (req, res) => {
   }
 };
 
+export const previewSignIn = async (req, res) => {
+  const user = req.user;
+
+  try {
+    if (!user) {
+      return res.status(400).json({
+        error: true,
+        message: "No user found",
+      });
+    }
+
+    // Clear old cookie
+    res.clearCookie("client_jwt", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      path: "/",
+    });
+
+    const prevRole = "teacherAsStudent";
+
+    // Generate new token with new role
+    generateToken(user, prevRole, req, res);
+
+    // Return the updated user object
+    const updatedUser = { ...user, role: prevRole };
+
+    return res.status(200).json({
+      message: "Preview Signin Successful",
+      user: updatedUser, // Send back the updated user
+    });
+  } catch (error) {
+    console.error("error in Preview Signin", error.message);
+    return res.status(500).json({
+      message: "Something went wrong, sorry for inconvenience",
+    });
+  }
+};
+
+export const previewSignOut = async (req, res) => {
+  const user = req.user;
+  try {
+    if (!user) {
+      return res.status(400).json({
+        error: true,
+        message: "No user found",
+      });
+    }
+
+    // Clear old cookie
+    res.clearCookie("client_jwt", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      path: "/",
+    });
+
+    const teacherUser = await User.findById(req.user._id);
+    if (!teacherUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Generate new token with new role
+    generateToken(teacherUser, teacherUser.role, req, res);
+
+    // Return the updated user object
+    return res.status(200).json({
+      message: "Preview Signin Successful",
+    });
+  } catch (error) {
+    console.error("error in Preview Signin", error.message);
+    return res.status(500).json({
+      message: "Something went wrong, sorry for inconvenience",
+    });
+  }
+};
 
