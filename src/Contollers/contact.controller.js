@@ -50,7 +50,7 @@ export const sendSchoolcontactmail = async (req, res) => {
       </div>
 
       <!-- Header -->
-      <div style="background: #156082; padding: 20px; text-align: center;">
+      <div style="background: #28a745; padding: 20px; text-align: center;">
         <h1 style="color: #ffffff; margin: 0; font-size: 20px;">New School Contact Submission</h1>
       </div>
 
