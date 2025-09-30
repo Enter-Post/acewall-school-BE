@@ -723,7 +723,7 @@ export const getallcoursesforteacher = async (req, res) => {
 
   try {
     const matchStage = {
-      "courseDetails.createdby": teacherId,
+      "courseDetails.createdby": new mongoose.Types.ObjectId(teacherId),
     };
 
     // Apply course title filter if present
