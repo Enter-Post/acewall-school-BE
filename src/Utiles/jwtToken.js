@@ -24,6 +24,7 @@ export const generateToken = (user, role, req, res) => {
   // ----------------- Clean user object -----------------
   const safeUser = {
     _id: user._id,
+    profileImg: user.profileImg,
     email: user.email,
     name: user.name,
     role: role || user.role,
