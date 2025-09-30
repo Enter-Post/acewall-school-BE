@@ -173,11 +173,47 @@ export const initiateSignup = async (req, res) => {
       },
     });
     await transporter.sendMail({
-      from: `"OTP Verification" <${"support@acewallscholars.org"}>`,
+      from: `"OTP Verification" <support@acewallscholars.org>`,
       to: email,
       subject: "Your OTP Code",
-      text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
+      html: `
+  <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
+    <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+      
+      <!-- Logo -->
+      <div style="text-align: center; padding: 20px; background: #ffffff;">
+        <img src="https://lirp.cdn-website.com/6602115c/dms3rep/multi/opt/acewall+scholars-431w.png" 
+             alt="Acewall Scholars Logo" 
+             style="height: 60px; margin: 0 auto;" />
+      </div>
+
+      <!-- Header -->
+      <div style="background: #28a745; padding: 20px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 20px;">OTP Verification</h1>
+      </div>
+
+      <!-- Body -->
+      <div style="padding: 20px; color: #333; text-align: center;">
+        <p style="font-size: 16px;">Hello,</p>
+        <p style="font-size: 16px;">Your OTP code is:</p>
+        
+        <div style="margin: 20px auto; display: inline-block; padding: 15px 25px; background: #28a745; color: #fff; font-size: 24px; font-weight: bold; border-radius: 6px;">
+          ${otp}
+        </div>
+
+        <p style="font-size: 14px; margin-top: 20px;">This code will expire in <strong>10 minutes</strong>.</p>
+      </div>
+
+      <!-- Footer -->
+      <div style="background: #f0f4f8; color: #555; text-align: center; padding: 15px; font-size: 12px;">
+        <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
+        <p style="margin: 0;">If you did not request this code, please ignore this email.</p>
+      </div>
+    </div>
+  </div>
+  `,
     });
+
 
     res.status(201).json({ message: "OTP sent to your email." });
   } catch (error) {
@@ -289,11 +325,47 @@ export const resendOTP = async (req, res) => {
     });
 
     await transporter.sendMail({
-      from: `"OTP Verification" <${"support@acewallscholars.org"}>`,
+      from: `"OTP Verification" <support@acewallscholars.org>`,
       to: email,
       subject: "Your New OTP Code",
-      text: `Your new OTP code is ${otp}. It will expire in 10 minutes.`,
+      html: `
+  <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
+    <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+      
+      <!-- Logo -->
+      <div style="text-align: center; padding: 20px; background: #ffffff;">
+        <img src="https://lirp.cdn-website.com/6602115c/dms3rep/multi/opt/acewall+scholars-431w.png" 
+             alt="Acewall Scholars Logo" 
+             style="height: 60px; margin: 0 auto;" />
+      </div>
+
+      <!-- Header -->
+      <div style="background: #28a745; padding: 20px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 20px;">New OTP Code</h1>
+      </div>
+
+      <!-- Body -->
+      <div style="padding: 20px; color: #333; text-align: center;">
+        <p style="font-size: 16px;">Hello,</p>
+        <p style="font-size: 16px;">Here is your new OTP code:</p>
+        
+        <div style="margin: 20px auto; display: inline-block; padding: 15px 25px; background: #28a745; color: #fff; font-size: 24px; font-weight: bold; border-radius: 6px;">
+          ${otp}
+        </div>
+
+        <p style="font-size: 14px; margin-top: 20px;">This code will expire in <strong>10 minutes</strong>.</p>
+      </div>
+
+      <!-- Footer -->
+      <div style="background: #f0f4f8; color: #555; text-align: center; padding: 15px; font-size: 12px;">
+        <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
+        <p style="margin: 0;">If you did not request this code, please ignore this email.</p>
+      </div>
+    </div>
+  </div>
+  `,
     });
+
 
     res.status(200).json({ message: "New OTP has been sent to your email." });
   } catch (error) {
@@ -712,11 +784,47 @@ export const forgetPassword = async (req, res) => {
 
 
     await transporter.sendMail({
-      from: `"OTP Verification" <${"support@acewallscholars.org"}>`,
+      from: `"OTP Verification" <support@acewallscholars.org>`,
       to: email,
       subject: "Your OTP Code",
-      text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
+      html: `
+  <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
+    <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+      
+      <!-- Logo -->
+      <div style="text-align: center; padding: 20px; background: #ffffff;">
+        <img src="https://lirp.cdn-website.com/6602115c/dms3rep/multi/opt/acewall+scholars-431w.png" 
+             alt="Acewall Scholars Logo" 
+             style="height: 60px; margin: 0 auto;" />
+      </div>
+
+      <!-- Header -->
+      <div style="background: #28a745; padding: 20px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 20px;">OTP Verification</h1>
+      </div>
+
+      <!-- Body -->
+      <div style="padding: 20px; color: #333; text-align: center;">
+        <p style="font-size: 16px;">Hello,</p>
+        <p style="font-size: 16px;">Use the following OTP code to complete your verification:</p>
+        
+        <div style="margin: 20px auto; display: inline-block; padding: 15px 25px; background: #28a745; color: #fff; font-size: 24px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
+          ${otp}
+        </div>
+
+        <p style="font-size: 14px; margin-top: 20px;">This code will expire in <strong>10 minutes</strong>.</p>
+      </div>
+
+      <!-- Footer -->
+      <div style="background: #f0f4f8; color: #555; text-align: center; padding: 15px; font-size: 12px;">
+        <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
+        <p style="margin: 0;">If you did not request this code, please ignore this email.</p>
+      </div>
+    </div>
+  </div>
+  `,
     });
+
 
     return res.status(200).json({
       message: "OTP sent successfully",
@@ -1352,11 +1460,47 @@ export const updatePasswordOTP = async (req, res) => {
     });
 
     await transporter.sendMail({
-      from: `"OTP Verification" <${"support@acewallscholars.org"}>`,
+      from: `"OTP Verification" <support@acewallscholars.org>`,
       to: user.email,
       subject: "Your OTP Code",
-      text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
+      html: `
+  <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
+    <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+      
+      <!-- Logo -->
+      <div style="text-align: center; padding: 20px; background: #ffffff;">
+        <img src="https://lirp.cdn-website.com/6602115c/dms3rep/multi/opt/acewall+scholars-431w.png" 
+             alt="Acewall Scholars Logo" 
+             style="height: 60px; margin: 0 auto;" />
+      </div>
+
+      <!-- Header -->
+      <div style="background: #28a745; padding: 20px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 20px;">OTP Verification</h1>
+      </div>
+
+      <!-- Body -->
+      <div style="padding: 20px; color: #333; text-align: center;">
+        <p style="font-size: 16px;">Hello,</p>
+        <p style="font-size: 16px;">Use the following OTP code to complete your verification:</p>
+        
+        <div style="margin: 20px auto; display: inline-block; padding: 15px 25px; background: #28a745; color: #fff; font-size: 24px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
+          ${otp}
+        </div>
+
+        <p style="font-size: 14px; margin-top: 20px;">This code will expire in <strong>10 minutes</strong>.</p>
+      </div>
+
+      <!-- Footer -->
+      <div style="background: #f0f4f8; color: #555; text-align: center; padding: 15px; font-size: 12px;">
+        <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
+        <p style="margin: 0;">If you did not request this code, please ignore this email.</p>
+      </div>
+    </div>
+  </div>
+  `,
     });
+
 
     return res.status(200).json({ message: "OTP sent successfully" });
   } catch (error) {
@@ -1456,11 +1600,40 @@ export const updateEmailOTP = async (req, res) => {
     });
 
     await transporter.sendMail({
-      from: `"OTP Verification" <${"support@acewallscholars.org"}>`,
+      from: `"OTP Verification" <support@acewallscholars.org>`,
       to: user.email,
       subject: "Your OTP Code",
-      text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
+      html: `
+  <div style="font-family: Arial, sans-serif; background-color: #f9fafc; padding: 20px;">
+    <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+      
+      <!-- Header -->
+      <div style="background: #2563eb; padding: 20px; text-align: center;">
+        <h2 style="color: #ffffff; margin: 0;">OTP Verification</h2>
+      </div>
+
+      <!-- Body -->
+      <div style="padding: 20px; color: #333; text-align: center;">
+        <p style="font-size: 16px;">Hello,</p>
+        <p style="font-size: 16px;">Here is your OTP code:</p>
+        
+        <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #2563eb; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
+          ${otp}
+        </div>
+
+        <p style="font-size: 14px; margin-top: 20px;">This code will expire in <strong>10 minutes</strong>.</p>
+      </div>
+
+      <!-- Footer -->
+      <div style="background: #f3f4f6; color: #555; text-align: center; padding: 12px; font-size: 12px;">
+        <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
+        <p style="margin: 0;">If you did not request this code, please ignore this email.</p>
+      </div>
+    </div>
+  </div>
+  `,
     });
+
 
     return res
       .status(200)
@@ -1561,11 +1734,40 @@ export const updateEmailOTPById = async (req, res) => {
     });
 
     await transporter.sendMail({
-      from: `"OTP Verification" <${"support@acewallscholars.org"}>`,
+      from: `"OTP Verification" <support@acewallscholars.org>`,
       to: user.email,
       subject: "Your OTP Code",
-      text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
+      html: `
+    <div style="font-family: Arial, sans-serif; background-color: #f9fafc; padding: 20px;">
+      <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        
+        <!-- Header -->
+        <div style="background: #2563eb; padding: 20px; text-align: center;">
+          <h2 style="color: #ffffff; margin: 0;">OTP Verification</h2>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 20px; color: #333; text-align: center;">
+          <p style="font-size: 16px; margin: 0;">Hello${user.firstName ? ` ${user.firstName}` : ""},</p>
+          <p style="font-size: 16px;">Your OTP code is:</p>
+          
+          <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #2563eb; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
+            ${otp}
+          </div>
+
+          <p style="font-size: 14px; margin-top: 20px;">This code will expire in <strong>10 minutes</strong>.</p>
+        </div>
+
+        <!-- Footer -->
+        <div style="background: #f3f4f6; color: #555; text-align: center; padding: 12px; font-size: 12px;">
+          <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
+          <p style="margin: 0;">If you did not request this code, please ignore this email.</p>
+        </div>
+      </div>
+    </div>
+  `,
     });
+
 
     return res
       .status(200)
@@ -1684,11 +1886,40 @@ export const updatePasswordOTPById = async (req, res) => {
     });
 
     await transporter.sendMail({
-      from: `"OTP Verification" <${"support@acewallscholars.org"}>`,
+      from: `"OTP Verification" <support@acewallscholars.org>`,
       to: user.email,
       subject: "Your OTP Code",
-      text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
+      html: `
+    <div style="font-family: Arial, sans-serif; background-color: #f9fafc; padding: 20px;">
+      <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        
+        <!-- Header -->
+        <div style="background: #2563eb; padding: 20px; text-align: center;">
+          <h2 style="color: #ffffff; margin: 0;">OTP Verification</h2>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 20px; color: #333; text-align: center;">
+          <p style="font-size: 16px; margin: 0;">Hello${user.firstName ? ` ${user.firstName}` : ""},</p>
+          <p style="font-size: 16px;">Your OTP code is:</p>
+          
+          <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #2563eb; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
+            ${otp}
+          </div>
+
+          <p style="font-size: 14px; margin-top: 20px;">This code will expire in <strong>10 minutes</strong>.</p>
+        </div>
+
+        <!-- Footer -->
+        <div style="background: #f3f4f6; color: #555; text-align: center; padding: 12px; font-size: 12px;">
+          <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
+          <p style="margin: 0;">If you did not request this code, please ignore this email.</p>
+        </div>
+      </div>
+    </div>
+  `,
     });
+
 
     return res.status(200).json({ message: "OTP sent successfully" });
   } catch (error) {

@@ -20,17 +20,39 @@ export const sendSupportMail = async (req, res) => {
       },
     });
 
-    const mailOptions = {
-      from: `"Support Inquiry" <${"support@acewallscholars.org"}>`,
-      to: "support@acewallscholars.org",
-      subject: "New Support Request",
-      html: `
-        <h3>Support Request</h3>
-        <p><strong>Name:</strong> ${fullName}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Feedback:</strong><br/>${feedback}</p>
-      `,
-    };
+   const mailOptions = {
+  from: `"Support Inquiry" <support@acewallscholars.org>`,
+  to: "support@acewallscholars.org",
+  subject: "New Support Request",
+  html: `
+    <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
+      <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        
+        <!-- Header -->
+        <div style="background: #10b981; padding: 20px; text-align: center;">
+          <h2 style="color: #ffffff; margin: 0; font-size: 22px;">New Support Request</h2>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 20px; color: #333;">
+          <p style="font-size: 15px; margin: 5px 0;"><strong>Name:</strong> ${fullName}</p>
+          <p style="font-size: 15px; margin: 5px 0;"><strong>Email:</strong> ${email}</p>
+          <p style="font-size: 15px; margin: 5px 0;"><strong>Feedback:</strong></p>
+          <div style="margin-top: 10px; padding: 12px; background: #f9f9f9; border-left: 4px solid #10b981;">
+            <p style="margin: 0; font-size: 15px;">${feedback}</p>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background: #f3f4f6; color: #555; text-align: center; padding: 12px; font-size: 12px;">
+          <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
+          <p style="margin: 0;">This is an automated message. Please do not reply.</p>
+        </div>
+      </div>
+    </div>
+  `,
+};
+
 
     await transporter.sendMail(mailOptions);
 
@@ -64,19 +86,41 @@ export const sendContactMail = async (req, res) => {
       },
     });
 
-    const mailOptions = {
-      from: `"Contact Form" <${"support@acewallscholars.org"}>`,
-      to: "support@acewallscholars.org",
-      subject: `Contact Us: ${subject}`,
-      html: `
-        <h3>Contact Form Submission</h3>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Phone:</strong> ${phone}</p>
-        <p><strong>Subject:</strong> ${subject}</p>
-        <p><strong>Message:</strong><br/>${message}</p>
-      `,
-    };
+   const mailOptions = {
+  from: `"Contact Form" <support@acewallscholars.org>`,
+  to: "support@acewallscholars.org",
+  subject: `Contact Us: ${subject}`,
+  html: `
+    <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
+      <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        
+        <!-- Header -->
+        <div style="background: #2563eb; padding: 20px; text-align: center;">
+          <h2 style="color: #ffffff; margin: 0; font-size: 22px;">Contact Form Submission</h2>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 20px; color: #333;">
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Name:</strong> ${name}</p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Email:</strong> ${email}</p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Phone:</strong> ${phone}</p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Subject:</strong> ${subject}</p>
+          <p style="font-size: 15px; margin: 8px 0;"><strong>Message:</strong></p>
+          <div style="margin-top: 10px; padding: 12px; background: #f9f9f9; border-left: 4px solid #2563eb;">
+            <p style="margin: 0; font-size: 15px; white-space: pre-line;">${message}</p>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background: #f3f4f6; color: #555; text-align: center; padding: 12px; font-size: 12px;">
+          <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
+          <p style="margin: 0;">This is an automated message. Please do not reply.</p>
+        </div>
+      </div>
+    </div>
+  `,
+};
+
 
     await transporter.sendMail(mailOptions);
 

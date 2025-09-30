@@ -141,26 +141,42 @@ export const submission = async (req, res) => {
             pass: "ecgdupvzkfmbqrrq",
           },
         });
-
         const mailOptions = {
-          from: `"${process.env.MAIL_FROM_NAME || "Assessment System"}" <${
-            "support@acewallscholars.org"
-          }>`,
+          from: `"${process.env.MAIL_FROM_NAME || "Assessment System"}" <support@acewallscholars.org>`,
           to: student.email,
           subject: `Assessment Submitted: ${assessment.title}`,
           html: `
-            <h3>Assessment Result</h3>
-            <p>Hi ${
-              student.firstName + " " + student.lastName || "Student"
-            },</p>
-            <p>You have successfully submitted your assessment titled <strong>${
-              assessment.title
-            }</strong>.</p>
-            <p><strong>Status:</strong> ${status}</p>
-            <p><strong>Total Score:</strong> ${totalScore}/${maxScore}</p>
-            <p>Thank you!</p>
-          `,
+    <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
+      <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        
+        <!-- Header -->
+        <div style="background: #2563eb; padding: 20px; text-align: center;">
+          <h2 style="color: #ffffff; margin: 0; font-size: 22px;">Assessment Submitted</h2>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 20px; color: #333;">
+          <p style="font-size: 16px;">Hi ${student.firstName + " " + student.lastName || "Student"},</p>
+          <p style="font-size: 16px;">You have successfully submitted your assessment titled <strong>${assessment.title}</strong>.</p>
+          
+          <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #2563eb;">
+            <p style="margin: 5px 0; font-size: 15px;"><strong>Status:</strong> ${status}</p>
+            <p style="margin: 5px 0; font-size: 15px;"><strong>Total Score:</strong> ${totalScore} / ${maxScore}</p>
+          </div>
+
+          <p style="font-size: 14px;">Thank you for your effort! You can check full details in your student portal.</p>
+        </div>
+
+        <!-- Footer -->
+        <div style="background: #f3f4f6; color: #555; text-align: center; padding: 12px; font-size: 12px;">
+          <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
+          <p style="margin: 0;">This is an automated message. Please do not reply.</p>
+        </div>
+      </div>
+    </div>
+  `,
         };
+
 
         try {
           await transporter.sendMail(mailOptions);
@@ -402,21 +418,42 @@ export const teacherGrading = async (req, res) => {
       });
 
       const mailOptions = {
-        from: `"${process.env.MAIL_FROM_NAME}" <${"support@acewallscholars.org"}>`,
+        from: `"${process.env.MAIL_FROM_NAME || "Assessment System"}" <support@acewallscholars.org>`,
         to: student.email,
         subject: "Your Assessment Has Been Graded",
         html: `
-          <h2>Manual Grading Complete</h2>
-            <p>Hi ${
-              student.firstName + " " + student.lastName || "Student"
-            },</p>
-          <p>Your teacher has reviewed your written answers and completed grading your assessment.</p>
-          <p><strong>Total Score:</strong> ${
-            submission.totalScore
-          } / ${allcourseMaxPoint}</p>
-          <p>You can now view your full results in your student portal.</p>
-        `,
+    <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
+      <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        
+        <!-- Header -->
+        <div style="background: #10b981; padding: 20px; text-align: center;">
+          <h2 style="color: #ffffff; margin: 0; font-size: 22px;">Assessment Graded</h2>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 20px; color: #333;">
+          <p style="font-size: 16px;">Hi ${student.firstName + " " + student.lastName || "Student"},</p>
+          <p style="font-size: 16px;">Your teacher has reviewed your written answers and completed grading your assessment.</p>
+          
+          <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #10b981;">
+            <p style="margin: 5px 0; font-size: 15px;">
+              <strong>Total Score:</strong> ${submission.totalScore} / ${allcourseMaxPoint}
+            </p>
+          </div>
+
+          <p style="font-size: 14px;">You can now view your full results in your student portal.</p>
+        </div>
+
+        <!-- Footer -->
+        <div style="background: #f3f4f6; color: #555; text-align: center; padding: 12px; font-size: 12px;">
+          <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
+          <p style="margin: 0;">This is an automated message. Please do not reply.</p>
+        </div>
+      </div>
+    </div>
+  `,
       };
+
 
       await transporter.sendMail(mailOptions);
     }
