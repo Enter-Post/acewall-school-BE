@@ -3,6 +3,7 @@ import {
   chapterDetails,
   chapterDetailsStdPre,
   enrollment,
+  enrollmentforTeacher,
   isEnrolled,
   studenCourses,
   studentCourseDetails,
@@ -24,7 +25,7 @@ router.get(
   studentsEnrolledinCourse
 );
 // routes/adminRoutes.js
-
+router.post("/enrollmentforTeacher", isUser, enrollmentforTeacher);
 router.get("/getChapter/:chapterId", isUser, chapterDetails);
 router.get("/getChapterstdpre/:chapterId", isUser, chapterDetailsStdPre);
 router.delete("/unenroll/:courseId", isUser, unEnrollment);

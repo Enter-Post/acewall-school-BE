@@ -5,6 +5,7 @@ import {
   getDatesofQuarter,
   getQuarter,
   getQuartersofSemester,
+  getQuartersofSemester_Updated,
   getSemesterQuarter,
 } from "../../Contollers/CourseControllers/quarter.controller.js";
 
@@ -18,5 +19,8 @@ router.get(`/getDatesofQuarter/:quarterId`, getDatesofQuarter);
 
 router.put("/editQuarter/:quarterId", editQuarter);
 
+
+// router.post("/getquarters", getQuartersofSemester);
+router.post("/getquarters_updated", getQuartersofSemester_Updated);
 
 export default router;

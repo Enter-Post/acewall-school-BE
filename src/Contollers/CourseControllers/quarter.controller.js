@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Quarter from "../../Models/quarter.model.js";
 import Semester from "../../Models/semester.model.js";
 
@@ -31,11 +32,11 @@ export const getQuarter = async (req, res) => {
 };
 
 export const getQuartersofSemester = async (req, res) => {
-  // const { semesterId } = req.params;
   const { semesters } = req.body;
 
   try {
-    const quarters = await Quarter.find({ semester: { $in: semesters } });
+    const quarters = await Quarter.find({ semester: { $in: semesters } }).populate('semester');
+    console.log("quarters", quarters);
     res.status(200).json({ message: "Quarters found successfully", quarters });
   } catch (error) {
     console.log("error in the getting quarter", error);
@@ -159,3 +160,41 @@ export const editQuarter = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
+
+export const getQuartersofSemester_Updated = async (req, res) => {
+  const { semesters } = req.body;
+
+  try {
+    // Ensure ObjectId conversion
+    const semesterIds = semesters.map(id => new mongoose.Types.ObjectId(id));
+
+    const quarters = await Quarter.aggregate([
+      { $match: { semester: { $in: semesterIds } } },
+      {
+        $group: {
+          _id: "$semester",
+          quarters: { $push: "$$ROOT" }
+        }
+      },
+      {
+        $lookup: {
+          from: "semesters", // make sure this is the actual collection name
+          localField: "_id",
+          foreignField: "_id",
+          as: "semester"
+        }
+      },
+      { $unwind: "$semester" },
+      { $sort: { "semester.name": 1 } }
+    ]);
+
+    res.status(200).json({
+      message: "Quarters grouped by semester",
+      data: quarters
+    });
+  } catch (error) {
+    console.log("error in getting quarters", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+

@@ -11,29 +11,29 @@ export const getMyConversations_updated = async (req, res) => {
       select: "firstName lastName profileImg",
     });
 
-    console.log(conversations, "conversations");
-
     const formattedConversations = await Promise.all(
       conversations.map(async (conversation) => {
         const otherMember = conversation.members.find(
           (member) => member._id.toString() !== myId.toString()
         );
 
-        // ✅ Get unread count
         const unreadCount = await Message.countDocuments({
           conversationId: conversation._id,
           sender: { $ne: myId },
           readBy: { $ne: myId },
         });
 
-        console.log(otherMember, "otherMember");
-
         return {
           conversationId: conversation._id,
-          otherMember: {
-            name: `${otherMember.firstName} ${otherMember.lastName}`,
-            profileImg: otherMember.profileImg,
-          },
+          otherMember: otherMember
+            ? {
+                name: `${otherMember.firstName ?? ""} ${otherMember.lastName ?? ""}`.trim() || "User not found",
+                profileImg: otherMember.profileImg || { url: "", filename: "" },
+              }
+            : {
+                name: "User not found",
+                profileImg: { url: "", filename: "" },
+              },
           lastSeen: conversation.lastSeen,
           lastMessage: conversation.lastMessage,
           lastMessageDate: conversation.lastMessageAt,
@@ -47,7 +47,7 @@ export const getMyConversations_updated = async (req, res) => {
       conversations: formattedConversations,
     });
   } catch (err) {
-    console.error("Error in getMyConversations:", err);
+    console.error("Error in getMyConversations_updated:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
