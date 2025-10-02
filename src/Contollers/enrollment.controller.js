@@ -516,3 +516,22 @@ export const getStudentEnrolledCourses = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+
+export const enrollmentforTeacher = async (req, res) => {
+  try {
+    const { teacherId, courseId } = req.body;
+
+    const enrollments = await Enrollment.find({ student: teacherId, course: courseId });
+    const enrollment = enrollments[0];
+    if (enrollment) {
+      res.status(200).json({ message: "Enrollments fetched successfully", enrollment });
+    } else {
+      res.status(404).json({ message: "No enrollments found" });
+    }
+
+  } catch (error) {
+    console.log("Error in the enrollmentforTeacher", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
