@@ -26,7 +26,7 @@ router.put(
   uploadFiles
 );
 router.delete("/deleteFile/:assessmentId/:fileId", deleteFile);
-router.get("/:assessmentId", isUser, getResultsMiddleware, getAssesmentbyID);
+router.get("/:assessmentId", isUser, getAssesmentbyID);
 router.put("/editAssessment/:assessmentId", isUser, editAssessmentInfo);
 
 
