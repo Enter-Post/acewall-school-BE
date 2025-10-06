@@ -34,11 +34,18 @@ import quarterRoutes from "./Routes/CourseRoutes/Quarter.Routes.js";
 import pagesRoutes from "./Routes/Pages.Routes.js";
 import gpaRoutes from "./Routes/GPA.Routes.js";
 import contactRoutes from "./Routes/Contact.Routes.js";
+import postRoutes from "./Routes/Post.Routes.js";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config();
 
 const PORT = process.env.PORT || 5050;
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use(express.json());
 app.use(cookieParser());
 app.use(
@@ -85,6 +92,7 @@ app.use("/api/replyDiscussion", replyDiscussionRoutes);
 app.use("/api/semester", semesterRoutes);
 app.use("/api/quarter", quarterRoutes);
 app.use("/api/gpa", gpaRoutes);
+app.use("/api/posts", postRoutes);
 
 server.listen(PORT, () => {
   connectDB();
