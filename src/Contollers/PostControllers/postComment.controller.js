@@ -39,7 +39,7 @@ export const getPostComment = async (req, res) => {
         const limit = parseInt(req.query.limit) || 5
         const skip = (page - 1) * limit
 
-        const comments = await PostComments.find({ post: id }).populate("author", "firstName lastName profileImg").limit(limit).skip(skip)
+        const comments = await PostComments.find({ post: id }).populate("author", "firstName lastName profileImg").limit(limit).skip(skip).sort({ createdAt: -1 })
         res.status(200).json({
             message: "Comments fetched successfully",
             comments,
