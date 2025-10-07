@@ -40,9 +40,9 @@ export const isPostLiked = async (req, res) => {
         const userId = req.user._id;
         const isLiked = await PostLike.findOne({ post: id, likedBy: userId });
         if (isLiked && isLiked.isLiked) {
-            return res.status(200).json({ message: "Post is liked" });
+            return res.status(200).json({ isLiked: true, message: "Post is liked" });
         } else {
-            return res.status(200).json({ message: "Post is not liked" });
+            return res.status(200).json({ isLiked: false, message: "Post is not liked" });
         }
     } catch (error) {
         console.log("error in isPostLiked", error);
