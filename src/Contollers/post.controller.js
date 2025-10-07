@@ -46,11 +46,9 @@ export const createPost = async (req, res) => {
 
 export const getPosts = async (req, res) => {
     try {
-        // 🧩 Extract pagination params (with defaults)
-        const page = parseInt(req.query.page) || 1;     // default: 1
-        const limit = parseInt(req.query.limit) || 10;  // default: 10
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
 
-        // 🧮 Calculate skip value
         const skip = (page - 1) * limit;
 
         // 🔍 Fetch total count
@@ -80,3 +78,34 @@ export const getPosts = async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 };
+
+export const specificUserPosts = async (req, res) => {
+    const userId = req.params.id;
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+
+        const skip = (page - 1) * limit;
+
+        const totalPosts = await Posts.countDocuments({ author: userId });
+
+        const posts = await Posts.find({ author: userId })
+            .populate('author', 'firstName middleName lastName profileImg')
+            .sort({ createdAt: -1 }) // newest first
+            .skip(skip)
+            .limit(limit);
+
+        const totalPages = Math.ceil(totalPosts / limit);
+
+        res.json({
+            currentPage: page,
+            totalPages,
+            totalPosts,
+            limit,
+            posts,
+        });
+    } catch (error) {
+        console.log("Error in specificUserPosts", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}
