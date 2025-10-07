@@ -4,7 +4,7 @@ const Post = new mongoose.Schema({
     text: { type: String, required: true },
     assets: [{ url: String, fileName: String }],
     author: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    color: { type: String }
+    color: { type: String }    
 })
 
 const Posts = mongoose.model("SocialPost", Post)
