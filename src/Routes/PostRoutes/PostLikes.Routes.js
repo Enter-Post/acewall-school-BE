@@ -1,6 +1,6 @@
 import express from "express";
 import { isUser } from "../../middlewares/Auth.Middleware.js";
-import { likePost } from "../../Contollers/PostControllers/postLikes.controller.js";
+import { isPostLiked, likePost } from "../../Contollers/PostControllers/postLikes.controller.js";
 
 const router = express.Router();
 
