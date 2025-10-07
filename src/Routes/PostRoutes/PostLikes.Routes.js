@@ -5,6 +5,6 @@ import { likePost } from "../../Contollers/PostControllers/postLikes.controller.
 const router = express.Router();
 
 router.post("/like/:id", isUser, likePost);
-router.post("/isPostLiked", isUser, isPostLiked);
+router.post("/isPostLiked/:id", isUser, isPostLiked);
 
 export default router;
