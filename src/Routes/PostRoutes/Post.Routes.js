@@ -1,7 +1,7 @@
 import express from "express";
-import { createPost, getPosts, specificUserPosts } from "../Contollers/post.controller.js";
-import { upload } from "../lib/DSmulter.config.js";
-import { isUser } from "../middlewares/Auth.Middleware.js";
+import { createPost, getPosts, specificUserPosts } from "../../Contollers/PostControllers/post.controller.js";
+import { upload } from "../../lib/DSmulter.config.js";
+import { isUser } from "../../middlewares/Auth.Middleware.js";
 
 const router = express.Router();
 

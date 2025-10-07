@@ -1,4 +1,4 @@
-import Posts from "../Models/post.model.js";
+import Posts from "../../Models/PostModels/post.model.js";  
 
 export const createPost = async (req, res) => {
     const { text, color } = req.body

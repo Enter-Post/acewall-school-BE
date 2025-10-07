@@ -34,7 +34,7 @@ import quarterRoutes from "./Routes/CourseRoutes/Quarter.Routes.js";
 import pagesRoutes from "./Routes/Pages.Routes.js";
 import gpaRoutes from "./Routes/GPA.Routes.js";
 import contactRoutes from "./Routes/Contact.Routes.js";
-import postRoutes from "./Routes/Post.Routes.js";
+import postRoutes from "./Routes/PostRoutes/Post.Routes.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
