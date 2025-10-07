@@ -1,5 +1,5 @@
-import Posts from "../../Models/PostModels/post.model";
-import PostComments from "../../Models/PostModels/postComment.model";
+import Posts from "../../Models/PostModels/post.model.js";
+import PostComments from "../../Models/PostModels/postComment.model.js";
 
 export const sendPostComment = async (req, res) => {
     const userId = req.user._id
@@ -30,3 +30,22 @@ export const sendPostComment = async (req, res) => {
         res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
+
+export const getPostComment = async (req, res) => {
+    const { id } = req.params
+    try {
+        const page = parseInt(req.query.page) || 1
+        const limit = parseInt(req.query.limit) || 5
+        const skip = (page - 1) * limit
+
+        const comments = await PostComments.find({ post: id }).populate("author", "firstName lastName profileImg").limit(limit).skip(skip)
+        res.status(200).json({
+            message: "Comments fetched successfully",
+            comments,
+        });
+    } catch (error) {
+        console.log("error in getPostComment", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}

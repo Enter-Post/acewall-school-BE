@@ -36,6 +36,7 @@ import gpaRoutes from "./Routes/GPA.Routes.js";
 import contactRoutes from "./Routes/Contact.Routes.js";
 import postRoutes from "./Routes/PostRoutes/Post.Routes.js";
 import likesRoutes from "./Routes/PostRoutes/PostLikes.Routes.js";
+import postCommentRoutes from "./Routes/PostRoutes/PostComment.Routes.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -96,6 +97,7 @@ app.use("/api/quarter", quarterRoutes);
 app.use("/api/gpa", gpaRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/postlike", likesRoutes);
+app.use("/api/postComment", postCommentRoutes);
 
 server.listen(PORT, () => {
   connectDB();
