@@ -29,8 +29,6 @@ router.delete("/deleteFile/:assessmentId/:fileId", deleteFile);
 router.get("/:assessmentId", isUser, getAssesmentbyID);
 router.put("/editAssessment/:assessmentId", isUser, editAssessmentInfo);
 
-
-
 //updated Assessment routes
 
 // prev used api -- router.post("/create", upload.array("files"), isUser, createAssessment);
