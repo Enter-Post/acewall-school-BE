@@ -14,6 +14,7 @@ import twilio from "twilio";
 
 import multer from "multer";
 import xlsx from "xlsx";
+import OPT from "../Models/opt.model.js";
 
 export const bulkSignup = async (req, res) => {
   try {
@@ -1549,8 +1550,9 @@ export const updatePassword = async (req, res) => {
 
 export const updateEmailOTP = async (req, res) => {
   const userId = req.user._id;
-  const { newEmail } = req.body;
-
+  const userEmail = req.user.email;
+  const { newEmail, prevEmail } = req.body;
+  
   try {
     const user = await User.findById(userId);
     if (!user) {
@@ -1657,6 +1659,9 @@ export const updateEmail = async (req, res) => {
 
     const isExpired = Date.now() > otpEntry.expiresAt;
     const isValid = await bcrypt.compare(otp, otpEntry.otp);
+
+    console.log(isExpired, "isExpired")
+    console.log(isValid, "isValid")
 
     if (!isValid || isExpired) {
       return res.status(400).json({ message: "Invalid or expired OTP." });
