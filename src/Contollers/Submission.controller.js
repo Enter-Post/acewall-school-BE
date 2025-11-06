@@ -142,7 +142,9 @@ export const submission = async (req, res) => {
           },
         });
         const mailOptions = {
-          from: `"${process.env.MAIL_FROM_NAME || "Assessment System"}" <support@acewallscholars.org>`,
+          from: `"${
+            process.env.MAIL_FROM_NAME || "Assessment System"
+          }" <support@acewallscholars.org>`,
           to: student.email,
           subject: `Assessment Submitted: ${assessment.title}`,
           html: `
@@ -156,8 +158,12 @@ export const submission = async (req, res) => {
 
         <!-- Body -->
         <div style="padding: 20px; color: #333;">
-          <p style="font-size: 16px;">Hi ${student.firstName + " " + student.lastName || "Student"},</p>
-          <p style="font-size: 16px;">You have successfully submitted your assessment titled <strong>${assessment.title}</strong>.</p>
+          <p style="font-size: 16px;">Hello ${
+            student.firstName + " " + student.lastName || "Student"
+          },</p>
+          <p style="font-size: 16px;">You have successfully submitted your assessment titled <strong>${
+            assessment.title
+          }</strong>.</p>
           
           <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #2563eb;">
             <p style="margin: 5px 0; font-size: 15px;"><strong>Status:</strong> ${status}</p>
@@ -176,7 +182,6 @@ export const submission = async (req, res) => {
     </div>
   `,
         };
-
 
         try {
           await transporter.sendMail(mailOptions);
@@ -418,7 +423,9 @@ export const teacherGrading = async (req, res) => {
       });
 
       const mailOptions = {
-        from: `"${process.env.MAIL_FROM_NAME || "Assessment System"}" <support@acewallscholars.org>`,
+        from: `"${
+          process.env.MAIL_FROM_NAME || "Assessment System"
+        }" <support@acewallscholars.org>`,
         to: student.email,
         subject: "Your Assessment Has Been Graded",
         html: `
@@ -432,12 +439,16 @@ export const teacherGrading = async (req, res) => {
 
         <!-- Body -->
         <div style="padding: 20px; color: #333;">
-          <p style="font-size: 16px;">Hi ${student.firstName + " " + student.lastName || "Student"},</p>
+          <p style="font-size: 16px;">Hi ${
+            student.firstName + " " + student.lastName || "Student"
+          },</p>
           <p style="font-size: 16px;">Your teacher has reviewed your written answers and completed grading your assessment.</p>
           
           <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #10b981;">
             <p style="margin: 5px 0; font-size: 15px;">
-              <strong>Total Score:</strong> ${submission.totalScore} / ${allcourseMaxPoint}
+              <strong>Total Score:</strong> ${
+                submission.totalScore
+              } / ${allcourseMaxPoint}
             </p>
           </div>
 
@@ -453,7 +464,6 @@ export const teacherGrading = async (req, res) => {
     </div>
   `,
       };
-
 
       await transporter.sendMail(mailOptions);
     }
