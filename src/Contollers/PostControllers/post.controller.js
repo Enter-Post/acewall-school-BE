@@ -109,3 +109,21 @@ export const specificUserPosts = async (req, res) => {
         res.status(500).json({ message: "Internal Server Error" });
     }
 }
+
+
+export const deletePost = async (req, res) => {
+  const { postId } = req.params; // ✅ get from params
+
+  try {
+    const post = await Posts.findByIdAndDelete(postId);
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    res.status(200).json({ message: "Post deleted successfully" });
+  } catch (error) {
+    console.error("Error in deletePost:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
