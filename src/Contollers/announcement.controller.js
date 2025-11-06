@@ -33,7 +33,10 @@ export const createAnnouncement = async (req, res) => {
     });
 
     // Get enrolled students
-    const enrollment = await Enrollment.find({ course: courseId }).populate("student", "email");
+    const enrollment = await Enrollment.find({ course: courseId }).populate(
+      "student",
+      "email"
+    );
 
     const studentEmails = enrollment.map((enroll) => enroll.student.email);
 
@@ -50,7 +53,9 @@ export const createAnnouncement = async (req, res) => {
       });
 
       const mailOptions = {
-        from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars Team"}" <support@acewallscholars.org>`,
+        from: `"${
+          process.env.MAIL_FROM_NAME || "Acewall Scholars Team"
+        }" <support@acewallscholars.org>`,
         to: studentEmails, // can be an array or comma-separated string
         subject: `New Announcement: ${title}`,
         html: `
@@ -71,7 +76,9 @@ export const createAnnouncement = async (req, res) => {
 
       <!-- Body -->
       <div style="padding: 20px; color: #333;">
-        <p style="font-size: 16px;">There’s a new announcement for your course <strong>${course.courseTitle}</strong>:</p>
+        <p style="font-size: 16px;">There’s a new announcement for your course <strong>${
+          course.courseTitle
+        }</strong>:</p>
         
         <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #28a745;">
           <p style="font-size: 16px; margin: 0;">${message}</p>
@@ -92,16 +99,13 @@ export const createAnnouncement = async (req, res) => {
   `,
       };
 
-
       try {
         await transporter.sendMail(mailOptions);
         console.log("✅ Emails sent to students");
-
       } catch (error) {
         console.error("❌ Error sending emails:", error);
       }
     }
-
 
     await announcement.save();
 

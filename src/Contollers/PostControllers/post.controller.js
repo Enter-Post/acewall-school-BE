@@ -110,6 +110,7 @@ export const specificUserPosts = async (req, res) => {
     }
 }
 
+
 export const deletePost = async (req, res) => {
   const { postId } = req.params; // ✅ get from params
 

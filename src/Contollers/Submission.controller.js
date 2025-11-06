@@ -124,7 +124,6 @@ export const submission = async (req, res) => {
     });
 
     await submission.save();
-
     // ✅ Email notification logic
     const student = await User.findById(studentId);
 
@@ -186,6 +185,7 @@ export const submission = async (req, res) => {
           </p>
         `;
       }
+
 
       const mailOptions = {
         from: `"${process.env.MAIL_FROM_NAME || "Assessment System"}" <support@acewallscholars.org>`,
@@ -485,7 +485,9 @@ export const teacherGrading = async (req, res) => {
           
           <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #10b981;">
             <p style="margin: 5px 0; font-size: 15px;">
-              <strong>Total Score:</strong> ${submission.totalScore} / ${allcourseMaxPoint}
+              <strong>Total Score:</strong> ${
+                submission.totalScore
+              } / ${allcourseMaxPoint}
             </p>
           </div>
 

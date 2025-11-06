@@ -226,21 +226,11 @@ export const initiateSignup = async (req, res) => {
 
 
 export const SignupwithoutOTP = async (req, res) => {
-  const {
-    firstName,
-    middleName,
-    lastName,
-    role,
-    email,
-    phone,
-    homeAddress,
-    mailingAddress,
-    password,
-  } = req.body;
+  const { firstName, middleName, lastName, role, email, password } = req.body;
 
   try {
-    // Required field validation
-    if (!firstName || !lastName || !email || !password || !role || !phone) {
+    // Validate required fields
+    if (!firstName || !lastName || !email || !password || !role) {
       return res.status(400).json({ message: "All required fields must be filled." });
     }
 
@@ -260,16 +250,13 @@ export const SignupwithoutOTP = async (req, res) => {
       lastName,
       role,
       email,
-      phone,
-      homeAddress,
-      mailingAddress,
       password: hashedPassword,
     });
 
     await newUser.save();
 
     res.status(201).json({
-      message: "Account has been created successfully.",
+      message: "Account created successfully.",
       user: newUser,
     });
   } catch (error) {
@@ -277,6 +264,8 @@ export const SignupwithoutOTP = async (req, res) => {
     res.status(500).json({ message: "Internal server error." });
   }
 };
+
+
 
 
 export const resendOTP = async (req, res) => {
