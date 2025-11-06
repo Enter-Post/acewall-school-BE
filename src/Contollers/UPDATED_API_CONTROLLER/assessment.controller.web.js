@@ -4,7 +4,6 @@ import Chapter from "../../Models/chapter.model.sch.js";
 import Lesson from "../../Models/lesson.model.sch.js";
 import Assessment from "../../Models/Assessment.model.js";
 
-
 export const createAssessment_updated = async (req, res) => {
   const {
     title,

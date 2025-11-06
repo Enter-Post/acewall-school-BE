@@ -717,8 +717,6 @@ export const login = async (req, res) => {
 export const forgetPassword = async (req, res) => {
   const { email } = req.body;
 
-  console.log("working 1");
-
   try {
     const isExist = await User.findOne({ email });
 
@@ -727,7 +725,6 @@ export const forgetPassword = async (req, res) => {
         message: "User with this email does not exist",
       });
     }
-    console.log("working 2");
 
     function generateOTP(length = 6) {
       const digits = "0123456789";
@@ -740,7 +737,6 @@ export const forgetPassword = async (req, res) => {
 
       return otp;
     }
-    console.log("working 3");
 
     const otp = generateOTP();
     console.log("otp", otp);
@@ -770,8 +766,6 @@ export const forgetPassword = async (req, res) => {
         pass: "ecgdupvzkfmbqrrq",
       },
     });
-    console.log("working 5", transporter);
-
 
     await transporter.sendMail({
       from: `"OTP Verification" <support@acewallscholars.org>`,
@@ -897,14 +891,6 @@ export const resetPassword = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
-
-
 export const logout = async (req, res) => {
   try {
     // Detect portal like in generateToken/isUser
@@ -943,12 +929,6 @@ export const logout = async (req, res) => {
     });
   }
 };
-
-
-
-
-
-
 
 
 export const allUser = async (req, res) => {
@@ -1251,6 +1231,7 @@ export const getUserInfo = async (req, res) => {
     if (!user) {
       return res.status(404).json("User not found");
     }
+    console.log(user, "user")
     return res.status(200).json({ message: "User found successfully", user });
   } catch (error) {
     console.log("error in getUserInfo:", error);
@@ -1541,7 +1522,7 @@ export const updateEmailOTP = async (req, res) => {
   const userId = req.user._id;
   const userEmail = req.user.email;
   const { newEmail, prevEmail } = req.body;
-  
+
   try {
     const user = await User.findById(userId);
     if (!user) {
@@ -2038,4 +2019,25 @@ export const previewSignOut = async (req, res) => {
     });
   }
 };
+
+
+export const updateParentEmail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { guardianEmails } = req.body;
+
+    if (!guardianEmails) {
+      return res.status(400).json({ message: "Guardian email is required" });
+    }
+
+    // Update the user's guardian email
+    await User.findByIdAndUpdate(id, { guardianEmails }, { new: true });
+
+    return res.status(200).json({ message: "Guardian email updated successfully" });
+  } catch (error) {
+    console.error("Error in updateParentEmail:", error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 

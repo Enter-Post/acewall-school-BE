@@ -35,6 +35,7 @@ export const generateToken = (user, role, req, res) => {
     homeAddress: user.homeAddress,
     phone: user.phone,
     pronoun: user.pronoun,
+    guardianEmails: user.guardianEmails
   };
 
   // ----------------- Sign JWT -----------------
