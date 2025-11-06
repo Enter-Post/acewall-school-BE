@@ -51,7 +51,7 @@ const SchCourseSchema = new mongoose.Schema(
         ref: "Quarter",
       },
     ],
-    published: { type: Boolean, default: true },
+    published: { type: Boolean, default: false },
     archivedDate: { type: Date },
   },
 
