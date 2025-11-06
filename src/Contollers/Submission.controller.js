@@ -152,7 +152,7 @@ export const submission = async (req, res) => {
       <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
         
         <!-- Header -->
-        <div style="background: #2563eb; padding: 20px; text-align: center;">
+        <div style="background: #10b981; padding: 20px; text-align: center;">
           <h2 style="color: #ffffff; margin: 0; font-size: 22px;">Assessment Submitted</h2>
         </div>
 
@@ -165,7 +165,7 @@ export const submission = async (req, res) => {
             assessment.title
           }</strong>.</p>
           
-          <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #2563eb;">
+          <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #10b981;">
             <p style="margin: 5px 0; font-size: 15px;"><strong>Status:</strong> ${status}</p>
             <p style="margin: 5px 0; font-size: 15px;"><strong>Total Score:</strong> ${totalScore} / ${maxScore}</p>
           </div>
