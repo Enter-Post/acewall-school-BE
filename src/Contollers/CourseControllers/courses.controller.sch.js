@@ -971,3 +971,117 @@ export const thumnailChange = async (req, res) => {
     res.status(500).json({ message: "Something went wrong" });
   }
 };
+
+
+
+// export const createCourseSch = async (req, res) => {
+//   const createdby = req.user._id;
+
+//   const {
+//     courseTitle,
+//     category,
+//     subcategory,
+//     language,
+//     courseDescription,
+//     teachingPoints,
+//     requirements,
+//     published,
+//     semester,
+//     quarter,
+//     isGenerateCode,
+//   } = req.body;
+
+//   const files = req.files; // multiple files: thumbnail and syllabus
+//   const isGenerateCodeBoolean = isGenerateCode === "true";
+
+//   console.log(isGenerateCode, "isGenerateCode")
+
+//   try {
+//     let thumbnail = { url: "", altText: "" };
+//     let syllabusFile = { url: "", filename: "" };
+
+//     // Upload thumbnail if exists
+//     if (files?.thumbnail?.[0]) {
+//       const thumb = files.thumbnail[0];
+//       const result = await uploadToCloudinary(thumb.buffer, "course_thumbnails");
+//       thumbnail.url = result.secure_url;
+//       thumbnail.altText = thumb.originalname;
+//     }
+
+//     // Upload syllabus if exists
+//     if (files?.syllabus?.[0]) {
+//       const syllabus = files.syllabus[0];
+//       const result = await uploadToCloudinary(syllabus.buffer, "course_syllabi"); // use a separate folder
+//       syllabusFile.url = result.secure_url;
+//       syllabusFile.filename = syllabus.originalname;
+//     }
+
+//     const parsedTeachingPoints = JSON.parse(teachingPoints);
+//     const parsedRequirements = JSON.parse(requirements);
+//     const parsedSemester = JSON.parse(semester);
+//     const parsedQuarter = JSON.parse(quarter);
+
+//     let verificationCode;
+//     if (isGenerateCodeBoolean) {
+//       const randomString = Math.random().toString(36).substring(2, 10).toUpperCase();
+//       verificationCode = await bcrypt.hash(randomString, 10);
+//     }
+
+//     const course = await CourseSch.create({
+//       courseTitle,
+//       category,
+//       subcategory,
+//       thumbnail,
+//       syllabus: syllabusFile,
+//       language,
+//       courseDescription,
+//       teachingPoints: parsedTeachingPoints,
+//       requirements: parsedRequirements,
+//       createdby,
+//       published,
+//       semester: parsedSemester,
+//       quarter: parsedQuarter,
+//       verificationCode,
+//     });
+
+//     await Enrollment.create({ student: createdby, course: course._id });
+
+//     if (isGenerateCodeBoolean) {
+//       // Get teacher's email from user object
+//       const teacher = await User.findById(createdby);
+//       const teacherEmail = teacher.email;
+
+//       const transporter = nodemailer.createTransport({
+//         host: "smtp.gmail.com",
+//         port: 465,
+//         secure: true,
+//         auth: {
+//           user: "support@acewallscholars.org",
+//           pass: "ecgdupvzkfmbqrrq",
+//         },
+//       });
+
+//       // Send email with verification code
+//       const mailOptions = {
+//         from: process.env.EMAIL_FROM,
+//         to: teacherEmail,
+//         subject: 'Course Enrollment Code',
+//         html: `
+//         <h1>Course Created Successfully</h1>
+//         <p>Your course "${courseTitle}" has been created.</p>
+//         <p>Course enrollment code: <strong>${verificationCode}</strong></p>
+//         <p>Share this code with your students to allow them to enroll in the course.</p>
+//       `
+//       };
+
+//       await transporter.sendMail(mailOptions);
+
+//       res.status(201).json({ course, message: "Course created successfully and course enrollment code has been sent to your email" });
+//     } else {
+//       res.status(201).json({ course, message: "Course created successfully" });
+//     }
+//   } catch (error) {
+//     console.log("Error in createCourseSch:", error);
+//     res.status(500).json({ error: error.message });
+//   }
+// };

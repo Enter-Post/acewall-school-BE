@@ -56,7 +56,7 @@ export const getPosts = async (req, res) => {
 
         // 📄 Fetch paginated posts
         const posts = await Posts.find()
-            .populate('author', 'firstName middleName lastName profileImg')
+            .populate('author', '_id firstName middleName lastName profileImg')
             .sort({ createdAt: -1 }) // newest first
             .skip(skip)
             .limit(limit);
@@ -90,7 +90,7 @@ export const specificUserPosts = async (req, res) => {
         const totalPosts = await Posts.countDocuments({ author: userId });
 
         const posts = await Posts.find({ author: userId })
-            .populate('author', 'firstName middleName lastName profileImg')
+            .populate('author', '_id firstName middleName lastName profileImg')
             .sort({ createdAt: -1 }) // newest first
             .skip(skip)
             .limit(limit);
