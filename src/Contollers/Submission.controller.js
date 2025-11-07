@@ -7,6 +7,8 @@ import dotenv from "dotenv";
 import User from "../Models/user.model.js";
 import { uploadToCloudinary } from "../lib/cloudinary-course.config.js";
 import CourseSch from "../Models/courses.model.sch.js";
+import Lesson from "../Models/lesson.model.sch.js";
+import Chapter from "../Models/chapter.model.sch.js";
 
 dotenv.config();
 
@@ -17,9 +19,10 @@ export const submission = async (req, res) => {
   const files = req.files;
 
   let finalQuestionsubmitted;
+  let lesson;
+  let chapter;
 
   try {
-    // ✅ Check if already submitted
     const alreadySubmitted = await Submission.findOne({
       studentId,
       assessment: assessmentId,
@@ -31,13 +34,15 @@ export const submission = async (req, res) => {
       });
     }
 
-    // ✅ Fetch assessment and course
     const assessment = await Assessment.findById(assessmentId);
-    if (!assessment)
-      return res.status(404).json({ message: "Assessment not found" });
+    if (!assessment) return res.status(404).json({ message: "Assessment not found" });
+
+    if (assessment.chapter) chapter = await Chapter.findById(assessment.chapter);
+    if (assessment.lesson) lesson = await Lesson.findById(assessment.lesson);
 
     const courseInfo = await CourseSch.findById(assessment.course);
 
+    // Upload files if any
     let answerFiles = [];
     for (const file of files || []) {
       const result = await uploadToCloudinary(file.buffer, "assessment_files");
@@ -57,27 +62,34 @@ export const submission = async (req, res) => {
     // ✅ Initialize scoring
     let totalScore = 0;
     let maxScore = 0;
+    const needAssistantconcepts = [];
+    const masteredConcept = [];
 
-    const dueDate = new Date(assessment.dueDate.date)
-      .toISOString()
-      .split("T")[0];
+    const dueDate = new Date(assessment.dueDate.date).toISOString().split("T")[0];
     const dueTime = assessment.dueDate.time;
     const dueDateTime = new Date(`${dueDate}T${dueTime}`);
     const now = new Date();
 
     let status = now > dueDateTime ? "after due date" : "before due date";
 
-    // ✅ Process answers
     const processedAnswers = finalQuestionsubmitted.map((ans) => {
       const question = assessment.questions.find(
         (q) => q._id.toString() === ans.questionId
       );
-      if (!question) {
-        throw new Error("Invalid questionId in submission.");
-      }
+      if (!question) throw new Error("Invalid questionId in submission.");
 
       if (question.type === "mcq" || question.type === "truefalse") {
         const isCorrect = question.correctAnswer === ans.selectedAnswer;
+        if (isCorrect) {
+          if (!masteredConcept.includes(question.concept)) {
+            masteredConcept.push(question.concept);
+          }
+        } else {
+          if (!needAssistantconcepts.includes(question.concept)) {
+            needAssistantconcepts.push(question.concept);
+          }
+        }
+
         const pointsAwarded = isCorrect ? question.points : 0;
         totalScore += pointsAwarded;
         maxScore += question.points;
@@ -113,7 +125,6 @@ export const submission = async (req, res) => {
 
     const graded = processedAnswers.every((a) => !a.requiresManualCheck);
 
-    // ✅ Save submission
     const submission = new Submission({
       assessment: assessmentId,
       studentId,
@@ -124,9 +135,9 @@ export const submission = async (req, res) => {
     });
 
     await submission.save();
-    // ✅ Email notification logic
-    const student = await User.findById(studentId);
 
+    // ✅ Email Notification
+    const student = await User.findById(studentId);
     if (student && student.email) {
       const transporter = nodemailer.createTransport({
         host: "smtp.gmail.com",
@@ -138,107 +149,92 @@ export const submission = async (req, res) => {
         },
       });
 
-      // Email customization based on grading status
-      let subject, headerColor, headerTitle, messageBody;
-
-      if (graded) {
-        // ✅ Auto-graded email
-        subject = `Assessment Submitted: ${assessment.title} - ${courseInfo.courseTitle}`;
-        headerColor = "#2563eb";
-        headerTitle = "Assessment Submitted";
-        messageBody = `
-          <p style="font-size: 16px;">
-            We are pleased to inform you that the assessment titled 
-            <strong>${assessment.title}</strong> for the course 
-            <strong>${courseInfo.courseTitle}</strong> has been successfully submitted and graded.
-          </p>
-
-          <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid ${headerColor};">
-            <p style="margin: 5px 0; font-size: 15px;"><strong>Status:</strong> ${status}</p>
-            <p style="margin: 5px 0; font-size: 15px;"><strong>Total Score:</strong> ${totalScore} / ${maxScore}</p>
-          </div>
-
-          <p style="font-size: 14px;">
-            Great job on completing your assessment! You can view the detailed results and feedback
-            in your student portal. Guardians can also log in to monitor the student’s progress and performance.
-          </p>
-        `;
+      // Determine assessment title text
+      let assessmentContextText = "";
+      if (lesson && chapter) {
+        assessmentContextText = `Assessment of lesson ${lesson.title}`;
+      } else if (chapter && !lesson) {
+        assessmentContextText = `Assessment of chapter ${chapter.title}`;
       } else {
-        // 🕓 Awaiting grading email
-        subject = `Assessment Submitted (Pending Grading): ${assessment.title} - ${courseInfo.courseTitle}`;
-        headerColor = "#f59e0b";
-        headerTitle = "Assessment Submitted – Pending Review";
-        messageBody = `
-          <p style="font-size: 16px;">
-            We are pleased to inform you that the assessment titled 
-            <strong>${assessment.title}</strong> for the course 
-            <strong>${courseInfo.courseTitle}</strong> has been successfully submitted.
-          </p>
-
-          <div style="margin: 20px 0; padding: 15px; background: #fff8e6; border-left: 4px solid ${headerColor};">
-            <p style="margin: 5px 0; font-size: 15px;"><strong>Status:</strong> Awaiting Teacher Review</p>
-          </div>
-
-          <p style="font-size: 14px;">
-            Your teacher will review and grade this assessment soon. You will receive another email notification
-            once the grading has been completed.
-          </p>
-        `;
+        assessmentContextText = `Assessment`;
       }
 
+      let subject, html;
+
+      if (graded) {
+        // ✅ GRADED EMAIL TEMPLATE
+        subject = `Assessment Submitted and Graded: ${assessment.title}`;
+        html = `
+          <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f7fb;">
+            <div style="max-width: 600px; margin:auto; background: #fff; border-radius: 10px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.1)">
+              <p>Dear ${student.firstName} ${student.lastName},</p>
+              <p>You have just completed ${assessmentContextText}. Your overall score is <strong>${totalScore}/${maxScore}</strong>.</p>
+              
+              ${
+                masteredConcept.length > 0
+                  ? `<p>Congratulations, you have mastered the following concepts:</p>
+                     <ul>${masteredConcept.map((c) => `<li>${c}</li>`).join("")}</ul>`
+                  : `<p>You have not yet mastered any concepts in this assessment.</p>`
+              }
+
+              ${
+                needAssistantconcepts.length > 0
+                  ? `<p>You have not mastered and need more assistance on the following concepts:</p>
+                     <ul>${needAssistantconcepts.map((c) => `<li>${c}</li>`).join("")}</ul>
+                     <p>Please visit the following lessons within your portal to review:</p>
+                     <ul>${needAssistantconcepts
+                       .map(
+                         (c) =>
+                           `<li><a href="https://acewallscholars.org/lessons/${encodeURIComponent(
+                             c
+                           )}" target="_blank">${c}</a></li>`
+                       )
+                       .join("")}</ul>`
+                  : ""
+              }
+
+              <p>Keep up the great work!</p>
+              <p>Regards,<br>Acewall Scholars Team</p>
+            </div>
+          </div>`;
+      } else {
+        // 🕓 NON-GRADED (Pending)
+        subject = `Assessment Submitted (Pending Grading): ${assessment.title}`;
+        html = `
+          <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f7fb;">
+            <div style="max-width: 600px; margin:auto; background: #fff; border-radius: 10px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.1)">
+              <p>Dear ${student.firstName} ${student.lastName},</p>
+              <p>You have just completed ${assessmentContextText}. Your submission has been received and is awaiting teacher review.</p>
+              <p>Once the grading is complete, you will receive another email notification.</p>
+              <p>Regards,<br>Acewall Scholars Team</p>
+            </div>
+          </div>`;
+      }
 
       const mailOptions = {
-        from: `"${process.env.MAIL_FROM_NAME || "Assessment System"}" <support@acewallscholars.org>`,
-        to: [student.email, ...student.guardianEmails],
+        from: `"Acewall Scholars" <support@acewallscholars.org>`,
+        to: [student.email, ...(student.guardianEmails || [])],
         subject,
-        html: `
-          <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
-            <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-              
-              <!-- Header -->
-              <div style="background: ${headerColor}; padding: 20px; text-align: center;">
-                <h2 style="color: #ffffff; margin: 0; font-size: 22px;">${headerTitle}</h2>
-              </div>
-
-              <!-- Body -->
-              <div style="padding: 20px; color: #333;">
-                <p style="font-size: 16px;">Dear ${student.firstName + " " + student.lastName || "Student"} and Guardian,</p>
-                ${messageBody}
-                <p style="font-size: 13px; color: #666; margin-top: 15px;">
-                  Submitted on: ${new Date().toLocaleString()}
-                </p>
-              </div>
-
-              <!-- Footer -->
-              <div style="background: #f3f4f6; color: #555; text-align: center; padding: 12px; font-size: 12px;">
-                <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
-                <p style="margin: 0;">This is an automated message. Please do not reply.</p>
-              </div>
-            </div>
-          </div>
-        `,
+        html,
       };
 
       try {
         await transporter.sendMail(mailOptions);
       } catch (emailErr) {
         console.error("Error sending email:", emailErr);
-        // Continue even if email fails
       }
     }
 
-    // ✅ Response
     res.status(201).json({
       message: "Submission recorded successfully",
       submission,
     });
   } catch (err) {
     console.error(err);
-    res
-      .status(500)
-      .json({ message: "Error submitting assessment", error: err.message });
+    res.status(500).json({ message: "Error submitting assessment", error: err.message });
   }
 };
+
 
 export const getSubmissionsforStudent = async (req, res) => {
   try {
@@ -404,16 +400,15 @@ export const teacherGrading = async (req, res) => {
   const manualGrades = req.body;
 
   try {
-    // ✅ Populate studentId from User model
-    const submission = await Submission.findById(submissionId).populate(
-      "studentId"
-    );
+    const submission = await Submission.findById(submissionId).populate("studentId");
     if (!submission) {
       return res.status(404).json({ message: "Submission not found" });
     }
-    let allcourseMaxPoint = 0;
 
-    // Grade each manually graded question
+    let allcourseMaxPoint = 0;
+    submission.totalScore = 0; // reset before summing again
+
+    // ✅ Grade each manually graded question
     for (const questionId in manualGrades) {
       const { awardedPoints, maxPoints } = manualGrades[questionId];
       allcourseMaxPoint += maxPoints;
@@ -429,26 +424,62 @@ export const teacherGrading = async (req, res) => {
       }
 
       const isCorrect = awardedPoints >= maxPoints / 2;
-
-      const answer = submission.answers.find(
-        (a) => String(a.questionId) === questionId
-      );
+      const answer = submission.answers.find((a) => String(a.questionId) === questionId);
 
       if (answer) {
         answer.pointsAwarded = awardedPoints;
         answer.isCorrect = isCorrect;
-        submission.totalScore += awardedPoints;
         answer.requiresManualCheck = false;
+        submission.totalScore += awardedPoints;
       }
     }
 
     submission.graded = true;
     await submission.save();
 
+    // ✅ Fetch related data
     const student = submission.studentId;
     const assessment = await Assessment.findById(submission.assessment);
     const course = await CourseSch.findById(assessment.course);
 
+    // Find chapter and lesson
+    let chapter = null;
+    let lesson = null;
+    if (assessment.chapter) chapter = await Chapter.findById(assessment.chapter);
+    if (assessment.lesson) lesson = await Lesson.findById(assessment.lesson);
+
+    // ✅ Concept tracking
+    const masteredConcept = [];
+    const needAssistantconcepts = [];
+
+    for (const ans of submission.answers) {
+      const question = assessment.questions.find(
+        (q) => q._id.toString() === ans.questionId.toString()
+      );
+      if (!question) continue;
+
+      if (ans.isCorrect) {
+        if (!masteredConcept.includes(question.concept)) {
+          masteredConcept.push(question.concept);
+        }
+      } else {
+        if (!needAssistantconcepts.includes(question.concept)) {
+          needAssistantconcepts.push(question.concept);
+        }
+      }
+    }
+
+    // ✅ Prepare lesson/chapter label
+    let assessmentContextText = "";
+    if (lesson && chapter) {
+      assessmentContextText = `Assessment of lesson ${lesson.title}`;
+    } else if (chapter && !lesson) {
+      assessmentContextText = `Assessment of chapter ${chapter.title}`;
+    } else {
+      assessmentContextText = `Assessment`;
+    }
+
+    // ✅ Email Notification
     if (student?.email) {
       const transporter = nodemailer.createTransport({
         host: "smtp.gmail.com",
@@ -460,58 +491,57 @@ export const teacherGrading = async (req, res) => {
         },
       });
 
-      const mailOptions = {
-        from: `"${process.env.MAIL_FROM_NAME || "Assessment System"}" <support@acewallscholars.org>`,
-        to: [student.email, ...student.guardianEmails],
-        subject: `Assessment Graded: ${assessment.title} - ${course.courseTitle}`,
-        html: `
-    <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
-      <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-        
-        <!-- Header -->
-        <div style="background: #10b981; padding: 20px; text-align: center;">
-          <h2 style="color: #ffffff; margin: 0; font-size: 22px;">Assessment Graded</h2>
-        </div>
+      const subject = `Assessment Graded: ${assessment.title} - ${course.courseTitle}`;
+      const html = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f7fb;">
+          <div style="max-width: 600px; margin:auto; background: #fff; border-radius: 10px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.1)">
+            <p>Dear ${student.firstName} ${student.lastName},</p>
+            <p>You have just completed ${assessmentContextText}. Your overall score is <strong>${submission.totalScore}/${allcourseMaxPoint}</strong>.</p>
+            
+            ${
+              masteredConcept.length > 0
+                ? `<p>Congratulations, you have mastered the following concepts:</p>
+                   <ul>${masteredConcept.map((c) => `<li>${c}</li>`).join("")}</ul>`
+                : `<p>You have not yet mastered any concepts in this assessment.</p>`
+            }
 
-        <!-- Body -->
-        <div style="padding: 20px; color: #333;">
-          <p style="font-size: 16px;">Dear ${student.firstName + " " + student.lastName || "Student"} and Guardian,</p>
+            ${
+              needAssistantconcepts.length > 0
+                ? `<p>You have not mastered and need more assistance on the following concepts:</p>
+                   <ul>${needAssistantconcepts.map((c) => `<li>${c}</li>`).join("")}</ul>
+                   <p>Please visit the following lessons within your portal to review:</p>
+                   <ul>${needAssistantconcepts
+                     .map(
+                       (c) =>
+                         `<li><a href="https://acewallscholars.org/lessons/${encodeURIComponent(
+                           c
+                         )}" target="_blank">${c}</a></li>`
+                     )
+                     .join("")}</ul>`
+                : ""
+            }
 
-          <p style="font-size: 16px;">
-            We’re pleased to inform you that the assessment titled 
-            <strong>${assessment.title}</strong> for the course 
-            <strong>${course.courseTitle}</strong> has been reviewed and graded by the teacher.
-          </p>
-          
-          <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #10b981;">
-            <p style="margin: 5px 0; font-size: 15px;">
-              <strong>Total Score:</strong> ${
-                submission.totalScore
-              } / ${allcourseMaxPoint}
-            </p>
+            <p>Keep up the great work!</p>
+            <p>Regards,<br>Acewall Scholars Team</p>
           </div>
-
-          <p style="font-size: 14px;">
-            The detailed feedback and performance summary can now be viewed in the student portal. 
-          </p>
-
-          <p style="font-size: 14px; margin-top: 10px;">Keep up the great work!</p>
         </div>
+      `;
 
-        <!-- Footer -->
-        <div style="background: #f3f4f6; color: #555; text-align: center; padding: 12px; font-size: 12px;">
-          <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
-          <p style="margin: 0;">This is an automated message. Please do not reply.</p>
-        </div>
-      </div>
-    </div>
-    `,
+      const mailOptions = {
+        from: `"Acewall Scholars" <support@acewallscholars.org>`,
+        to: [student.email, ...(student.guardianEmails || [])],
+        subject,
+        html,
       };
 
-      await transporter.sendMail(mailOptions);
+      try {
+        await transporter.sendMail(mailOptions);
+      } catch (emailErr) {
+        console.error("Error sending email:", emailErr);
+      }
     }
 
-    res.json({ message: "Submission graded", submission });
+    res.json({ message: "Submission graded successfully", submission });
   } catch (err) {
     console.error(err);
     res.status(500).json({
