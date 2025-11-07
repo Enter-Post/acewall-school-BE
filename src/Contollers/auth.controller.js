@@ -1580,7 +1580,7 @@ export const updateEmailOTP = async (req, res) => {
     <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
       
       <!-- Header -->
-      <div style="background: #2563eb; padding: 20px; text-align: center;">
+      <div style="background: #10b981; padding: 20px; text-align: center;">
         <h2 style="color: #ffffff; margin: 0;">OTP Verification</h2>
       </div>
 
@@ -1589,7 +1589,7 @@ export const updateEmailOTP = async (req, res) => {
         <p style="font-size: 16px;">Hello,</p>
         <p style="font-size: 16px;">Here is your OTP code:</p>
         
-        <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #2563eb; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
+        <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #10b981; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
           ${otp}
         </div>
 
@@ -1717,7 +1717,7 @@ export const updateEmailOTPById = async (req, res) => {
       <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         
         <!-- Header -->
-        <div style="background: #2563eb; padding: 20px; text-align: center;">
+        <div style="background: #10b981; padding: 20px; text-align: center;">
           <h2 style="color: #ffffff; margin: 0;">OTP Verification</h2>
         </div>
 
@@ -1726,7 +1726,7 @@ export const updateEmailOTPById = async (req, res) => {
           <p style="font-size: 16px; margin: 0;">Hello${user.firstName ? ` ${user.firstName}` : ""},</p>
           <p style="font-size: 16px;">Your OTP code is:</p>
           
-          <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #2563eb; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
+          <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #10b981; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
             ${otp}
           </div>
 
@@ -1869,7 +1869,7 @@ export const updatePasswordOTPById = async (req, res) => {
       <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         
         <!-- Header -->
-        <div style="background: #2563eb; padding: 20px; text-align: center;">
+        <div style="background: #10b981; padding: 20px; text-align: center;">
           <h2 style="color: #ffffff; margin: 0;">OTP Verification</h2>
         </div>
 
@@ -1878,7 +1878,7 @@ export const updatePasswordOTPById = async (req, res) => {
           <p style="font-size: 16px; margin: 0;">Hello${user.firstName ? ` ${user.firstName}` : ""},</p>
           <p style="font-size: 16px;">Your OTP code is:</p>
           
-          <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #2563eb; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
+          <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #10b981; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
             ${otp}
           </div>
 
