@@ -398,6 +398,7 @@ export const getSubmissionsofAssessment_forTeacher = async (req, res) => {
 export const teacherGrading = async (req, res) => {
   const { submissionId } = req.params;
   const manualGrades = req.body;
+  const totalCourseMarks = req.query.totalCourseMarks
 
   try {
     const submission = await Submission.findById(submissionId).populate("studentId");
@@ -405,13 +406,11 @@ export const teacherGrading = async (req, res) => {
       return res.status(404).json({ message: "Submission not found" });
     }
 
-    let allcourseMaxPoint = 0;
-    submission.totalScore = 0; // reset before summing again
+    // submission.totalScore = 0;
 
     // ✅ Grade each manually graded question
     for (const questionId in manualGrades) {
       const { awardedPoints, maxPoints } = manualGrades[questionId];
-      allcourseMaxPoint += maxPoints;
 
       if (awardedPoints > maxPoints) {
         return res.status(400).json({
