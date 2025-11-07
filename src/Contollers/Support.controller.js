@@ -95,7 +95,7 @@ export const sendContactMail = async (req, res) => {
       <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
         
         <!-- Header -->
-        <div style="background: #2563eb; padding: 20px; text-align: center;">
+        <div style="background: #10b981; padding: 20px; text-align: center;">
           <h2 style="color: #ffffff; margin: 0; font-size: 22px;">Contact Form Submission</h2>
         </div>
 
@@ -106,7 +106,7 @@ export const sendContactMail = async (req, res) => {
           <p style="font-size: 15px; margin: 8px 0;"><strong>Phone:</strong> ${phone}</p>
           <p style="font-size: 15px; margin: 8px 0;"><strong>Subject:</strong> ${subject}</p>
           <p style="font-size: 15px; margin: 8px 0;"><strong>Message:</strong></p>
-          <div style="margin-top: 10px; padding: 12px; background: #f9f9f9; border-left: 4px solid #2563eb;">
+          <div style="margin-top: 10px; padding: 12px; background: #f9f9f9; border-left: 4px solid #10b981;">
             <p style="margin: 0; font-size: 15px; white-space: pre-line;">${message}</p>
           </div>
         </div>

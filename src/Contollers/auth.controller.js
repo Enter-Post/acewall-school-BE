@@ -226,21 +226,11 @@ export const initiateSignup = async (req, res) => {
 
 
 export const SignupwithoutOTP = async (req, res) => {
-  const {
-    firstName,
-    middleName,
-    lastName,
-    role,
-    email,
-    phone,
-    homeAddress,
-    mailingAddress,
-    password,
-  } = req.body;
+  const { firstName, middleName, lastName, role, email, password } = req.body;
 
   try {
-    // Required field validation
-    if (!firstName || !lastName || !email || !password || !role || !phone) {
+    // Validate required fields
+    if (!firstName || !lastName || !email || !password || !role) {
       return res.status(400).json({ message: "All required fields must be filled." });
     }
 
@@ -260,16 +250,13 @@ export const SignupwithoutOTP = async (req, res) => {
       lastName,
       role,
       email,
-      phone,
-      homeAddress,
-      mailingAddress,
       password: hashedPassword,
     });
 
     await newUser.save();
 
     res.status(201).json({
-      message: "Account has been created successfully.",
+      message: "Account created successfully.",
       user: newUser,
     });
   } catch (error) {
@@ -277,6 +264,8 @@ export const SignupwithoutOTP = async (req, res) => {
     res.status(500).json({ message: "Internal server error." });
   }
 };
+
+
 
 
 export const resendOTP = async (req, res) => {
@@ -728,8 +717,6 @@ export const login = async (req, res) => {
 export const forgetPassword = async (req, res) => {
   const { email } = req.body;
 
-  console.log("working 1");
-
   try {
     const isExist = await User.findOne({ email });
 
@@ -738,7 +725,6 @@ export const forgetPassword = async (req, res) => {
         message: "User with this email does not exist",
       });
     }
-    console.log("working 2");
 
     function generateOTP(length = 6) {
       const digits = "0123456789";
@@ -751,7 +737,6 @@ export const forgetPassword = async (req, res) => {
 
       return otp;
     }
-    console.log("working 3");
 
     const otp = generateOTP();
     console.log("otp", otp);
@@ -781,8 +766,6 @@ export const forgetPassword = async (req, res) => {
         pass: "ecgdupvzkfmbqrrq",
       },
     });
-    console.log("working 5", transporter);
-
 
     await transporter.sendMail({
       from: `"OTP Verification" <support@acewallscholars.org>`,
@@ -908,14 +891,6 @@ export const resetPassword = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
-
-
 export const logout = async (req, res) => {
   try {
     // Detect portal like in generateToken/isUser
@@ -954,12 +929,6 @@ export const logout = async (req, res) => {
     });
   }
 };
-
-
-
-
-
-
 
 
 export const allUser = async (req, res) => {
@@ -1262,6 +1231,7 @@ export const getUserInfo = async (req, res) => {
     if (!user) {
       return res.status(404).json("User not found");
     }
+    console.log(user, "user")
     return res.status(200).json({ message: "User found successfully", user });
   } catch (error) {
     console.log("error in getUserInfo:", error);
@@ -1552,7 +1522,7 @@ export const updateEmailOTP = async (req, res) => {
   const userId = req.user._id;
   const userEmail = req.user.email;
   const { newEmail, prevEmail } = req.body;
-  
+
   try {
     const user = await User.findById(userId);
     if (!user) {
@@ -1610,7 +1580,7 @@ export const updateEmailOTP = async (req, res) => {
     <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
       
       <!-- Header -->
-      <div style="background: #2563eb; padding: 20px; text-align: center;">
+      <div style="background: #10b981; padding: 20px; text-align: center;">
         <h2 style="color: #ffffff; margin: 0;">OTP Verification</h2>
       </div>
 
@@ -1619,7 +1589,7 @@ export const updateEmailOTP = async (req, res) => {
         <p style="font-size: 16px;">Hello,</p>
         <p style="font-size: 16px;">Here is your OTP code:</p>
         
-        <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #2563eb; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
+        <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #10b981; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
           ${otp}
         </div>
 
@@ -1747,7 +1717,7 @@ export const updateEmailOTPById = async (req, res) => {
       <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         
         <!-- Header -->
-        <div style="background: #2563eb; padding: 20px; text-align: center;">
+        <div style="background: #10b981; padding: 20px; text-align: center;">
           <h2 style="color: #ffffff; margin: 0;">OTP Verification</h2>
         </div>
 
@@ -1756,7 +1726,7 @@ export const updateEmailOTPById = async (req, res) => {
           <p style="font-size: 16px; margin: 0;">Hello${user.firstName ? ` ${user.firstName}` : ""},</p>
           <p style="font-size: 16px;">Your OTP code is:</p>
           
-          <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #2563eb; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
+          <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #10b981; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
             ${otp}
           </div>
 
@@ -1899,7 +1869,7 @@ export const updatePasswordOTPById = async (req, res) => {
       <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         
         <!-- Header -->
-        <div style="background: #2563eb; padding: 20px; text-align: center;">
+        <div style="background: #10b981; padding: 20px; text-align: center;">
           <h2 style="color: #ffffff; margin: 0;">OTP Verification</h2>
         </div>
 
@@ -1908,7 +1878,7 @@ export const updatePasswordOTPById = async (req, res) => {
           <p style="font-size: 16px; margin: 0;">Hello${user.firstName ? ` ${user.firstName}` : ""},</p>
           <p style="font-size: 16px;">Your OTP code is:</p>
           
-          <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #2563eb; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
+          <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #10b981; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
             ${otp}
           </div>
 
@@ -2049,4 +2019,25 @@ export const previewSignOut = async (req, res) => {
     });
   }
 };
+
+
+export const updateParentEmail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { guardianEmails } = req.body;
+
+    if (!guardianEmails) {
+      return res.status(400).json({ message: "Guardian email is required" });
+    }
+
+    // Update the user's guardian email
+    await User.findByIdAndUpdate(id, { guardianEmails }, { new: true });
+
+    return res.status(200).json({ message: "Guardian email updated successfully" });
+  } catch (error) {
+    console.error("Error in updateParentEmail:", error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 

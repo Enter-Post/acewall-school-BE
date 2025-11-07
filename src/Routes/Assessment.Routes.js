@@ -7,6 +7,7 @@ import {
   editAssessmentInfo,
   getAllassessmentforStudent,
   getAssesmentbyID,
+  sendAssessmentReminder,
   uploadFiles,
 } from "../Contollers/Assessment.controller.js";
 import { upload } from "../lib/multer.config.js";
@@ -15,6 +16,12 @@ import { getResultsMiddleware } from "../middlewares/isSubmitted.middleware.js";
 import { createAssessment_updated } from "../Contollers/UPDATED_API_CONTROLLER/assessment.controller.web.js";
 
 const router = express.Router();
+
+router.post(
+  "/:assessmentId/send-reminder",
+  isUser, // ensures the sender is authenticated
+  sendAssessmentReminder
+);
 
 router.post("/create", upload.array("files"), isUser, createAssessment);
 router.get("/allAssessmentByTeacher", isUser, allAssessmentByTeacher);
