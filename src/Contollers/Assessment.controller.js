@@ -64,7 +64,8 @@ export const sendAssessmentReminder = async (req, res) => {
       ? new Date(assessment.dueDate.date).toLocaleDateString()
       : "Not specified";
 
-    const portalBaseURL = process.env.STUDENT_PORTAL_URL || "https://portal.acewallscholars.org";
+    const portalBaseURL =
+      process.env.STUDENT_PORTAL_URL || "https://portal.acewallscholars.org";
     const assessmentLink = `${portalBaseURL}/student/assessment/${assessment._id}`;
 
     let sentCount = 0;
@@ -74,9 +75,9 @@ export const sendAssessmentReminder = async (req, res) => {
       if (!student?.email) continue;
 
       const mailOptions = {
-        from: `"${
-          process.env.MAIL_FROM_NAME || "Acewall Scholars"
-        }" <${process.env.MAIL_USER}>`,
+        from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars"}" <${
+          process.env.MAIL_USER
+        }>`,
         to: student.email,
         subject: `Reminder: ${assessment.title} - Due ${dueDate}`,
         html: `
@@ -125,7 +126,7 @@ export const sendAssessmentReminder = async (req, res) => {
             <!-- Footer -->
             <div style="background: #f3f4f6; color: #555; text-align: center; padding: 12px; font-size: 12px;">
               <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
-              <p style="margin: 0;">This is an automated message. Please do not reply.</p>
+          
             </div>
           </div>
         </div>
