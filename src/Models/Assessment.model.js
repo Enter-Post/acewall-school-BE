@@ -8,6 +8,7 @@ const questionSchema = new Schema({
     required: true,
     enum: ["mcq", "truefalse", "qa", "file"],
   },
+  concept: { type: String },
   files: [
     {
       url: { type: String },
@@ -15,7 +16,7 @@ const questionSchema = new Schema({
       publicId: { type: String },
     },
   ],
-  question: { type: String, required: true},
+  question: { type: String, required: true },
   options: [{ type: String }], // Only used for MCQs
   points: { type: Number, required: true },
   correctAnswer: { type: String }, // String for all types, including true/false

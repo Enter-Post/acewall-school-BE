@@ -9,4 +9,5 @@ router.post("/", upload.array("assets"), isUser, createPost);
 router.get("/getPosts", isUser, getPosts);
 router.get("/specificUserPosts/:id", isUser, specificUserPosts);
 router.delete("/deletePost/:postId", isUser, deletePost)
+
 export default router;

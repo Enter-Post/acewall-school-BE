@@ -36,6 +36,7 @@ import {
   bulkSignup,
   previewSignIn,
   previewSignOut,
+  updateParentEmail,
 } from "../Contollers/auth.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { upload } from "../lib/multer.config.js";
@@ -94,5 +95,6 @@ router.delete("/users/:userId", deleteUser);
 
 router.post("/previewSignIn", isUser, previewSignIn)
 router.post("/previewSignOut", isUser, previewSignOut)
+router.put("/updateParentEmail/:id", isUser, updateParentEmail);
 
 export default router;
