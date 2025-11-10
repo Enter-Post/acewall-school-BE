@@ -53,6 +53,7 @@ const SchCourseSchema = new mongoose.Schema(
     ],
     published: { type: Boolean, default: false },
     archivedDate: { type: Date },
+    courseCode: { type: String, unique: true, required: true },
   },
 
   { timestamps: true }

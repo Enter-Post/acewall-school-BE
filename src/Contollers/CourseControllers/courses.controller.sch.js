@@ -9,7 +9,8 @@ import Assessment from "../../Models/Assessment.model.js";
 import AssessmentCategory from "../../Models/assessment-category.js";
 import Announcement from "../../Models/Annoucement.model.js";
 import Comment from "../../Models/comment.model.js";
-import { log } from "console";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
 
 export const createCourseSch = async (req, res) => {
   const createdby = req.user._id;
@@ -27,13 +28,16 @@ export const createCourseSch = async (req, res) => {
     quarter,
   } = req.body;
 
-  const files = req.files; // multiple files: thumbnail and syllabus
+  const files = req.files;
 
   try {
+    // Find teacher info for email
+    const teacher = await User.findById(createdby).select("firstName lastName email");
+
     let thumbnail = { url: "", altText: "" };
     let syllabusFile = { url: "", filename: "" };
 
-    // Upload thumbnail if exists
+    // Upload thumbnail
     if (files?.thumbnail?.[0]) {
       const thumb = files.thumbnail[0];
       const result = await uploadToCloudinary(thumb.buffer, "course_thumbnails");
@@ -41,25 +45,36 @@ export const createCourseSch = async (req, res) => {
       thumbnail.altText = thumb.originalname;
     }
 
-    // Upload syllabus if exists
+    // Upload syllabus
     if (files?.syllabus?.[0]) {
       const syllabus = files.syllabus[0];
-      const result = await uploadToCloudinary(syllabus.buffer, "course_syllabi"); // use a separate folder
+      const result = await uploadToCloudinary(syllabus.buffer, "course_syllabi");
       syllabusFile.url = result.secure_url;
       syllabusFile.filename = syllabus.originalname;
     }
 
+    // Parse JSON fields
     const parsedTeachingPoints = JSON.parse(teachingPoints);
     const parsedRequirements = JSON.parse(requirements);
     const parsedSemester = JSON.parse(semester);
     const parsedQuarter = JSON.parse(quarter);
 
+    // Generate course code
+    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const randomBytes = crypto.randomBytes(6);
+    let code = "";
+    for (let i = 0; i < 6; i++) {
+      const index = randomBytes[i] % characters.length;
+      code += characters[index];
+    }
+
+    // Create course
     const course = await CourseSch.create({
       courseTitle,
       category,
       subcategory,
       thumbnail,
-      syllabus: syllabusFile, // added syllabus field
+      syllabus: syllabusFile,
       language,
       courseDescription,
       teachingPoints: parsedTeachingPoints,
@@ -68,16 +83,82 @@ export const createCourseSch = async (req, res) => {
       published,
       semester: parsedSemester,
       quarter: parsedQuarter,
+      courseCode: code.toUpperCase(),
     });
 
+    // Auto-enroll creator
     await Enrollment.create({ student: createdby, course: course._id });
 
-    res.status(201).json({ course, message: "Course created successfully" });
+    // --- Send Course Creation Email ---
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: "support@acewallscholars.org",
+        pass: "ecgdupvzkfmbqrrq",
+      },
+    });
+
+    const mailOptions = {
+      from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars Team"}" <support@acewallscholars.org>`,
+      to: teacher.email,
+      subject: `Course Created Successfully: ${courseTitle}`,
+      html: `
+      <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
+        <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+          
+          <!-- Logo -->
+          <div style="text-align: center; padding: 20px; background: #ffffff;">
+            <img src="https://lirp.cdn-website.com/6602115c/dms3rep/multi/opt/acewall+scholars-431w.png" 
+                 alt="Acewall Scholars Logo" 
+                 style="height: 60px; margin: 0 auto;" />
+          </div>
+
+          <!-- Header -->
+          <div style="background: #007bff; padding: 20px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 20px;">Course Created Successfully</h1>
+          </div>
+
+          <!-- Body -->
+          <div style="padding: 20px; color: #333;">
+            <p style="font-size: 16px;">Hi, ${teacher.firstName} ${teacher.lastName},</p>
+
+            <p style="font-size: 16px;">Your course <strong>${course.courseTitle}</strong> has been successfully created.</p>
+
+            <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #007bff;">
+              <p style="font-size: 16px; margin: 0;">
+                <strong>Course Code:</strong> ${course.courseCode}<br/>
+              </p>
+            </div>
+
+            <p style="font-size: 14px; margin-top: 10px;">
+              You can now share this course code with your students so they can enroll.
+            </p>
+
+            <p style="font-size: 14px;">Best regards,<br/>The Acewall Scholars Team</p>
+          </div>
+
+          <!-- Footer -->
+          <div style="background: #f0f4f8; color: #555; text-align: center; padding: 15px; font-size: 12px;">
+            <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
+            <p style="margin: 0;">Do not reply to this automated message.</p>
+          </div>
+        </div>
+      </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(201).json({ course, message: "Course created and email sent successfully." });
+
   } catch (error) {
-    console.log("Error in createCourseSch:", error);
+    console.error("Error in createCourseSch:", error);
     res.status(500).json({ error: error.message });
   }
 };
+
 
 
 export const getAllCoursesSch = async (req, res) => {
@@ -757,7 +838,7 @@ export const getallcoursesforteacher = async (req, res) => {
         },
       },
       { $unwind: "$studentDetails" },
-       {
+      {
         $match: {
           "studentDetails._id": { $ne: new mongoose.Types.ObjectId(teacherId) },
         },
@@ -975,5 +1056,44 @@ export const thumnailChange = async (req, res) => {
   } catch (error) {
     console.log("error in thumnail change", error);
     res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+export const searchCoursebycode = async (req, res) => {
+  const { courseCode } = req.params;
+
+  try {
+    if (!courseCode || courseCode.trim() === "") {
+      return res.status(400).json({ message: "Course code is required" });
+    }
+
+    // Find by courseCode (case-insensitive)
+    const course = await CourseSch.findOne(
+      { courseCode: { $regex: `^${courseCode}$`, $options: "i" } },
+      {
+        courseTitle: 1,
+        courseCode: 1,
+        thumbnail: 1,
+        category: 1,
+        subcategory: 1,
+        createdby: 1,
+        language: 1,
+        courseDescription: 1,
+      }
+    )
+      .populate("createdby", "firstName lastName Bio profileImg _id")
+      .populate("category", "title")
+      .populate("subcategory", "title");
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    res.status(200).json({
+      course,
+      message: "Course fetched successfully",
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };

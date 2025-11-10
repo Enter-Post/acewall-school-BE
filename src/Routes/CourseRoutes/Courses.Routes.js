@@ -18,6 +18,7 @@ import {
   editCourseInfo,
   thumnailChange,
   getunPurchasedCourseByIdStdPrew,
+  searchCoursebycode,
 
 } from "../../Contollers/CourseControllers/courses.controller.sch.js";
 import { getAllCoursesSchupdated, getCoursesByTeacherSch_WEB } from "../../Contollers/UPDATED_API_CONTROLLER/course.controller.web.js";
@@ -71,6 +72,7 @@ router.put(
   upload.single("syllabus"), // <--- handle syllabus upload
   editCourseInfo
 ); router.put(`/thumbnail/:courseId`, isUser, upload.single("thumbnail"), thumnailChange);
+router.get("/searchCoursebycode/:courseCode", isUser, searchCoursebycode);
 
 export default router;
 
