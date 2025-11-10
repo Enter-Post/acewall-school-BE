@@ -553,22 +553,28 @@ export const getCourseDetails = async (req, res) => {
           as: "CourseAssessments",
         },
       },
+     {
+  $lookup: {
+    from: "enrollments",
+    let: { courseId: "$_id" },
+    pipeline: [
+      {
+        $match: { $expr: { $eq: ["$course", "$$courseId"] } }
+      },
       {
         $lookup: {
-          from: "enrollments",
-          let: { courseId: "$_id" },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $eq: ["$course", "$$courseId"],
-                },
-              },
-            },
-          ],
-          as: "enrollments",
-        },
+          from: "users",
+          localField: "student",
+          foreignField: "_id",
+          as: "studentInfo"
+        }
       },
+      { $unwind: "$studentInfo" }, // only keep enrollments where student exists
+    ],
+    as: "enrollments"
+  }
+}
+
     ]);
 
     if (!course || course.length === 0) {

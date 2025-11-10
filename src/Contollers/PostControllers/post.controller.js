@@ -45,39 +45,58 @@ export const createPost = async (req, res) => {
 }
 
 export const getPosts = async (req, res) => {
-    try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
 
-        const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
-        // 🔍 Fetch total count
-        const totalPosts = await Posts.countDocuments();
+    // 🔍 Fetch total count
+    const totalPosts = await Posts.countDocuments();
 
-        // 📄 Fetch paginated posts
-        const posts = await Posts.find()
-            .populate('author', 'firstName middleName lastName profileImg')
-            .sort({ createdAt: -1 }) // newest first
-            .skip(skip)
-            .limit(limit);
+    // 📄 Fetch paginated posts with author info
+    const posts = await Posts.find()
+      .populate('author', 'firstName middleName lastName profileImg')
+      .sort({ createdAt: -1 }) // newest first
+      .skip(skip)
+      .limit(limit);
 
-        // 🧾 Calculate total pages
-        const totalPages = Math.ceil(totalPosts / limit);
+    // 🧹 Sanitize posts — fallback if author is deleted
+    const sanitizedPosts = posts.map(post => {
+      const author = post.author
+        ? post.author
+        : {
+            firstName: "Deleted",
+            lastName: "User",
+            middleName: "",
+            profileImg: null,
+            deleted: true,
+          };
 
-        // ✅ Send response
-        res.json({
-            currentPage: page,
-            totalPages,
-            totalPosts,
-            limit,
-            posts,
-        });
+      return {
+        ...post.toObject(),
+        author,
+      };
+    });
 
-    } catch (error) {
-        console.error("Error in getPosts:", error);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
+    // 🧾 Calculate total pages
+    const totalPages = Math.ceil(totalPosts / limit);
+
+    // ✅ Send safe response
+    res.json({
+      currentPage: page,
+      totalPages,
+      totalPosts,
+      limit,
+      posts: sanitizedPosts,
+    });
+
+  } catch (error) {
+    console.error("Error in getPosts:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 };
+
 
 export const specificUserPosts = async (req, res) => {
     const userId = req.params.id;

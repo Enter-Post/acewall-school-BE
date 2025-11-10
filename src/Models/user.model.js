@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-
+import Enrollment from "../Models/Enrollement.model.js";
 const UserSchema = new mongoose.Schema(
   {
     profileImg: {
@@ -27,7 +27,7 @@ const UserSchema = new mongoose.Schema(
       required: true,
     },
     email: { type: String, required: true, unique: true },
-    phone: { type: String},
+    phone: { type: String },
     homeAddress: { type: String },
     mailingAddress: { type: String },
     password: { type: String, required: true },
@@ -36,6 +36,17 @@ const UserSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const User = mongoose.model("User", UserSchema);
+// 🔹 Pre-remove hook to delete all enrollments when a user is deleted
+UserSchema.pre("remove", async function (next) {
+  try {
+    await Enrollment.deleteMany({ student: this._id });
+    console.log(`Deleted all enrollments for user ${this._id}`);
+    next();
+  } catch (err) {
+    console.error("Error deleting enrollments in pre-remove hook:", err);
+    next(err);
+  }
+});
 
+const User = mongoose.model("User", UserSchema);
 export default User;

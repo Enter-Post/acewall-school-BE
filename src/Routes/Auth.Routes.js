@@ -91,7 +91,7 @@ router.put("/auth/updateEmailOTPById/:id", updateEmailOTPById);
 router.put("/auth/updateEmailById/:id", updateEmailById);
 router.put("/auth/updatePasswordOTPById/:id", updatePasswordOTPById);
 router.put("/auth/updatePasswordById/:id", updatePasswordById);
-router.delete("/users/:userId", deleteUser);
+router.delete("/users/:userId", isUser, deleteUser);
 
 router.post("/previewSignIn", isUser, previewSignIn)
 router.post("/previewSignOut", isUser, previewSignOut)
