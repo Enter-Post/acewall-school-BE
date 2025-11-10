@@ -11,7 +11,6 @@ import Enrollment from "../Models/Enrollement.model.js";
 import mongoose from "mongoose";
 import twilio from "twilio";
 
-
 import multer from "multer";
 import xlsx from "xlsx";
 import OPT from "../Models/opt.model.js";
@@ -87,8 +86,6 @@ export const bulkSignup = async (req, res) => {
   }
 };
 
-
-
 export const initiateSignup = async (req, res) => {
   const {
     firstName,
@@ -105,14 +102,7 @@ export const initiateSignup = async (req, res) => {
   } = req.body;
 
   try {
-    if (
-      !firstName ||
-      !lastName ||
-      !email ||
-      !password ||
-      !role ||
-      !phone
-    ) {
+    if (!firstName || !lastName || !email || !password || !role || !phone) {
       return res
         .status(400)
         .json({ message: "All required fields must be filled." });
@@ -215,7 +205,6 @@ export const initiateSignup = async (req, res) => {
   `,
     });
 
-
     res.status(201).json({ message: "OTP sent to your email." });
   } catch (error) {
     console.error("Signup initiation error:", error.message);
@@ -223,21 +212,23 @@ export const initiateSignup = async (req, res) => {
   }
 };
 
-
-
 export const SignupwithoutOTP = async (req, res) => {
   const { firstName, middleName, lastName, role, email, password } = req.body;
 
   try {
     // Validate required fields
     if (!firstName || !lastName || !email || !password || !role) {
-      return res.status(400).json({ message: "All required fields must be filled." });
+      return res
+        .status(400)
+        .json({ message: "All required fields must be filled." });
     }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: "User with this email already exists." });
+      return res
+        .status(400)
+        .json({ message: "User with this email already exists." });
     }
 
     // Hash password
@@ -264,9 +255,6 @@ export const SignupwithoutOTP = async (req, res) => {
     res.status(500).json({ message: "Internal server error." });
   }
 };
-
-
-
 
 export const resendOTP = async (req, res) => {
   const { email } = req.body;
@@ -356,7 +344,6 @@ export const resendOTP = async (req, res) => {
   `,
     });
 
-
     res.status(200).json({ message: "New OTP has been sent to your email." });
   } catch (error) {
     console.error("Resend OTP error:", error.message);
@@ -374,7 +361,10 @@ export const verifyEmailOtp = async (req, res) => {
 
   try {
     const otpEntry = await OTP.findOne({ email });
-    if (!otpEntry) return res.status(400).json({ message: "OTP not found or already used." });
+    if (!otpEntry)
+      return res
+        .status(400)
+        .json({ message: "OTP not found or already used." });
 
     const isExpired = Date.now() > otpEntry.expiresAt;
     const isValid = await bcrypt.compare(otp, otpEntry.otp);
@@ -405,14 +395,13 @@ export const verifyEmailOtp = async (req, res) => {
     const hashedOTP = await bcrypt.hash(phoneOtp, 10);
 
     // Save to DB with expiry (5 min)
-    otpEntry.phoneOtp = hashedOTP
+    otpEntry.phoneOtp = hashedOTP;
     otpEntry.expiresAt = Date.now() + 10 * 60 * 1000;
     await otpEntry.save();
 
     const userData = otpEntry.userData;
 
     // 🚀 Send SMS using purchased number
-
 
     try {
       await twilioClient.messages.create({
@@ -422,7 +411,12 @@ export const verifyEmailOtp = async (req, res) => {
       });
     } catch (error) {
       console.error("Error sending SMS:", error);
-      return res.status(500).json({ message: "please check your phone number and try again. Failed to send SMS." });
+      return res
+        .status(500)
+        .json({
+          message:
+            "please check your phone number and try again. Failed to send SMS.",
+        });
     }
 
     res.json({ message: "Email verified. Phone OTP sent." });
@@ -444,8 +438,8 @@ export const verifyPhoneOtp = async (req, res) => {
     const isExpired = Date.now() > otpEntry.expiresAt;
     const isValid = await bcrypt.compare(otp, otpEntry.phoneOtp);
 
-    console.log(isExpired, "isExpired")
-    console.log(isValid, "isValid")
+    console.log(isExpired, "isExpired");
+    console.log(isValid, "isValid");
 
     if (!isValid || isExpired) {
       return res.status(400).json({ message: "Invalid or expired phone OTP." });
@@ -471,7 +465,9 @@ export const verifyPhoneOtp = async (req, res) => {
       });
 
       const mailOptions = {
-        from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars"}" <${"support@acewallscholars.org"}>`,
+        from: `"${
+          process.env.MAIL_FROM_NAME || "Acewall Scholars"
+        }" <${"support@acewallscholars.org"}>`,
         to: newUser.email,
         subject: `Welcome to Acewall Scholars as an Instructor`,
         html: `
@@ -506,8 +502,6 @@ export const verifyPhoneOtp = async (req, res) => {
       }
     }
 
-
-
     // ✅ issue token
     generateToken(newUser, newUser.role, req, res);
 
@@ -517,7 +511,6 @@ export const verifyPhoneOtp = async (req, res) => {
     res.status(500).json({ message: "Internal server error." });
   }
 };
-
 
 export const resendPhoneOTP = async (req, res) => {
   const { email } = req.body;
@@ -557,7 +550,7 @@ export const resendPhoneOTP = async (req, res) => {
     // Resend email
     const userData = otpRecord.userData;
 
-    console.log(userData, "userData")
+    console.log(userData, "userData");
 
     // 🚀 Send SMS using purchased number
     await twilioClient.messages.create({
@@ -566,12 +559,14 @@ export const resendPhoneOTP = async (req, res) => {
       to: userData.phone,
     });
 
-    res.status(200).json({ message: "New OTP has been sent to your phone number." });
+    res
+      .status(200)
+      .json({ message: "New OTP has been sent to your phone number." });
   } catch (error) {
     console.error("Resend OTP error:", error.message);
     res.status(500).json({ message: "Internal server error." });
   }
-}
+};
 
 export const updatePhoneOTP = async (req, res) => {
   const userId = req.user._id;
@@ -661,18 +656,18 @@ export const updatePhone = async (req, res) => {
 
     const { phone } = otpEntry.userData;
 
-    console.log(otpEntry.userData, "otpEntry.userData")
+    console.log(otpEntry.userData, "otpEntry.userData");
 
     await User.findOneAndUpdate({ email: email }, { phone });
 
-    return res.status(200).json({ message: "Phone number updated successfully" });
+    return res
+      .status(200)
+      .json({ message: "Phone number updated successfully" });
   } catch (error) {
     console.log("error in updatePassword:", error);
     return res.status(500).json("Internal Server Error");
   }
 };
-
-
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
@@ -809,7 +804,6 @@ export const forgetPassword = async (req, res) => {
   `,
     });
 
-
     return res.status(200).json({
       message: "OTP sent successfully",
     });
@@ -930,7 +924,6 @@ export const logout = async (req, res) => {
   }
 };
 
-
 export const allUser = async (req, res) => {
   try {
     const allUser = await User.find();
@@ -1000,13 +993,14 @@ export const updateUserById = async (req, res) => {
   } catch (err) {
     console.error("Admin Update Error:", err);
     if (err.code === 11000) {
-      res.status(409).json({ message: "Duplicate field value", error: err.keyValue });
+      res
+        .status(409)
+        .json({ message: "Duplicate field value", error: err.keyValue });
     } else {
       res.status(500).json({ message: "Update failed", error: err.message });
     }
   }
 };
-
 
 export const checkUser = async (req, res) => {
   const { email } = req.body;
@@ -1084,8 +1078,6 @@ export const allTeacher = async (req, res) => {
   }
 };
 
-
-
 export const allStudent = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -1132,8 +1124,6 @@ export const allStudent = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
-
-
 
 export const getStudentById = async (req, res) => {
   try {
@@ -1231,7 +1221,7 @@ export const getUserInfo = async (req, res) => {
     if (!user) {
       return res.status(404).json("User not found");
     }
-    console.log(user, "user")
+    console.log(user, "user");
     return res.status(200).json({ message: "User found successfully", user });
   } catch (error) {
     console.log("error in getUserInfo:", error);
@@ -1325,33 +1315,46 @@ export const updateUserProfileImgById = async (req, res) => {
   }
 };
 
+// DELETE /admin/users/:userId
 export const deleteUser = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Check if user exists
-    const user = await User.findById(userId);
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
 
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Optional: delete user's profile image if using cloud storage like Cloudinary
-    if (user.profileImg?.publicId) {
-      // Example:
-      // await cloudinary.v2.uploader.destroy(user.profileImg.publicId);
-      console.log(`Deleted profile image with publicId: ${user.profileImg.publicId}`);
+    if (user.role !== "student") {
+      return res.status(403).json({ message: "Only students can be deleted" });
     }
 
-    // Delete user
-    await User.findByIdAndDelete(userId);
+    // Optional: delete profile image
+    if (user.profileImg?.publicId) {
+      console.log(`Deleting profile image: ${user.profileImg.publicId}`);
+      // await cloudinary.v2.uploader.destroy(user.profileImg.publicId);
+    }
 
-    res.status(200).json({ message: "User deleted successfully" });
+    // Delete all enrollments first
+    await Enrollment.deleteMany({ student: user._id });
+    console.log(`Deleted all enrollments for user ${user._id}`);
+
+    // Then delete the user
+    await User.findByIdAndDelete(user._id);
+
+    res.status(200).json({
+      message: "Student and all their enrollments deleted successfully",
+    });
   } catch (error) {
-    console.error("Error deleting user:", error.message);
+    console.error("Failed to delete student:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 
 export const updatePasswordOTP = async (req, res) => {
@@ -1373,11 +1376,9 @@ export const updatePasswordOTP = async (req, res) => {
     // Reject if newPassword === old password
     const isSameAsOld = await bcrypt.compare(newPassword, user.password);
     if (isSameAsOld) {
-      return res
-        .status(400)
-        .json({
-          message: "New password must be different from the old password",
-        });
+      return res.status(400).json({
+        message: "New password must be different from the old password",
+      });
     }
 
     // Check if new and confirm password match
@@ -1471,7 +1472,6 @@ export const updatePasswordOTP = async (req, res) => {
   </div>
   `,
     });
-
 
     return res.status(200).json({ message: "OTP sent successfully" });
   } catch (error) {
@@ -1606,7 +1606,6 @@ export const updateEmailOTP = async (req, res) => {
   `,
     });
 
-
     return res
       .status(200)
       .json({ message: "OTP sent successfully to previous email" });
@@ -1630,8 +1629,8 @@ export const updateEmail = async (req, res) => {
     const isExpired = Date.now() > otpEntry.expiresAt;
     const isValid = await bcrypt.compare(otp, otpEntry.otp);
 
-    console.log(isExpired, "isExpired")
-    console.log(isValid, "isValid")
+    console.log(isExpired, "isExpired");
+    console.log(isValid, "isValid");
 
     if (!isValid || isExpired) {
       return res.status(400).json({ message: "Invalid or expired OTP." });
@@ -1656,7 +1655,6 @@ export const updateEmail = async (req, res) => {
     return res.status(500).json("Internal Server Error");
   }
 };
-
 
 export const updateEmailOTPById = async (req, res) => {
   const { id } = req.params;
@@ -1723,7 +1721,9 @@ export const updateEmailOTPById = async (req, res) => {
 
         <!-- Body -->
         <div style="padding: 20px; color: #333; text-align: center;">
-          <p style="font-size: 16px; margin: 0;">Hello${user.firstName ? ` ${user.firstName}` : ""},</p>
+          <p style="font-size: 16px; margin: 0;">Hello${
+            user.firstName ? ` ${user.firstName}` : ""
+          },</p>
           <p style="font-size: 16px;">Your OTP code is:</p>
           
           <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #10b981; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
@@ -1742,7 +1742,6 @@ export const updateEmailOTPById = async (req, res) => {
     </div>
   `,
     });
-
 
     return res
       .status(200)
@@ -1766,7 +1765,9 @@ export const updateEmailById = async (req, res) => {
     const otpEntry = await OTP.findOne({ email: user.email });
 
     if (!otpEntry) {
-      return res.status(400).json({ message: "OTP not found or already used." });
+      return res
+        .status(400)
+        .json({ message: "OTP not found or already used." });
     }
 
     const isExpired = Date.now() > otpEntry.expiresAt;
@@ -1793,7 +1794,6 @@ export const updateEmailById = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
 
 export const updatePasswordOTPById = async (req, res) => {
   const { id } = req.params;
@@ -1875,7 +1875,9 @@ export const updatePasswordOTPById = async (req, res) => {
 
         <!-- Body -->
         <div style="padding: 20px; color: #333; text-align: center;">
-          <p style="font-size: 16px; margin: 0;">Hello${user.firstName ? ` ${user.firstName}` : ""},</p>
+          <p style="font-size: 16px; margin: 0;">Hello${
+            user.firstName ? ` ${user.firstName}` : ""
+          },</p>
           <p style="font-size: 16px;">Your OTP code is:</p>
           
           <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #10b981; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
@@ -1895,14 +1897,12 @@ export const updatePasswordOTPById = async (req, res) => {
   `,
     });
 
-
     return res.status(200).json({ message: "OTP sent successfully" });
   } catch (error) {
     console.error("Error in updatePasswordOTPById:", error.message);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
 
 export const updatePasswordById = async (req, res) => {
   const { id } = req.params;
@@ -1917,7 +1917,9 @@ export const updatePasswordById = async (req, res) => {
     const otpEntry = await OTP.findOne({ email: user.email });
 
     if (!otpEntry) {
-      return res.status(400).json({ message: "OTP not found or already used." });
+      return res
+        .status(400)
+        .json({ message: "OTP not found or already used." });
     }
 
     const isExpired = Date.now() > otpEntry.expiresAt;
@@ -1931,10 +1933,7 @@ export const updatePasswordById = async (req, res) => {
 
     await User.updateOne({ _id: id }, { password: newPassword });
 
-    await OTP.updateOne(
-      { email: user.email },
-      { $set: { isVerified: true } }
-    );
+    await OTP.updateOne({ email: user.email }, { $set: { isVerified: true } });
 
     return res.status(200).json({ message: "Password updated successfully" });
   } catch (error) {
@@ -2020,7 +2019,6 @@ export const previewSignOut = async (req, res) => {
   }
 };
 
-
 export const updateParentEmail = async (req, res) => {
   try {
     const { id } = req.params;
@@ -2033,11 +2031,11 @@ export const updateParentEmail = async (req, res) => {
     // Update the user's guardian email
     await User.findByIdAndUpdate(id, { guardianEmails }, { new: true });
 
-    return res.status(200).json({ message: "Guardian email updated successfully" });
+    return res
+      .status(200)
+      .json({ message: "Guardian email updated successfully" });
   } catch (error) {
     console.error("Error in updateParentEmail:", error.message);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
-
