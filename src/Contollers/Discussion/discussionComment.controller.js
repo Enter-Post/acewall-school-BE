@@ -20,9 +20,26 @@ export const getDiscussionComments = async (req, res) => {
       discussion: id,
     });
 
+    // Add a safe fallback for deleted users
+    const sanitizedComments = discussionComments.map((comment) => {
+      const user = comment.createdby
+        ? comment.createdby
+        : {
+            firstName: "Deleted",
+            lastName: "User",
+            profileImg: null,
+            role: null,
+          };
+
+      return {
+        ...comment.toObject(),
+        createdby: user,
+      };
+    });
+
     res.status(200).json({
       message: "Comments fetched successfully",
-      discussionComments,
+      discussionComments: sanitizedComments,
       totalPages: Math.ceil(totalComments / limit),
       currentPage: parseInt(page),
     });
@@ -44,7 +61,9 @@ export const sendDiscussionComment = async (req, res) => {
     });
 
     if (user.role !== "teacher" && isCommented) {
-      return res.status(400).json({ message: "You have already commented on this discussion" });
+      return res
+        .status(400)
+        .json({ message: "You have already commented on this discussion" });
     }
 
     const newDiscussionComment = new DiscussionComment({
@@ -89,7 +108,9 @@ export const gradeDiscussionofStd = async (req, res) => {
       return res.status(404).json({ message: "Discussion not found" });
     }
 
-    const discussionComment = await DiscussionComment.findById(discussionCommentId);
+    const discussionComment = await DiscussionComment.findById(
+      discussionCommentId
+    );
     if (!discussionComment) {
       return res.status(404).json({ message: "Discussion comment not found" });
     }
@@ -124,7 +145,6 @@ export const gradeDiscussionofStd = async (req, res) => {
   }
 };
 
-
 export const isCommentedInDiscussion = async (req, res) => {
   const user = req.user;
   const { id } = req.params;
@@ -142,4 +162,4 @@ export const isCommentedInDiscussion = async (req, res) => {
     console.log("error in the discussion comment", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-}
+};

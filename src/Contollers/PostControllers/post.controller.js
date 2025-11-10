@@ -73,11 +73,12 @@ export const getPosts = async (req, res) => {
             posts,
         });
 
-    } catch (error) {
-        console.error("Error in getPosts:", error);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
+  } catch (error) {
+    console.error("Error in getPosts:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 };
+
 
 export const specificUserPosts = async (req, res) => {
     const userId = req.params.id;

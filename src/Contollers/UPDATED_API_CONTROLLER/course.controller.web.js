@@ -56,7 +56,7 @@ export const getAllCoursesSchupdated = async (req, res) => {
     if (published !== undefined) {
       courseQuery.published = published;
     }
-    
+
     const [totalCourses, courses] = await Promise.all([
       CourseSch.countDocuments(courseQuery),
       CourseSch.find(courseQuery)
@@ -72,10 +72,10 @@ export const getAllCoursesSchupdated = async (req, res) => {
     ]);
 
     res.status(200).json({
-      courses,
+      courses, // contains only the current page's courses
       currentPage: parseInt(page),
       totalPages: Math.ceil(totalCourses / limit),
-      totalCourses,
+      totalCourses, // ✅ total count of all courses
       message: courses.length
         ? "Courses fetched successfully"
         : "No courses found",
