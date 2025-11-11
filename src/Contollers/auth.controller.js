@@ -1131,8 +1131,9 @@ export const getStudentById = async (req, res) => {
 
     // Get student/user info
     const user = await User.findById(id).select(
-      " id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role"
+      "id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role guardianEmails"
     );
+    
     if (!user) {
       return res.status(404).json({ message: "Student not found." });
     }
@@ -1191,6 +1192,7 @@ export const getStudentById = async (req, res) => {
     res.status(500).json({ message: "Server error." });
   }
 };
+
 
 export const getTeacherById = async (req, res) => {
   const { id } = req.params;
@@ -2024,18 +2026,41 @@ export const updateParentEmail = async (req, res) => {
     const { id } = req.params;
     const { guardianEmails } = req.body;
 
-    if (!guardianEmails) {
-      return res.status(400).json({ message: "Guardian email is required" });
+    // Validate that guardianEmails is provided and an array
+    if (!Array.isArray(guardianEmails) || guardianEmails.length === 0) {
+      return res.status(400).json({ message: "Please provide at least one guardian email" });
     }
 
-    // Update the user's guardian email
-    await User.findByIdAndUpdate(id, { guardianEmails }, { new: true });
+    // Limit to max 4 emails
+    if (guardianEmails.length > 4) {
+      return res.status(400).json({ message: "You can only add up to 4 guardian emails" });
+    }
 
-    return res
-      .status(200)
-      .json({ message: "Guardian email updated successfully" });
+    // Validate each email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const invalidEmails = guardianEmails.filter(email => !emailRegex.test(email.trim()));
+    if (invalidEmails.length > 0) {
+      return res.status(400).json({
+        message: `Invalid email(s): ${invalidEmails.join(", ")}`,
+      });
+    }
+
+    // Check if user exists
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Update guardian emails
+    user.guardianEmails = guardianEmails.map(email => email.trim());
+    await user.save();
+
+    return res.status(200).json({
+      message: "Guardian emails updated successfully",
+      user,
+    });
   } catch (error) {
-    console.error("Error in updateParentEmail:", error.message);
+    console.error("❌ Error in updateParentEmail:", error);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };

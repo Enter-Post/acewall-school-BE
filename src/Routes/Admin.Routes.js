@@ -5,6 +5,7 @@ import {
   deleteUser,
   getStudentById,
   getTeacherById,
+  updateParentEmail,
 } from "../Contollers/auth.controller.js";
 import { getStudentEnrolledCourses } from "../Contollers/enrollment.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
@@ -23,5 +24,6 @@ router.put("/updateSemArchiveStatus/:semesterId", isUser, archivedSemester);
 router.put("/updateQtrArchiveStatus/:quarterId", isUser, archivedQuarter);
 router.delete("/users/:userId", isUser, deleteUser);
 router.get("/getCategories", isUser, getCategoriesforAdmin)
+router.put("/updateParentEmail/:id", isUser, updateParentEmail);
 
 export default router;

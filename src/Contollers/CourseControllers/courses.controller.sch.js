@@ -32,7 +32,9 @@ export const createCourseSch = async (req, res) => {
 
   try {
     // Find teacher info for email
-    const teacher = await User.findById(createdby).select("firstName lastName email");
+    const teacher = await User.findById(createdby).select(
+      "firstName lastName email"
+    );
 
     let thumbnail = { url: "", altText: "" };
     let syllabusFile = { url: "", filename: "" };
@@ -40,7 +42,10 @@ export const createCourseSch = async (req, res) => {
     // Upload thumbnail
     if (files?.thumbnail?.[0]) {
       const thumb = files.thumbnail[0];
-      const result = await uploadToCloudinary(thumb.buffer, "course_thumbnails");
+      const result = await uploadToCloudinary(
+        thumb.buffer,
+        "course_thumbnails"
+      );
       thumbnail.url = result.secure_url;
       thumbnail.altText = thumb.originalname;
     }
@@ -48,7 +53,10 @@ export const createCourseSch = async (req, res) => {
     // Upload syllabus
     if (files?.syllabus?.[0]) {
       const syllabus = files.syllabus[0];
-      const result = await uploadToCloudinary(syllabus.buffer, "course_syllabi");
+      const result = await uploadToCloudinary(
+        syllabus.buffer,
+        "course_syllabi"
+      );
       syllabusFile.url = result.secure_url;
       syllabusFile.filename = syllabus.originalname;
     }
@@ -60,7 +68,8 @@ export const createCourseSch = async (req, res) => {
     const parsedQuarter = JSON.parse(quarter);
 
     // Generate course code
-    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const characters =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     const randomBytes = crypto.randomBytes(6);
     let code = "";
     for (let i = 0; i < 6; i++) {
@@ -101,7 +110,9 @@ export const createCourseSch = async (req, res) => {
     });
 
     const mailOptions = {
-      from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars Team"}" <support@acewallscholars.org>`,
+      from: `"${
+        process.env.MAIL_FROM_NAME || "Acewall Scholars Team"
+      }" <support@acewallscholars.org>`,
       to: teacher.email,
       subject: `Course Created Successfully: ${courseTitle}`,
       html: `
@@ -122,9 +133,13 @@ export const createCourseSch = async (req, res) => {
 
           <!-- Body -->
           <div style="padding: 20px; color: #333;">
-            <p style="font-size: 16px;">Hi, ${teacher.firstName} ${teacher.lastName},</p>
+            <p style="font-size: 16px;">Hi, ${teacher.firstName} ${
+        teacher.lastName
+      },</p>
 
-            <p style="font-size: 16px;">Your course <strong>${course.courseTitle}</strong> has been successfully created.</p>
+            <p style="font-size: 16px;">Your course <strong>${
+              course.courseTitle
+            }</strong> has been successfully created.</p>
 
             <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #007bff;">
               <p style="font-size: 16px; margin: 0;">
@@ -151,15 +166,14 @@ export const createCourseSch = async (req, res) => {
 
     await transporter.sendMail(mailOptions);
 
-    res.status(201).json({ course, message: "Course created and email sent successfully." });
-
+    res
+      .status(201)
+      .json({ course, message: "Course created and email sent successfully." });
   } catch (error) {
     console.error("Error in createCourseSch:", error);
     res.status(500).json({ error: error.message });
   }
 };
-
-
 
 export const getAllCoursesSch = async (req, res) => {
   try {
@@ -184,10 +198,6 @@ export const getAllCoursesSch = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
-
-
-
 
 export const getCoursesbySubcategorySch = async (req, res) => {
   const { search } = req.query;
@@ -337,7 +347,6 @@ export const getunPurchasedCourseByIdSch = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 export const getunPurchasedCourseByIdStdPrew = async (req, res) => {
   try {
@@ -518,7 +527,6 @@ export const getunPurchasedCourseByIdStdPrew = async (req, res) => {
   }
 };
 
-
 export const getCourseDetails = async (req, res) => {
   const { courseId } = req.params;
 
@@ -634,28 +642,27 @@ export const getCourseDetails = async (req, res) => {
           as: "CourseAssessments",
         },
       },
-     {
-  $lookup: {
-    from: "enrollments",
-    let: { courseId: "$_id" },
-    pipeline: [
-      {
-        $match: { $expr: { $eq: ["$course", "$$courseId"] } }
-      },
       {
         $lookup: {
-          from: "users",
-          localField: "student",
-          foreignField: "_id",
-          as: "studentInfo"
-        }
+          from: "enrollments",
+          let: { courseId: "$_id" },
+          pipeline: [
+            {
+              $match: { $expr: { $eq: ["$course", "$$courseId"] } },
+            },
+            {
+              $lookup: {
+                from: "users",
+                localField: "student",
+                foreignField: "_id",
+                as: "studentInfo",
+              },
+            },
+            { $unwind: "$studentInfo" }, // only keep enrollments where student exists
+          ],
+          as: "enrollments",
+        },
       },
-      { $unwind: "$studentInfo" }, // only keep enrollments where student exists
-    ],
-    as: "enrollments"
-  }
-}
-
     ]);
 
     if (!course || course.length === 0) {
@@ -847,12 +854,13 @@ export const getallcoursesforteacher = async (req, res) => {
         $group: {
           _id: "$studentDetails._id",
           firstName: { $first: "$studentDetails.firstName" },
-          middleName: { $first: "$studentDetails.middleName" },
+          middleName: { $first: "$studentDetails.middleName" }, 
           lastName: { $first: "$studentDetails.lastName" },
           Bio: { $first: "$studentDetails.Bio" },
           profileImg: { $first: "$studentDetails.profileImg" },
           gender: { $first: "$studentDetails.gender" },
           email: { $first: "$studentDetails.email" },
+          guardianEmails: { $first: "$studentDetails.guardianEmails" },
           createdAt: { $first: "$studentDetails.createdAt" },
           courses: {
             $push: {
