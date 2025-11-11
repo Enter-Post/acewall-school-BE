@@ -29,9 +29,7 @@ const SchCourseSchema = new mongoose.Schema(
       url: { type: String, default: "" },
       filename: { type: String, default: "" },
       uploadedAt: { type: Date, default: Date.now },
-
     },
-
     teachingPoints: [{ type: String, maxlength: 120, minlength: 1 }],
     requirements: [{ type: String, maxlength: 120, minlength: 1 }],
     createdby: {
@@ -54,8 +52,10 @@ const SchCourseSchema = new mongoose.Schema(
     published: { type: Boolean, default: false },
     archivedDate: { type: Date },
     courseCode: { type: String, unique: true, required: true },
-  },
 
+    // ✅ Add toggle for comments and ratings
+    commentsEnabled: { type: Boolean, default: true },
+  },
   { timestamps: true }
 );
 

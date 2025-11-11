@@ -9,8 +9,34 @@ import Assessment from "../../Models/Assessment.model.js";
 import AssessmentCategory from "../../Models/assessment-category.js";
 import Announcement from "../../Models/Annoucement.model.js";
 import Comment from "../../Models/comment.model.js";
+import Rating from "../../Models/rating.model.js";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
+
+export const toggleCourseComments = async (req, res) => {
+  const { courseId } = req.params;
+  const { enable } = req.body; // boolean: true/false
+
+  try {
+    const course = await CourseSch.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    course.commentsEnabled = enable; // toggle the value
+    await course.save();
+
+    res.status(200).json({
+      message: `Comments & Ratings ${enable ? "enabled" : "disabled"} successfully`,
+      commentsEnabled: enable,
+    });
+    console.log(enable);
+  } catch (error) {
+    console.error("Error toggling comments:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
 
 export const createCourseSch = async (req, res) => {
   const createdby = req.user._id;
