@@ -37,6 +37,7 @@ import contactRoutes from "./Routes/Contact.Routes.js";
 import postRoutes from "./Routes/PostRoutes/Post.Routes.js";
 import likesRoutes from "./Routes/PostRoutes/PostLikes.Routes.js";
 import postCommentRoutes from "./Routes/PostRoutes/PostComment.Routes.js";
+import "./cronJobs/assessmentReminder.js";
 
 import path from "path";
 import { fileURLToPath } from "url";

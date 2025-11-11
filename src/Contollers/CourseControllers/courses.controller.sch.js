@@ -185,10 +185,6 @@ export const getAllCoursesSch = async (req, res) => {
   }
 };
 
-
-
-
-
 export const getCoursesbySubcategorySch = async (req, res) => {
   const { search } = req.query;
   const { subCategoryId } = req.params;

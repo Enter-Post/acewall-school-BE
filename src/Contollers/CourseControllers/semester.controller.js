@@ -17,6 +17,7 @@ export const createSemester = async (req, res) => {
 };
 
 export const getSemester = async (req, res) => {
+  console.log("getSemester called");
   try {
     const semesters = await Semester.find();
     res
