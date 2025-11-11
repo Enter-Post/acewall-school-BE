@@ -12,6 +12,7 @@ import { isUser } from "../middlewares/Auth.Middleware.js";
 import { archivedSemester } from "../Contollers/CourseControllers/semester.controller.js";
 import { archivedQuarter } from "../Contollers/CourseControllers/quarter.controller.js";
 import { getCategoriesforAdmin } from "../Contollers/category.controller.js";
+import { toggleAllCoursesComments, toggleCourseComments } from "../Contollers/CourseControllers/courses.controller.sch.js";
 // import { checkRole, isAllowed } from "../Middlewares/admins.Middleware.js";
 const router = express.Router();
 
@@ -25,5 +26,7 @@ router.put("/updateQtrArchiveStatus/:quarterId", isUser, archivedQuarter);
 router.delete("/users/:userId", isUser, deleteUser);
 router.get("/getCategories", isUser, getCategoriesforAdmin)
 router.put("/updateParentEmail/:id", isUser, updateParentEmail);
+router.patch("/:courseId/toggle-comments", toggleCourseComments);
+router.patch("/toggle-all-comments", isUser , toggleAllCoursesComments);
 
 export default router;

@@ -13,6 +13,35 @@ import Rating from "../../Models/rating.model.js";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 
+
+// PATCH /admin/toggle-all-comments
+export const toggleAllCoursesComments = async (req, res) => {
+  const { enable } = req.body; // boolean: true/false
+
+  try {
+    if (typeof enable !== "boolean") {
+      return res.status(400).json({ message: "Enable must be a boolean" });
+    }
+
+    // Update all courses in the database
+    const result = await CourseSch.updateMany({}, { commentsEnabled: enable });
+
+    res.status(200).json({
+      message: `Comments & Ratings ${enable ? "enabled" : "disabled"} for all courses`,
+      commentsEnabled: enable,
+      modifiedCount: result.modifiedCount, // optional: how many courses were updated
+    });
+  } catch (error) {
+    console.error("Error toggling all courses comments:", error);
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+
+
 export const toggleCourseComments = async (req, res) => {
   const { courseId } = req.params;
   const { enable } = req.body; // boolean: true/false
