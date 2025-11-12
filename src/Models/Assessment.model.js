@@ -65,6 +65,8 @@ const assessmentSchema = new Schema(
       ref: "User",
       required: true,
     },
+    reminderSent: { type: Boolean, default: false },
+    reminderTimeBefore: { type: String, enum: ["12hours", "24hours", "48hours", "noReminder"], default: "12hours" }, // in hours
   },
   { timestamps: true }
 );

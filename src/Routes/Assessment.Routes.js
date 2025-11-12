@@ -5,9 +5,11 @@ import {
   deleteAssessment,
   deleteFile,
   editAssessmentInfo,
+  findReminderTime,
   getAllassessmentforStudent,
   getAssesmentbyID,
   sendAssessmentReminder,
+  setReminderTime,
   uploadFiles,
 } from "../Contollers/Assessment.controller.js";
 import { upload } from "../lib/multer.config.js";
@@ -33,8 +35,10 @@ router.put(
   uploadFiles
 );
 router.delete("/deleteFile/:assessmentId/:fileId", deleteFile);
-router.get("/:assessmentId", isUser, getResultsMiddleware,getAssesmentbyID);
+router.get("/:assessmentId", isUser, getResultsMiddleware, getAssesmentbyID);
 router.put("/editAssessment/:assessmentId", isUser, editAssessmentInfo);
+router.get("/findReminderTime/:assessmentId", isUser, findReminderTime)
+router.put("/setReminder/:assessmentId", isUser, setReminderTime)
 
 //updated Assessment routes
 

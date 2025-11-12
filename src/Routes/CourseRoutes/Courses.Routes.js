@@ -19,11 +19,16 @@ import {
   thumnailChange,
   getunPurchasedCourseByIdStdPrew,
   searchCoursebycode,
+  toggleCourseComments,
+  
 
 } from "../../Contollers/CourseControllers/courses.controller.sch.js";
 import { getAllCoursesSchupdated, getCoursesByTeacherSch_WEB } from "../../Contollers/UPDATED_API_CONTROLLER/course.controller.web.js";
 
 const router = express.Router();
+
+router.patch("/:courseId/toggle-comments", toggleCourseComments);
+
 
 
 ////WEB APIS
