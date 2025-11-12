@@ -37,6 +37,7 @@ import contactRoutes from "./Routes/Contact.Routes.js";
 import postRoutes from "./Routes/PostRoutes/Post.Routes.js";
 import likesRoutes from "./Routes/PostRoutes/PostLikes.Routes.js";
 import postCommentRoutes from "./Routes/PostRoutes/PostComment.Routes.js";
+import emailNotificationRoutes from "./Routes/EmailNotification.Routes.js"
 import "./cronJobs/assessmentReminder.js";
 
 import path from "path";
@@ -99,6 +100,7 @@ app.use("/api/gpa", gpaRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/postlike", likesRoutes);
 app.use("/api/postComment", postCommentRoutes);
+app.use("/api/emailnotification", emailNotificationRoutes)
 
 server.listen(PORT, () => {
   connectDB();

@@ -663,7 +663,6 @@ export const editAssessmentInfo = async (req, res) => {
   }
 };
 
-
 export const setReminderTime = async (req, res) => {
   const { assessmentId } = req.params;
   const { reminder } = req.body;
