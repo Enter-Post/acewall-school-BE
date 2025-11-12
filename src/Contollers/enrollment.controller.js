@@ -167,9 +167,7 @@ export const studentCourseDetails = async (req, res) => {
                 localField: "semester",
                 foreignField: "_id",
                 as: "semester",
-                pipeline: [
-                  { $match: { isArchived: false } },
-                ],
+                pipeline: [{ $match: { isArchived: false } }],
               },
             },
 
@@ -179,9 +177,7 @@ export const studentCourseDetails = async (req, res) => {
                 localField: "quarter",
                 foreignField: "_id",
                 as: "quarter",
-                pipeline: [
-                  { $match: { isArchived: false } },
-                ],
+                pipeline: [{ $match: { isArchived: false } }],
               },
             },
 
@@ -225,6 +221,11 @@ export const studentCourseDetails = async (req, res) => {
                 semester: 1,
                 quarter: 1,
                 requirements: 1,
+                chapters: 1,
+                finalAssessments: 1,
+
+                // ✅ Include commentsEnabled
+                commentsEnabled: 1,
 
                 createdby: {
                   _id: "$createdby._id",
@@ -241,14 +242,12 @@ export const studentCourseDetails = async (req, res) => {
                   _id: "$subcategory._id",
                   title: "$subcategory.title",
                 },
-                chapters: 1,
-                finalAssessments: 1,
               },
             },
           ],
         },
       },
-      { $unwind: "$courseDetails" }, // only courseDetails must exist
+      { $unwind: "$courseDetails" },
     ]);
 
     if (!enrolledData || enrolledData.length === 0) {
@@ -266,6 +265,7 @@ export const studentCourseDetails = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+
 
 
 export const chapterDetails = async (req, res) => {
