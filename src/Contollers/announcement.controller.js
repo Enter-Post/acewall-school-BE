@@ -4,6 +4,7 @@ import CourseSch from "../Models/courses.model.sch.js";
 import Enrollment from "../Models/Enrollement.model.js";
 import User from "../Models/user.model.js";
 import nodemailer from "nodemailer";
+
 export const createAnnouncement = async (req, res) => {
   const { title, message, courseId, teacherId } = req.body;
 
@@ -12,19 +13,19 @@ export const createAnnouncement = async (req, res) => {
   }
 
   try {
-    // Validate teacher
+    // ✅ Validate teacher
     const teacher = await User.findById(teacherId);
     if (!teacher || teacher.role !== "teacher") {
       return res.status(400).json({ error: "Invalid teacher." });
     }
 
-    // Validate course
+    // ✅ Validate course
     const course = await CourseSch.findById(courseId);
     if (!course) {
       return res.status(400).json({ error: "Course not found." });
     }
 
-    // Create announcement
+    // ✅ Create announcement record
     const announcement = new Announcement({
       title,
       message,
@@ -32,16 +33,35 @@ export const createAnnouncement = async (req, res) => {
       teacher: teacherId,
     });
 
-    // Get enrolled students
-    const enrollment = await Enrollment.find({ course: courseId }).populate(
+    // ✅ Get all enrolled students with guardian preferences
+    const enrollments = await Enrollment.find({ course: courseId }).populate(
       "student",
-      "email"
+      "email guardianEmails guardianEmailPreferences firstName lastName"
     );
 
-    const studentEmails = enrollment.map((enroll) => enroll.student.email);
+    const allRecipientEmails = [];
 
-    // Send email to all enrolled students
-    if (studentEmails.length > 0) {
+    for (const enroll of enrollments) {
+      const student = enroll.student;
+      if (!student) continue;
+
+      // ✅ Always include student email
+      if (student.email) allRecipientEmails.push(student.email);
+
+      // ✅ Include guardian emails ONLY if announcement preference is true
+      if (
+        student.guardianEmails?.length &&
+        student.guardianEmailPreferences?.announcement === true
+      ) {
+        allRecipientEmails.push(...student.guardianEmails);
+      }
+    }
+
+    // ✅ Remove duplicate emails
+    const uniqueEmails = [...new Set(allRecipientEmails)];
+
+    // ✅ Send emails only if there are recipients
+    if (uniqueEmails.length > 0) {
       const transporter = nodemailer.createTransport({
         host: "smtp.gmail.com",
         port: 465,
@@ -56,54 +76,52 @@ export const createAnnouncement = async (req, res) => {
         from: `"${
           process.env.MAIL_FROM_NAME || "Acewall Scholars Team"
         }" <support@acewallscholars.org>`,
-        to: studentEmails, // can be an array or comma-separated string
+        to: uniqueEmails,
         subject: `New Announcement: ${title}`,
         html: `
-  <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
-    <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-      
-      <!-- Logo -->
-      <div style="text-align: center; padding: 20px; background: #ffffff;">
-        <img src="https://lirp.cdn-website.com/6602115c/dms3rep/multi/opt/acewall+scholars-431w.png" 
-             alt="Acewall Scholars Logo" 
-             style="height: 60px; margin: 0 auto;" />
-      </div>
+          <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
+            <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
 
-      <!-- Header -->
-      <div style="background: #28a745; padding: 20px; text-align: center;">
-        <h1 style="color: #ffffff; margin: 0; font-size: 20px;">New Announcement</h1>
-      </div>
+              <!-- Logo -->
+              <div style="text-align: center; padding: 20px; background: #ffffff;">
+                <img src="https://lirp.cdn-website.com/6602115c/dms3rep/multi/opt/acewall+scholars-431w.png" 
+                    alt="Acewall Scholars Logo" 
+                    style="height: 60px; margin: 0 auto;" />
+              </div>
 
-      <!-- Body -->
-      <div style="padding: 20px; color: #333;">
-        <p style="font-size: 16px;">There’s a new announcement for your course <strong>${
-          course.courseTitle
-        }</strong>:</p>
-        
-        <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #28a745;">
-          <p style="font-size: 16px; margin: 0;">${message}</p>
-        </div>
+              <!-- Header -->
+              <div style="background: #28a745; padding: 20px; text-align: center;">
+                <h1 style="color: #ffffff; margin: 0; font-size: 20px;">New Announcement</h1>
+              </div>
 
-        <p style="font-size: 14px; margin-top: 10px;">
-          <em>From: ${teacher.firstName} ${teacher.lastName}</em>
-        </p>
-      </div>
+              <!-- Body -->
+              <div style="padding: 20px; color: #333;">
+                <p style="font-size: 16px;">There’s a new announcement for your course <strong>${course.courseTitle}</strong>:</p>
+                
+                <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #28a745;">
+                  <p style="font-size: 16px; margin: 0;">${message}</p>
+                </div>
 
-      <!-- Footer -->
-      <div style="background: #f0f4f8; color: #555; text-align: center; padding: 15px; font-size: 12px;">
-        <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
-        <p style="margin: 0;">Do not reply to this automated message.</p>
-      </div>
-    </div>
-  </div>
-  `,
+                <p style="font-size: 14px; margin-top: 10px;">
+                  <em>From: ${teacher.firstName} ${teacher.lastName}</em>
+                </p>
+              </div>
+
+              <!-- Footer -->
+              <div style="background: #f0f4f8; color: #555; text-align: center; padding: 15px; font-size: 12px;">
+                <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
+                <p style="margin: 0;">Do not reply to this automated message.</p>
+              </div>
+            </div>
+          </div>
+        `,
       };
 
       try {
         await transporter.sendMail(mailOptions);
-        console.log("✅ Emails sent to students");
+        console.log("✅ Announcement emails sent to students and allowed guardians");
       } catch (error) {
-        console.error("❌ Error sending emails:", error);
+        console.error("❌ Error sending announcement emails:", error);
       }
     }
 
@@ -112,14 +130,13 @@ export const createAnnouncement = async (req, res) => {
     res.status(201).json({
       message: "Announcement created and email sent successfully.",
       announcement,
-      studentEmails,
+      sentTo: uniqueEmails,
     });
   } catch (err) {
     console.error("Error creating announcement or sending email:", err);
     res.status(500).json({ error: "Server error." });
   }
 };
-
 export const getAnnouncementsForCourse = async (req, res) => {
   const { courseId } = req.params;
   try {
@@ -134,7 +151,7 @@ export const getAnnouncementsForCourse = async (req, res) => {
 };
 
 export const getAnnouncementsByTeacher = async (req, res) => {
-  const { teacherId } = req.params;
+const { teacherId } = req.params;
 
   try {
     const announcements = await Announcement.find({ teacher: teacherId })
