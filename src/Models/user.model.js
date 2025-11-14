@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Enrollment from "../Models/Enrollement.model.js";
+import Assessment from "./Assessment.model.js";
 const UserSchema = new mongoose.Schema(
   {
     profileImg: {
@@ -32,6 +33,12 @@ const UserSchema = new mongoose.Schema(
     mailingAddress: { type: String },
     password: { type: String, required: true },
     guardianEmails: [{ type: String }],
+    guardianEmailPreferences: {
+      submission: { type: Boolean, default: true },
+      grading: { type: Boolean, default: true },
+      announcement: { type: Boolean, default: true },
+      assessments: { type: Boolean, default: true },
+    },
   },
   { timestamps: true }
 );

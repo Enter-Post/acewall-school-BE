@@ -23,6 +23,7 @@ export const submission = async (req, res) => {
   let chapter;
 
   try {
+    // ✅ Check if already submitted
     const alreadySubmitted = await Submission.findOne({
       studentId,
       assessment: assessmentId,
@@ -35,14 +36,15 @@ export const submission = async (req, res) => {
     }
 
     const assessment = await Assessment.findById(assessmentId);
-    if (!assessment) return res.status(404).json({ message: "Assessment not found" });
+    if (!assessment)
+      return res.status(404).json({ message: "Assessment not found" });
 
     if (assessment.chapter) chapter = await Chapter.findById(assessment.chapter);
     if (assessment.lesson) lesson = await Lesson.findById(assessment.lesson);
 
-    const courseInfo = await CourseSch.findById(assessment.course);
+    await CourseSch.findById(assessment.course);
 
-    // Upload files if any
+    // ✅ Upload files if any
     let answerFiles = [];
     for (const file of files || []) {
       const result = await uploadToCloudinary(file.buffer, "assessment_files");
@@ -53,11 +55,9 @@ export const submission = async (req, res) => {
       });
     }
 
-    if (assessment.assessmentType === "file") {
-      finalQuestionsubmitted = [answers];
-    } else {
-      finalQuestionsubmitted = answers.answers;
-    }
+    // Prepare final answers
+    finalQuestionsubmitted =
+      assessment.assessmentType === "file" ? [answers] : answers.answers;
 
     // ✅ Initialize scoring
     let totalScore = 0;
@@ -69,7 +69,6 @@ export const submission = async (req, res) => {
     const dueTime = assessment.dueDate.time;
     const dueDateTime = new Date(`${dueDate}T${dueTime}`);
     const now = new Date();
-
     let status = now > dueDateTime ? "after due date" : "before due date";
 
     const processedAnswers = finalQuestionsubmitted.map((ans) => {
@@ -80,14 +79,10 @@ export const submission = async (req, res) => {
 
       if (question.type === "mcq" || question.type === "truefalse") {
         const isCorrect = question.correctAnswer === ans.selectedAnswer;
-        if (isCorrect) {
-          if (!masteredConcept.includes(question.concept)) {
-            masteredConcept.push(question.concept);
-          }
-        } else {
-          if (!needAssistantconcepts.includes(question.concept)) {
-            needAssistantconcepts.push(question.concept);
-          }
+        if (isCorrect && !masteredConcept.includes(question.concept)) {
+          masteredConcept.push(question.concept);
+        } else if (!isCorrect && !needAssistantconcepts.includes(question.concept)) {
+          needAssistantconcepts.push(question.concept);
         }
 
         const pointsAwarded = isCorrect ? question.points : 0;
@@ -125,6 +120,7 @@ export const submission = async (req, res) => {
 
     const graded = processedAnswers.every((a) => !a.requiresManualCheck);
 
+    // ✅ Save submission
     const submission = new Submission({
       assessment: assessmentId,
       studentId,
@@ -133,7 +129,6 @@ export const submission = async (req, res) => {
       totalScore,
       graded,
     });
-
     await submission.save();
 
     // ✅ Email Notification
@@ -149,56 +144,44 @@ export const submission = async (req, res) => {
         },
       });
 
-      // Determine assessment title text
+      // Determine assessment context
       let assessmentContextText = "";
-      if (lesson && chapter) {
-        assessmentContextText = `Assessment of lesson ${lesson.title}`;
-      } else if (chapter && !lesson) {
-        assessmentContextText = `Assessment of chapter ${chapter.title}`;
-      } else {
-        assessmentContextText = `Assessment`;
-      }
+      if (lesson && chapter) assessmentContextText = `Assessment of lesson ${lesson.title}`;
+      else if (chapter && !lesson) assessmentContextText = `Assessment of chapter ${chapter.title}`;
+      else assessmentContextText = `Assessment`;
 
       let subject, html;
-
       if (graded) {
-        // ✅ GRADED EMAIL TEMPLATE
         subject = `Assessment Submitted and Graded: ${assessment.title}`;
         html = `
           <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f7fb;">
             <div style="max-width: 600px; margin:auto; background: #fff; border-radius: 10px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.1)">
               <p>Dear ${student.firstName} ${student.lastName},</p>
               <p>You have just completed ${assessmentContextText}. Your overall score is <strong>${totalScore}/${maxScore}</strong>.</p>
-              
-              ${
-                masteredConcept.length > 0
-                  ? `<p>Congratulations, you have mastered the following concepts:</p>
+              ${masteredConcept.length > 0
+            ? `<p>Congratulations, you have mastered the following concepts:</p>
                      <ul>${masteredConcept.map((c) => `<li>${c}</li>`).join("")}</ul>`
-                  : `<p>You have not yet mastered any concepts in this assessment.</p>`
-              }
-
-              ${
-                needAssistantconcepts.length > 0
-                  ? `<p>You have not mastered and need more assistance on the following concepts:</p>
+            : `<p>You have not yet mastered any concepts in this assessment.</p>`
+          }
+              ${needAssistantconcepts.length > 0
+            ? `<p>You have not mastered and need more assistance on the following concepts:</p>
                      <ul>${needAssistantconcepts.map((c) => `<li>${c}</li>`).join("")}</ul>
                      <p>Please visit the following lessons within your portal to review:</p>
                      <ul>${needAssistantconcepts
-                       .map(
-                         (c) =>
-                           `<li><a href="https://acewallscholars.org/lessons/${encodeURIComponent(
-                             c
-                           )}" target="_blank">${c}</a></li>`
-                       )
-                       .join("")}</ul>`
-                  : ""
-              }
-
+              .map(
+                (c) =>
+                  `<li><a href="https://acewallscholars.org/lessons/${encodeURIComponent(
+                    c
+                  )}" target="_blank">${c}</a></li>`
+              )
+              .join("")}</ul>`
+            : ""
+          }
               <p>Keep up the great work!</p>
               <p>Regards,<br>Acewall Scholars Team</p>
             </div>
           </div>`;
       } else {
-        // 🕓 NON-GRADED (Pending)
         subject = `Assessment Submitted (Pending Grading): ${assessment.title}`;
         html = `
           <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f7fb;">
@@ -211,9 +194,27 @@ export const submission = async (req, res) => {
           </div>`;
       }
 
+      // ✅ Respect guardian email preferences
+      const preferences = student.guardianEmailPreferences || {
+        submission: true,
+        grading: true,
+        announcement: true,
+        assessments: true,
+      };
+
+      const notificationType = graded ? "grading" : "submission";
+      const recipients = [student.email];
+
+      if (
+        student.guardianEmails?.length > 0 &&
+        preferences[notificationType]
+      ) {
+        recipients.push(...student.guardianEmails);
+      }
+
       const mailOptions = {
         from: `"Acewall Scholars" <support@acewallscholars.org>`,
-        to: [student.email, ...(student.guardianEmails || [])],
+        to: recipients,
         subject,
         html,
       };
@@ -231,7 +232,10 @@ export const submission = async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Error submitting assessment", error: err.message });
+    res.status(500).json({
+      message: "Error submitting assessment",
+      error: err.message,
+    });
   }
 };
 
@@ -398,7 +402,7 @@ export const getSubmissionsofAssessment_forTeacher = async (req, res) => {
 export const teacherGrading = async (req, res) => {
   const { submissionId } = req.params;
   const manualGrades = req.body;
-  const totalCourseMarks = req.query.totalCourseMarks
+  const totalCourseMarks = req.query.totalCourseMarks;
 
   try {
     const submission = await Submission.findById(submissionId).populate("studentId");
@@ -406,26 +410,25 @@ export const teacherGrading = async (req, res) => {
       return res.status(404).json({ message: "Submission not found" });
     }
 
-    // submission.totalScore = 0;
+    // Reset totalScore
+    submission.totalScore = 0;
 
     // ✅ Grade each manually graded question
     for (const questionId in manualGrades) {
       const { awardedPoints, maxPoints } = manualGrades[questionId];
 
-      if (awardedPoints > maxPoints) {
+      if (awardedPoints > maxPoints || awardedPoints < 0) {
         return res.status(400).json({
-          message: `Points for question ${questionId} can't exceed max points.`,
-        });
-      } else if (awardedPoints < 0) {
-        return res.status(400).json({
-          message: `Points for question ${questionId} can't be negative.`,
+          message: `Points for question ${questionId} must be between 0 and ${maxPoints}.`,
         });
       }
 
-      const isCorrect = awardedPoints >= maxPoints / 2;
-      const answer = submission.answers.find((a) => String(a.questionId) === questionId);
+      const answer = submission.answers.find(
+        (a) => String(a.questionId) === questionId
+      );
 
       if (answer) {
+        const isCorrect = awardedPoints >= maxPoints / 2;
         answer.pointsAwarded = awardedPoints;
         answer.isCorrect = isCorrect;
         answer.requiresManualCheck = false;
@@ -450,7 +453,6 @@ export const teacherGrading = async (req, res) => {
     // ✅ Concept tracking
     const masteredConcept = [];
     const needAssistantconcepts = [];
-
     for (const ans of submission.answers) {
       const question = assessment.questions.find(
         (q) => q._id.toString() === ans.questionId.toString()
@@ -458,25 +460,18 @@ export const teacherGrading = async (req, res) => {
       if (!question) continue;
 
       if (ans.isCorrect) {
-        if (!masteredConcept.includes(question.concept)) {
-          masteredConcept.push(question.concept);
-        }
+        if (!masteredConcept.includes(question.concept)) masteredConcept.push(question.concept);
       } else {
-        if (!needAssistantconcepts.includes(question.concept)) {
+        if (!needAssistantconcepts.includes(question.concept))
           needAssistantconcepts.push(question.concept);
-        }
       }
     }
 
-    // ✅ Prepare lesson/chapter label
+    // ✅ Prepare assessment label
     let assessmentContextText = "";
-    if (lesson && chapter) {
-      assessmentContextText = `Assessment of lesson ${lesson.title}`;
-    } else if (chapter && !lesson) {
-      assessmentContextText = `Assessment of chapter ${chapter.title}`;
-    } else {
-      assessmentContextText = `Assessment`;
-    }
+    if (lesson && chapter) assessmentContextText = `Assessment of lesson ${lesson.title}`;
+    else if (chapter && !lesson) assessmentContextText = `Assessment of chapter ${chapter.title}`;
+    else assessmentContextText = `Assessment`;
 
     // ✅ Email Notification
     if (student?.email) {
@@ -495,7 +490,7 @@ export const teacherGrading = async (req, res) => {
         <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f7fb;">
           <div style="max-width: 600px; margin:auto; background: #fff; border-radius: 10px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.1)">
             <p>Dear ${student.firstName} ${student.lastName},</p>
-            <p>You have just completed ${assessmentContextText}. Your overall score is <strong>${submission.totalScore}/${allcourseMaxPoint}</strong>.</p>
+            <p>You have just completed ${assessmentContextText}. Your overall score is <strong>${submission.totalScore}/${totalCourseMarks}</strong>.</p>
             
             ${
               masteredConcept.length > 0
@@ -526,13 +521,25 @@ export const teacherGrading = async (req, res) => {
         </div>
       `;
 
+      // ✅ Respect guardian email preferences
+      const preferences = student.guardianEmailPreferences || {
+        submission: true,
+        grading: true,
+        announcement: true,
+        assessments: true,
+      };
+
+      const recipients = [student.email];
+      if (student.guardianEmails?.length > 0 && preferences.grading) {
+        recipients.push(...student.guardianEmails);
+      }
+
       const mailOptions = {
         from: `"Acewall Scholars" <support@acewallscholars.org>`,
-        to: [student.email, ...(student.guardianEmails || [])],
+        to: recipients,
         subject,
         html,
       };
-
 
       try {
         await transporter.sendMail(mailOptions);
