@@ -37,7 +37,8 @@ import contactRoutes from "./Routes/Contact.Routes.js";
 import postRoutes from "./Routes/PostRoutes/Post.Routes.js";
 import likesRoutes from "./Routes/PostRoutes/PostLikes.Routes.js";
 import postCommentRoutes from "./Routes/PostRoutes/PostComment.Routes.js";
-import emailNotificationRoutes from "./Routes/EmailNotification.Routes.js"
+import emailNotificationRoutes from "./Routes/EmailNotification.Routes.js";
+import StandardGradingRoutes from "./Routes/StandardGrading.Routes.js";
 import "./cronJobs/assessmentReminder.js";
 
 import path from "path";
@@ -101,6 +102,7 @@ app.use("/api/posts", postRoutes);
 app.use("/api/postlike", likesRoutes);
 app.use("/api/postComment", postCommentRoutes);
 app.use("/api/emailnotification", emailNotificationRoutes)
+app.use("/api/standardGrading", StandardGradingRoutes)
 
 server.listen(PORT, () => {
   connectDB();
