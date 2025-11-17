@@ -4,14 +4,14 @@ import mongoose from "mongoose";
 const StanderdgradingScaleSchema = new mongoose.Schema({
     scale: [
         {
-            grade: Number, // e.g., A, B+, C
+            points: Number, // e.g., A, B+, C
             remarks: String, // e.g., Excellent, Good, Average
-            min: Number, // minimum percentage
-            max: Number, // maximum percentage
+            minPercentage: Number, // minimum percentage
+            maxPercentage: Number, // maximum percentage
         },
     ],
 });
 
-const StandardGrading = mongoose.model("StandardGrading", StanderdgradingScaleSchema);
+const StandardGrading = mongoose.model("StandardGradingScale", StanderdgradingScaleSchema);
 
 export default StandardGrading;

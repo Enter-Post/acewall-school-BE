@@ -1,7 +1,7 @@
 // models/GradingScale.js
 import mongoose from "mongoose";
 
-const StandardgradingScaleSchema = new mongoose.Schema({
+const gradingScaleSchema = new mongoose.Schema({
   scale: [
     {
       grade: String, // e.g., A, B+, C
@@ -12,6 +12,6 @@ const StandardgradingScaleSchema = new mongoose.Schema({
   ],
 });
 
-const StandardGrading = mongoose.model("StandardGrading", StandardgradingScaleSchema);
+const GradingScale = mongoose.model("GradingScale", gradingScaleSchema);
 
-export default StandardGrading;
+export default GradingScale;

@@ -2,7 +2,7 @@ import StandardGrading from "../Models/StandardGrading.model.js";
 
 export const SetStandardGradingScale = async (req, res) => {
     const { scale } = req.body;
-
+    
     if (!Array.isArray(scale) || scale.length === 0) {
         return res.status(400).json({ error: "Scale must be a non-empty array." });
     }
@@ -31,6 +31,8 @@ export const SetStandardGradingScale = async (req, res) => {
 }
 
 export const getStandardGradingScale = async (req, res) => {
+    console.log("Fetching standard grading scale...");
+
     try {
         const scaleDoc = await StandardGrading.findOne();
         const scale = scaleDoc?.scale

@@ -102,7 +102,7 @@ app.use("/api/posts", postRoutes);
 app.use("/api/postlike", likesRoutes);
 app.use("/api/postComment", postCommentRoutes);
 app.use("/api/emailnotification", emailNotificationRoutes)
-app.use("/api/StandardGrading", StandardGradingRoutes)
+app.use("/api/standardGrading", StandardGradingRoutes)
 
 server.listen(PORT, () => {
   connectDB();
