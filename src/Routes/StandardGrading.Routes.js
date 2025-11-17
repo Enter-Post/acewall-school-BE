@@ -1,5 +1,5 @@
 import express from 'express';
-import { getStandardGradingScale } from '../Contollers/StandardGrading.controller.js';
+import { getStandardGradingScale, SetStandardGradingScale } from '../Contollers/StandardGrading.controller.js';
 import { isUser } from '../Middlewares/Auth.middleware.js';
 
 const router = express.Router();
