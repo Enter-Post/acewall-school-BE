@@ -10,5 +10,5 @@ const SemesterSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const Semester = mongoose.model("Semester", SemesterSchema);
+const Semester = mongoose.models.Semester || mongoose.model("Semester", SemesterSchema);
 export default Semester;

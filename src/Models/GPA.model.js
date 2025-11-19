@@ -12,5 +12,5 @@ const GPASchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-const GPA = mongoose.model("GPA", GPASchema);
+const GPA = mongoose.models.GPA || mongoose.model("GPA", GPASchema);
 export default GPA;

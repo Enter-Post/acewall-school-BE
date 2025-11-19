@@ -1,5 +1,6 @@
 import Discussion from "../../Models/discussion.model.js";
 import DiscussionComment from "../../Models/discussionComment.model.js";
+import { updateGradebookOnSubmission } from "../../Utiles/updateGradebookOnSubmission.js";
 
 export const getDiscussionComments = async (req, res) => {
   const { id } = req.params;
@@ -25,11 +26,11 @@ export const getDiscussionComments = async (req, res) => {
       const user = comment.createdby
         ? comment.createdby
         : {
-            firstName: "Deleted",
-            lastName: "User",
-            profileImg: null,
-            role: null,
-          };
+          firstName: "Deleted",
+          lastName: "User",
+          profileImg: null,
+          role: null,
+        };
 
       return {
         ...comment.toObject(),
@@ -103,7 +104,8 @@ export const gradeDiscussionofStd = async (req, res) => {
   const { obtainedMarks } = req.body;
 
   try {
-    const discussion = await Discussion.findById(discID);
+    const discussion = await Discussion.findById(discID)
+      .populate("semester quarter category");
     if (!discussion) {
       return res.status(404).json({ message: "Discussion not found" });
     }
@@ -115,10 +117,10 @@ export const gradeDiscussionofStd = async (req, res) => {
       return res.status(404).json({ message: "Discussion comment not found" });
     }
 
-    // Step 1: Get the student who made the comment
+    // Student who made the comment
     const studentId = discussionComment.createdby;
 
-    // Step 2: Check if any of this student's comments in this discussion are already graded
+    // Prevent grading same student's comment twice
     const alreadyGraded = await DiscussionComment.findOne({
       discussion: discID,
       createdby: studentId,
@@ -131,12 +133,20 @@ export const gradeDiscussionofStd = async (req, res) => {
       });
     }
 
-    // Step 3: Grade the comment
+    // Grade the comment
     discussionComment.gradedBy = req.user._id;
     discussionComment.marksObtained = obtainedMarks;
     discussionComment.isGraded = true;
 
     await discussionComment.save();
+
+    // ⭐ IMPORTANT: UPDATE GRADEBOOK NOW!
+    await updateGradebookOnSubmission(
+      studentId,
+      discussion.course,     // courseId
+      discID,                // itemId
+      "discussion"           // type
+    );
 
     res.status(200).json({ message: "Marks graded successfully" });
   } catch (error) {

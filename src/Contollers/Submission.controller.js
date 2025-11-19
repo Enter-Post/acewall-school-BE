@@ -9,6 +9,7 @@ import { uploadToCloudinary } from "../lib/cloudinary-course.config.js";
 import CourseSch from "../Models/courses.model.sch.js";
 import Lesson from "../Models/lesson.model.sch.js";
 import Chapter from "../Models/chapter.model.sch.js";
+import { updateGradebookOnSubmission } from "../Utiles/updateGradebookOnSubmission.js";
 
 dotenv.config();
 
@@ -130,6 +131,13 @@ export const submission = async (req, res) => {
       graded,
     });
     await submission.save();
+
+    await updateGradebookOnSubmission(
+      submission.studentId,
+      assessment.course,
+      submission.assessment,
+      "assessment"
+    );
 
     // ✅ Email Notification
     const student = await User.findById(studentId);
@@ -406,6 +414,9 @@ export const teacherGrading = async (req, res) => {
 
   try {
     const submission = await Submission.findById(submissionId).populate("studentId");
+
+    const assessment = await Assessment.findById(submission.assessment);
+
     if (!submission) {
       return res.status(404).json({ message: "Submission not found" });
     }
@@ -439,9 +450,19 @@ export const teacherGrading = async (req, res) => {
     submission.graded = true;
     await submission.save();
 
+    console.log(assessment.course, "assessment.course")
+
+    if (submission.graded) {
+      await updateGradebookOnSubmission(
+        submission.studentId,
+        assessment.course,
+        submission.assessment,
+        "assessment"
+      );
+    }
+
     // ✅ Fetch related data
     const student = submission.studentId;
-    const assessment = await Assessment.findById(submission.assessment);
     const course = await CourseSch.findById(assessment.course);
 
     // Find chapter and lesson
@@ -492,28 +513,26 @@ export const teacherGrading = async (req, res) => {
             <p>Dear ${student.firstName} ${student.lastName},</p>
             <p>You have just completed ${assessmentContextText}. Your overall score is <strong>${submission.totalScore}/${totalCourseMarks}</strong>.</p>
             
-            ${
-              masteredConcept.length > 0
-                ? `<p>Congratulations, you have mastered the following concepts:</p>
+            ${masteredConcept.length > 0
+          ? `<p>Congratulations, you have mastered the following concepts:</p>
                    <ul>${masteredConcept.map((c) => `<li>${c}</li>`).join("")}</ul>`
-                : `<p>You have not yet mastered any concepts in this assessment.</p>`
-            }
+          : `<p>You have not yet mastered any concepts in this assessment.</p>`
+        }
 
-            ${
-              needAssistantconcepts.length > 0
-                ? `<p>You have not mastered and need more assistance on the following concepts:</p>
+            ${needAssistantconcepts.length > 0
+          ? `<p>You have not mastered and need more assistance on the following concepts:</p>
                    <ul>${needAssistantconcepts.map((c) => `<li>${c}</li>`).join("")}</ul>
                    <p>Please visit the following lessons within your portal to review:</p>
                    <ul>${needAssistantconcepts
-                     .map(
-                       (c) =>
-                         `<li><a href="https://acewallscholars.org/lessons/${encodeURIComponent(
-                           c
-                         )}" target="_blank">${c}</a></li>`
-                     )
-                     .join("")}</ul>`
-                : ""
-            }
+            .map(
+              (c) =>
+                `<li><a href="https://acewallscholars.org/lessons/${encodeURIComponent(
+                  c
+                )}" target="_blank">${c}</a></li>`
+            )
+            .join("")}</ul>`
+          : ""
+        }
 
             <p>Keep up the great work!</p>
             <p>Regards,<br>Acewall Scholars Team</p>

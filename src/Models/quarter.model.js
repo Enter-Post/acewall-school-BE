@@ -15,5 +15,5 @@ const QuarterSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const Quarter = mongoose.model("Quarter", QuarterSchema);
+const Quarter = mongoose.models.Quarter || mongoose.model("Quarter", QuarterSchema);
 export default Quarter;
