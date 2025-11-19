@@ -20,6 +20,7 @@ import {
   getunPurchasedCourseByIdStdPrew,
   searchCoursebycode,
   toggleCourseComments,
+  toggleGradingSystem,
   
 
 } from "../../Contollers/CourseControllers/courses.controller.sch.js";
@@ -78,6 +79,6 @@ router.put(
   editCourseInfo
 ); router.put(`/thumbnail/:courseId`, isUser, upload.single("thumbnail"), thumnailChange);
 router.get("/searchCoursebycode/:courseCode", isUser, searchCoursebycode);
-
+router.put("/course/:courseId/toggle-grading", toggleGradingSystem);
 export default router;
 

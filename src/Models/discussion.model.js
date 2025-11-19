@@ -60,6 +60,6 @@ const discussionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const Discussion = mongoose.model("Discussion", discussionSchema);
+const Discussion = mongoose.models.Discussion || mongoose.model("Discussion", discussionSchema);
 
 export default Discussion;
