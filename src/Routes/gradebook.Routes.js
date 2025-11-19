@@ -7,6 +7,7 @@ import {
   setGradingScale,
   getGradebookForCourse
 } from "../Contollers/grade.controller.js";
+import { getStudentGradebooksFormatted } from "../Contollers/gradebookUpdated.controller.js";
 
 const router = express.Router();
 
@@ -16,4 +17,7 @@ router.post("/gradingScale", isUser, setGradingScale);
 router.get("/getGradingScale", isUser, getGradingScale);
 router.get("/course/:courseId", getGradebookForCourse);
 
+
+//////updated APIS
+router.get("/getStudentGradebooksFormatted", isUser, getStudentGradebooksFormatted)
 export default router;
