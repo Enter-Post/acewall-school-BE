@@ -51,7 +51,7 @@ const SchCourseSchema = new mongoose.Schema(
     ],
     published: { type: Boolean, default: false },
     archivedDate: { type: Date },
-    courseCode: { type: String, unique: true, required: true },
+    courseCode: { type: String, unique: true },
     commentsEnabled: { type: Boolean, default: true },
     gradingSystem: { type: String, enum: ["normalGrading", "StandardGrading"], default: "normalGrading" }
   },
