@@ -14,6 +14,36 @@ import crypto from "crypto";
 import nodemailer from "nodemailer";
 
 
+export const toggleGradingSystem = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    // Find course
+    const course = await CourseSch.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    // Toggle logic
+    course.gradingSystem =
+      course.gradingSystem === "normalGrading"
+        ? "StandardGrading"
+        : "normalGrading";
+
+    await course.save();
+
+    res.status(200).json({
+      message: "Grading system updated successfully",
+      gradingSystem: course.gradingSystem,
+    });
+  } catch (error) {
+    console.error("Toggle grading error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
 // PATCH /admin/toggle-all-comments
 export const toggleAllCoursesComments = async (req, res) => {
   const { enable } = req.body; // boolean: true/false
