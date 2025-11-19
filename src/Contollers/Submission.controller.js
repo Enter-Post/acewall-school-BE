@@ -178,9 +178,10 @@ export const submission = async (req, res) => {
                      <ul>${needAssistantconcepts
               .map(
                 (c) =>
-                  `<li><a href="https://acewallscholars.org/lessons/${encodeURIComponent(
-                    c
-                  )}" target="_blank">${c}</a></li>`
+                  // `<li><a href="https://acewallscholars.org/lessons/${encodeURIComponent(
+                  //   c
+                  // )}" target="_blank">${c}</a></li>`
+                  `<li>${c}</li>`
               )
               .join("")}</ul>`
             : ""
@@ -526,9 +527,11 @@ export const teacherGrading = async (req, res) => {
                    <ul>${needAssistantconcepts
             .map(
               (c) =>
-                `<li><a href="https://acewallscholars.org/lessons/${encodeURIComponent(
-                  c
-                )}" target="_blank">${c}</a></li>`
+                // `<li><a href="https://acewallscholars.org/lessons/${encodeURIComponent(
+                //   c
+                // )}" target="_blank">${c}</a></li>`
+
+                `<li>${c}</li>`
             )
             .join("")}</ul>`
           : ""
