@@ -1,4 +1,4 @@
-import Gradebook from "../Models/gradebook.model.js";
+import Gradebook from "../Models/Gradebook.model.js";
 import GradingScale from "../Models/grading-scale.model.js";
 import GPA from "../Models/GPA.model.js";
 import StandardGrading from "../Models/StandardGrading.model.js";
