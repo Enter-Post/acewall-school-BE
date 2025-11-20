@@ -1,14 +1,14 @@
 import Assessment from "../Models/Assessment.model.js";
 import Discussion from "../Models/discussion.model.js";
-import Semester from "../Models/Semester.model.js";
-import Quarter from "../Models/Quarter.model.js";
+import Semester from "../Models/semester.model.js";
+import Quarter from "../Models/quarter.model.js";
 import DiscussionComment from "../Models/discussionComment.model.js";
-import Gradebook from "../Models/gradebook.model.js";
+import Gradebook from "../Models/Gradebook.model.js";
 import AssessmentCategory from "../Models/assessment-category.js";
 import Submission from "../Models/submission.model.js";
 import StandardGrading from "../Models/StandardGrading.model.js";
 import GradingScale from "../Models/grading-scale.model.js";
-import GPA from "../Models/gpa.model.js";
+import GPA from "../Models/GPA.model.js";
 
 /**
  * FAST UPDATE — Only updates the specific assessment/discussion that changed,
