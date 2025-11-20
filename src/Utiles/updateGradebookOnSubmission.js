@@ -1,5 +1,5 @@
 import Assessment from "../Models/Assessment.model.js";
-import Discussion from "../Models/Discussion.model.js";
+import Discussion from "../Models/discussion.model.js";
 import Semester from "../Models/Semester.model.js";
 import Quarter from "../Models/Quarter.model.js";
 import DiscussionComment from "../Models/discussionComment.model.js";
