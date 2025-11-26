@@ -16,7 +16,7 @@ export const sendSupportMail = async (req, res) => {
       secure: true, // true for 465, false for 587
       auth: {
         user: "support@acewallscholars.org",
-        pass: "ecgdupvzkfmbqrrq",
+        pass: "dmwjwyfxaccrdxwi",
       },
     });
 
@@ -82,7 +82,7 @@ export const sendContactMail = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "ecgdupvzkfmbqrrq",
+        pass: "dmwjwyfxaccrdxwi",
       },
     });
 

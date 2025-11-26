@@ -160,7 +160,7 @@ export const initiateSignup = async (req, res) => {
       secure: true, // true for 465, false for 587
       auth: {
         user: "support@acewallscholars.org",
-        pass: "ecgdupvzkfmbqrrq",
+        pass: "dmwjwyfxaccrdxwi",
       },
     });
     await transporter.sendMail({
@@ -298,7 +298,7 @@ export const resendOTP = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "ecgdupvzkfmbqrrq",
+        pass: "dmwjwyfxaccrdxwi",
       },
     });
 
@@ -460,7 +460,7 @@ export const verifyPhoneOtp = async (req, res) => {
         secure: true,
         auth: {
           user: "support@acewallscholars.org",
-          pass: "ecgdupvzkfmbqrrq",
+          pass: "dmwjwyfxaccrdxwi",
         },
       });
 
@@ -758,7 +758,7 @@ export const forgetPassword = async (req, res) => {
       secure: true, // true for 465, false for 587
       auth: {
         user: "support@acewallscholars.org",
-        pass: "ecgdupvzkfmbqrrq",
+        pass: "dmwjwyfxaccrdxwi",
       },
     });
 
@@ -1429,7 +1429,7 @@ export const updatePasswordOTP = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "ecgdupvzkfmbqrrq",
+        pass: "dmwjwyfxaccrdxwi",
       },
     });
 
@@ -1569,7 +1569,7 @@ export const updateEmailOTP = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "ecgdupvzkfmbqrrq",
+        pass: "dmwjwyfxaccrdxwi",
       },
     });
 
@@ -1704,7 +1704,7 @@ export const updateEmailOTPById = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "ecgdupvzkfmbqrrq",
+        pass: "dmwjwyfxaccrdxwi",
       },
     });
 
@@ -1858,7 +1858,7 @@ export const updatePasswordOTPById = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "ecgdupvzkfmbqrrq",
+        pass: "dmwjwyfxaccrdxwi",
       },
     });
 

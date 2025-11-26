@@ -148,7 +148,7 @@ export const submission = async (req, res) => {
         secure: true,
         auth: {
           user: "support@acewallscholars.org",
-          pass: "ecgdupvzkfmbqrrq",
+          pass: "dmwjwyfxaccrdxwi",
         },
       });
 
@@ -503,7 +503,7 @@ export const teacherGrading = async (req, res) => {
         secure: true,
         auth: {
           user: "support@acewallscholars.org",
-          pass: "ecgdupvzkfmbqrrq",
+          pass: "dmwjwyfxaccrdxwi",
         },
       });
 

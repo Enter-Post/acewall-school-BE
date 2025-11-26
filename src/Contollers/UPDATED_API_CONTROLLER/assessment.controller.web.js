@@ -148,7 +148,7 @@ export const createAssessment_updated = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "ecgdupvzkfmbqrrq",
+        pass: "dmwjwyfxaccrdxwi",
       },
     });
 

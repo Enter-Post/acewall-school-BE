@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
   secure: true,
   auth: {
     user: "support@acewallscholars.org",
-    pass: "ecgdupvzkfmbqrrq", // ⚠️ use environment variable in production
+    pass: "dmwjwyfxaccrdxwi", // ⚠️ use environment variable in production
   },
 });
 
