@@ -2,6 +2,7 @@ import Chat from "../Models/AIChat.model.js";
 import model from "../../utils/gemini.js";
 import difficultyPrompts from "../../utils/difficultyPrompts.js";
 import AIChat from "../Models/AIChat.model.js";
+import crypto from "crypto";
 
 // Function to clean Markdown and unwanted characters
 function cleanText(text) {
@@ -147,6 +148,8 @@ Reply only with: yes or no
         const isMeaningful =
             validResult.response.text().trim().toLowerCase() === "yes";
 
+        console.log(isMeaningful, "isMeaningful")
+
         let suggestedQuestions = [];
 
         // 9. Generate suggested questions if suitable
@@ -186,7 +189,9 @@ ${difficultyPrompts[difficulty]}
 
         // 11. Response
         res.json({
+            id: crypto.randomBytes(10).toString('hex'),
             success: true,
+            question,
             answer,
             suggestedQuestions
         });
