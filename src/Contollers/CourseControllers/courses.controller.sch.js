@@ -13,7 +13,6 @@ import Rating from "../../Models/rating.model.js";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 
-
 export const toggleGradingSystem = async (req, res) => {
   try {
     const { courseId } = req.params;
@@ -42,8 +41,6 @@ export const toggleGradingSystem = async (req, res) => {
   }
 };
 
-
-
 // PATCH /admin/toggle-all-comments
 export const toggleAllCoursesComments = async (req, res) => {
   const { enable } = req.body; // boolean: true/false
@@ -57,7 +54,9 @@ export const toggleAllCoursesComments = async (req, res) => {
     const result = await CourseSch.updateMany({}, { commentsEnabled: enable });
 
     res.status(200).json({
-      message: `Comments & Ratings ${enable ? "enabled" : "disabled"} for all courses`,
+      message: `Comments & Ratings ${
+        enable ? "enabled" : "disabled"
+      } for all courses`,
       commentsEnabled: enable,
       modifiedCount: result.modifiedCount, // optional: how many courses were updated
     });
@@ -69,8 +68,6 @@ export const toggleAllCoursesComments = async (req, res) => {
     });
   }
 };
-
-
 
 export const toggleCourseComments = async (req, res) => {
   const { courseId } = req.params;
@@ -86,16 +83,19 @@ export const toggleCourseComments = async (req, res) => {
     await course.save();
 
     res.status(200).json({
-      message: `Comments & Ratings ${enable ? "enabled" : "disabled"} successfully`,
+      message: `Comments & Ratings ${
+        enable ? "enabled" : "disabled"
+      } successfully`,
       commentsEnabled: enable,
     });
     console.log(enable);
   } catch (error) {
     console.error("Error toggling comments:", error);
-    res.status(500).json({ message: "Internal server error", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
   }
 };
-
 
 export const createCourseSch = async (req, res) => {
   const createdby = req.user._id;
@@ -939,7 +939,7 @@ export const getallcoursesforteacher = async (req, res) => {
         $group: {
           _id: "$studentDetails._id",
           firstName: { $first: "$studentDetails.firstName" },
-          middleName: { $first: "$studentDetails.middleName" }, 
+          middleName: { $first: "$studentDetails.middleName" },
           lastName: { $first: "$studentDetails.lastName" },
           Bio: { $first: "$studentDetails.Bio" },
           profileImg: { $first: "$studentDetails.profileImg" },
