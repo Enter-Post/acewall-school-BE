@@ -898,19 +898,20 @@ export const getCoursesforadminofteacher = async (req, res) => {
 
 export const getallcoursesforteacher = async (req, res) => {
   const teacherId = req.user._id;
-  const { courseTitle, page = 1, limit = 8 } = req.query;
+  const { courseTitle, studentName, page = 1, limit = 8 } = req.query;
 
   try {
     const matchStage = {
       "courseDetails.createdby": new mongoose.Types.ObjectId(teacherId),
     };
 
-    // Apply course title filter if present
+    // Apply course title filter (partial match)
     if (courseTitle) {
-      matchStage["courseDetails.courseTitle"] = courseTitle;
+      matchStage["courseDetails.courseTitle"] = { $regex: courseTitle, $options: "i" };
     }
 
     const studentsWithCourses = await Enrollment.aggregate([
+      // Join course details
       {
         $lookup: {
           from: "coursesches",
@@ -921,6 +922,8 @@ export const getallcoursesforteacher = async (req, res) => {
       },
       { $unwind: "$courseDetails" },
       { $match: matchStage },
+
+      // Join student details
       {
         $lookup: {
           from: "users",
@@ -930,11 +933,30 @@ export const getallcoursesforteacher = async (req, res) => {
         },
       },
       { $unwind: "$studentDetails" },
+
+      // Exclude teacher themselves
       {
         $match: {
           "studentDetails._id": { $ne: new mongoose.Types.ObjectId(teacherId) },
         },
       },
+
+      // Apply student name search if provided (partial match)
+      ...(studentName
+        ? [
+            {
+              $match: {
+                $or: [
+                  { "studentDetails.firstName": { $regex: studentName, $options: "i" } },
+                  { "studentDetails.middleName": { $regex: studentName, $options: "i" } },
+                  { "studentDetails.lastName": { $regex: studentName, $options: "i" } },
+                ],
+              },
+            },
+          ]
+        : []),
+
+      // Group by student
       {
         $group: {
           _id: "$studentDetails._id",
@@ -959,9 +981,10 @@ export const getallcoursesforteacher = async (req, res) => {
           },
         },
       },
-      {
-        $sort: { createdAt: -1 },
-      },
+
+      { $sort: { createdAt: -1 } },
+
+      // Pagination
       {
         $facet: {
           data: [
@@ -973,8 +996,8 @@ export const getallcoursesforteacher = async (req, res) => {
       },
     ]);
 
-    const students = studentsWithCourses[0].data;
-    const totalCount = studentsWithCourses[0].totalCount[0]?.count || 0;
+    const students = studentsWithCourses[0]?.data || [];
+    const totalCount = studentsWithCourses[0]?.totalCount[0]?.count || 0;
 
     return res.status(200).json({
       students,
