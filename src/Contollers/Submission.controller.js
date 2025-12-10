@@ -147,8 +147,8 @@ export const submission = async (req, res) => {
         port: 465,
         secure: true,
         auth: {
-          user: process.env.MAIL_USER,
-          pass: process.env.MAIL_PASS,
+          user: "support@acewallscholars.org",
+          pass: "dmwjwyfxaccrdxwi",
         },
       });
 
@@ -502,8 +502,8 @@ export const teacherGrading = async (req, res) => {
         port: 465,
         secure: true,
         auth: {
-          user: process.env.MAIL_USER,
-          pass: process.env.MAIL_PASS,
+          user: "support@acewallscholars.org",
+          pass: "dmwjwyfxaccrdxwi",
         },
       });
 

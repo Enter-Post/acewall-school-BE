@@ -19,8 +19,8 @@ export const sendSchoolcontactmail = async (req, res) => {
             port: process.env.MAIL_PORT,
             secure: true,
             auth: {
-                user: process.env.MAIL_USER,
-                pass: process.env.MAIL_PASS,
+                user: "support@acewallscholars.org",
+                pass: "dmwjwyfxaccrdxwi",
             },
         });
 

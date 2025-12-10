@@ -147,8 +147,8 @@ export const createAssessment_updated = async (req, res) => {
       port: 465,
       secure: true,
       auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
+        user: "support@acewallscholars.org",
+        pass: "dmwjwyfxaccrdxwi",
       },
     });
 

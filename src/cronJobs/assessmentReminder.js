@@ -11,8 +11,8 @@ const transporter = nodemailer.createTransport({
   port: 465,
   secure: true,
   auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS, // ⚠️ use environment variable in production
+    user: "support@acewallscholars.org",
+    pass: "dmwjwyfxaccrdxwi", // ⚠️ use environment variable in production
   },
 });
 
