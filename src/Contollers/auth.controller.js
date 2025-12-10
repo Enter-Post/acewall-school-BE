@@ -159,8 +159,8 @@ export const initiateSignup = async (req, res) => {
       port: 465,
       secure: true, // true for 465, false for 587
       auth: {
-        user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
     });
     await transporter.sendMail({
@@ -297,8 +297,8 @@ export const resendOTP = async (req, res) => {
       port: 465,
       secure: true,
       auth: {
-        user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
     });
 
@@ -459,8 +459,8 @@ export const verifyPhoneOtp = async (req, res) => {
         port: 465,
         secure: true,
         auth: {
-          user: "support@acewallscholars.org",
-          pass: "dmwjwyfxaccrdxwi",
+          user: process.env.MAIL_USER,
+          pass: process.env.MAIL_PASS,
         },
       });
 
@@ -757,8 +757,8 @@ export const forgetPassword = async (req, res) => {
       port: 465,
       secure: true, // true for 465, false for 587
       auth: {
-        user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
     });
 
@@ -1424,8 +1424,8 @@ export const updatePasswordOTP = async (req, res) => {
       port: 465,
       secure: true,
       auth: {
-        user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
     });
 
@@ -1564,8 +1564,8 @@ export const updateEmailOTP = async (req, res) => {
       port: 465,
       secure: true,
       auth: {
-        user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
     });
 
@@ -1699,8 +1699,8 @@ export const updateEmailOTPById = async (req, res) => {
       port: 465,
       secure: true,
       auth: {
-        user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
     });
 
@@ -1853,8 +1853,8 @@ export const updatePasswordOTPById = async (req, res) => {
       port: 465,
       secure: true,
       auth: {
-        user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
     });
 
