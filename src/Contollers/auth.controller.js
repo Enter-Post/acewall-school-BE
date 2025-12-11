@@ -1331,10 +1331,6 @@ export const deleteUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (user.role !== "student") {
-      return res.status(403).json({ message: "Only students can be deleted" });
-    }
-
     // Optional: delete profile image
     if (user.profileImg?.publicId) {
       console.log(`Deleting profile image: ${user.profileImg.publicId}`);
