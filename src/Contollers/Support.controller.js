@@ -15,8 +15,8 @@ export const sendSupportMail = async (req, res) => {
       port: 465,
       secure: true, // true for 465, false for 587
       auth: {
-        user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
     });
 
@@ -81,8 +81,8 @@ export const sendContactMail = async (req, res) => {
       port: 465,
       secure: true,
       auth: {
-        user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
     });
 
