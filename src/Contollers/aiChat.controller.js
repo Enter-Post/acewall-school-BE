@@ -17,7 +17,13 @@ export const askAI = async (req, res) => {
     const userId = req.user._id;
     try {
         const { question, difficulty, context } = req.body;
-        
+        const file = req.file;
+
+        console.log(file, "file")
+        console.log(req.body, "req.body")
+
+        return
+
         let conversationContext = "";
         let messageContext = null;
         let shouldUseContext = false;
@@ -201,13 +207,11 @@ Rules:
 export const getChatHistory = async (req, res) => {
     try {
         const limit = req.query.limit ? parseInt(req.query.limit) : 10;
-
         const userId = req.user._id;
         const chats = await AIChat.find({ userId }).limit(limit)
 
         res.json({ success: true, chats });
 
-        console.log(chats, "chats")
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "getChatHistory" });

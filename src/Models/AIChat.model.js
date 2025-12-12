@@ -6,6 +6,12 @@ const AIChatSchema = new mongoose.Schema({
         text: String,
         sender: String
     },
+    file: {
+        url: String,
+        filename: String,
+        publicId: String,
+        sender: String
+    },
     answer: {
         text: String,
         sender: String
