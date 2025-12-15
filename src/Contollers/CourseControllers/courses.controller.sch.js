@@ -13,7 +13,6 @@ import Rating from "../../Models/rating.model.js";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 
-
 export const toggleGradingSystem = async (req, res) => {
   try {
     const { courseId } = req.params;
@@ -42,8 +41,6 @@ export const toggleGradingSystem = async (req, res) => {
   }
 };
 
-
-
 // PATCH /admin/toggle-all-comments
 export const toggleAllCoursesComments = async (req, res) => {
   const { enable } = req.body; // boolean: true/false
@@ -57,7 +54,9 @@ export const toggleAllCoursesComments = async (req, res) => {
     const result = await CourseSch.updateMany({}, { commentsEnabled: enable });
 
     res.status(200).json({
-      message: `Comments & Ratings ${enable ? "enabled" : "disabled"} for all courses`,
+      message: `Comments & Ratings ${
+        enable ? "enabled" : "disabled"
+      } for all courses`,
       commentsEnabled: enable,
       modifiedCount: result.modifiedCount, // optional: how many courses were updated
     });
@@ -69,8 +68,6 @@ export const toggleAllCoursesComments = async (req, res) => {
     });
   }
 };
-
-
 
 export const toggleCourseComments = async (req, res) => {
   const { courseId } = req.params;
@@ -86,16 +83,19 @@ export const toggleCourseComments = async (req, res) => {
     await course.save();
 
     res.status(200).json({
-      message: `Comments & Ratings ${enable ? "enabled" : "disabled"} successfully`,
+      message: `Comments & Ratings ${
+        enable ? "enabled" : "disabled"
+      } successfully`,
       commentsEnabled: enable,
     });
     console.log(enable);
   } catch (error) {
     console.error("Error toggling comments:", error);
-    res.status(500).json({ message: "Internal server error", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
   }
 };
-
 
 export const createCourseSch = async (req, res) => {
   const createdby = req.user._id;
@@ -898,19 +898,20 @@ export const getCoursesforadminofteacher = async (req, res) => {
 
 export const getallcoursesforteacher = async (req, res) => {
   const teacherId = req.user._id;
-  const { courseTitle, page = 1, limit = 8 } = req.query;
+  const { courseTitle, studentName, page = 1, limit = 8 } = req.query;
 
   try {
     const matchStage = {
       "courseDetails.createdby": new mongoose.Types.ObjectId(teacherId),
     };
 
-    // Apply course title filter if present
+    // Apply course title filter (partial match)
     if (courseTitle) {
-      matchStage["courseDetails.courseTitle"] = courseTitle;
+      matchStage["courseDetails.courseTitle"] = { $regex: courseTitle, $options: "i" };
     }
 
     const studentsWithCourses = await Enrollment.aggregate([
+      // Join course details
       {
         $lookup: {
           from: "coursesches",
@@ -921,6 +922,8 @@ export const getallcoursesforteacher = async (req, res) => {
       },
       { $unwind: "$courseDetails" },
       { $match: matchStage },
+
+      // Join student details
       {
         $lookup: {
           from: "users",
@@ -930,16 +933,35 @@ export const getallcoursesforteacher = async (req, res) => {
         },
       },
       { $unwind: "$studentDetails" },
+
+      // Exclude teacher themselves
       {
         $match: {
           "studentDetails._id": { $ne: new mongoose.Types.ObjectId(teacherId) },
         },
       },
+
+      // Apply student name search if provided (partial match)
+      ...(studentName
+        ? [
+            {
+              $match: {
+                $or: [
+                  { "studentDetails.firstName": { $regex: studentName, $options: "i" } },
+                  { "studentDetails.middleName": { $regex: studentName, $options: "i" } },
+                  { "studentDetails.lastName": { $regex: studentName, $options: "i" } },
+                ],
+              },
+            },
+          ]
+        : []),
+
+      // Group by student
       {
         $group: {
           _id: "$studentDetails._id",
           firstName: { $first: "$studentDetails.firstName" },
-          middleName: { $first: "$studentDetails.middleName" }, 
+          middleName: { $first: "$studentDetails.middleName" },
           lastName: { $first: "$studentDetails.lastName" },
           Bio: { $first: "$studentDetails.Bio" },
           profileImg: { $first: "$studentDetails.profileImg" },
@@ -959,9 +981,10 @@ export const getallcoursesforteacher = async (req, res) => {
           },
         },
       },
-      {
-        $sort: { createdAt: -1 },
-      },
+
+      { $sort: { createdAt: -1 } },
+
+      // Pagination
       {
         $facet: {
           data: [
@@ -973,8 +996,8 @@ export const getallcoursesforteacher = async (req, res) => {
       },
     ]);
 
-    const students = studentsWithCourses[0].data;
-    const totalCount = studentsWithCourses[0].totalCount[0]?.count || 0;
+    const students = studentsWithCourses[0]?.data || [];
+    const totalCount = studentsWithCourses[0]?.totalCount[0]?.count || 0;
 
     return res.status(200).json({
       students,

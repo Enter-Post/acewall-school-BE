@@ -398,7 +398,10 @@ export const allAssessmentByTeacher = async (req, res) => {
       .select(
         "dueDate title description course chapter lesson createdAt category type"
       )
-      .populate({ path: "course", select: "courseTitle" })
+      .populate({
+        path: "course",
+        select: "courseTitle thumbnail" // <-- include thumbnail
+      })
       .populate({ path: "chapter", select: "title" })
       .populate({ path: "lesson", select: "title" })
       .populate({ path: "category", select: "name" });
@@ -411,6 +414,7 @@ export const allAssessmentByTeacher = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
 export const getAllassessmentforStudent = async (req, res) => {
   const studentId = req.user._id;
 
@@ -508,6 +512,7 @@ export const getAllassessmentforStudent = async (req, res) => {
           source: 1,
           "course._id": 1,
           "course.courseTitle": 1,
+          "course.thumbnail": 1,
           "chapter._id": 1,
           "chapter.title": 1,
           "lesson._id": 1,
@@ -631,7 +636,7 @@ export const getAllassessmentforStudent = async (req, res) => {
     console.error("Error fetching assessments/discussions for student:", err);
     res.status(500).json({ error: "Internal Server Error" });
   }
-};
+};  
 
 export const editAssessmentInfo = async (req, res) => {
   const { assessmentId } = req.params;
