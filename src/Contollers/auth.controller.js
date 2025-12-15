@@ -15,6 +15,71 @@ import multer from "multer";
 import xlsx from "xlsx";
 import OPT from "../Models/opt.model.js";
 
+
+export const cleverCallback = async (req, res) => {
+  const { code } = req.query;
+
+  if (!code) {
+    return res.status(400).send("No code provided");
+  }
+
+  try {
+    // ----------------- Exchange code for access token -----------------
+    const tokenResponse = await axios.post(
+      "https://clever.com/oauth/tokens",
+      {
+        code,
+        grant_type: "authorization_code",
+        redirect_uri: process.env.CLEVER_REDIRECT_URI,
+      },
+      {
+        headers: {
+          Authorization: `Basic ${Buffer.from(
+            `${process.env.CLEVER_CLIENT_ID}:${process.env.CLEVER_CLIENT_SECRET}`
+          ).toString("base64")}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      }
+    );
+
+    const { access_token } = tokenResponse.data;
+
+    // ----------------- Fetch user info from Clever -----------------
+    const userResponse = await axios.get("https://api.clever.com/v3.0/me", {
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+        Accept: "application/json",
+      },
+    });
+
+    const cleverUser = userResponse.data.data;
+
+    // ----------------- Check if user exists in LMS -----------------
+    let user = await User.findOne({ email: cleverUser.email });
+    if (!user) {
+      // Create new user if not exists
+      user = await User.create({
+        email: cleverUser.email,
+        firstName: cleverUser.name.first,
+        lastName: cleverUser.name.last,
+        role: cleverUser.roles.teacher ? "teacher" : "student",
+        password: Math.random().toString(36).slice(-10), // random password for SSO
+      });
+    }
+
+    // ----------------- Generate JWT and set cookie -----------------
+    const token = generateToken(user, user.role, req, res);
+
+    // ----------------- Redirect to LMS frontend -----------------
+    res.redirect(`${process.env.LMS_FRONTEND_URL}/home`);
+  } catch (err) {
+    console.error("Clever SSO Error:", err.response?.data || err.message);
+    res.status(500).send("SSO Login failed");
+  }
+};
+
+
 export const bulkSignup = async (req, res) => {
   try {
     const role = req.body.role;
@@ -1025,21 +1090,39 @@ export const checkUser = async (req, res) => {
 
 export const allTeacher = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1; // default to page 1
-    const limit = parseInt(req.query.limit) || 6; // default to 6 per page
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 6;
     const skip = (page - 1) * limit;
     const search = req.query.search || "";
+    const courseId = req.query.courseId || ""; // course filter
 
     // Base query
-    const query = { role: "teacher" };
+    let query = { role: "teacher" };
 
-    // If search provided, filter by firstName, lastName, or email (case-insensitive)
+    // Search filter
     if (search) {
       query.$or = [
         { firstName: { $regex: search, $options: "i" } },
         { lastName: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } },
       ];
+    }
+
+    // If courseId is provided, filter teachers who created that course
+    if (courseId) {
+      // Find all teachers who created the selected course
+      const course = await CourseSch.findById(courseId);
+      if (course) {
+        query._id = course.createdby; // filter by teacher who created this course
+      } else {
+        // No course found, return empty
+        return res.status(200).json({
+          total: 0,
+          currentPage: page,
+          totalPages: 1,
+          teachers: [],
+        });
+      }
     }
 
     const totalTeachers = await User.countDocuments(query);
@@ -1052,15 +1135,14 @@ export const allTeacher = async (req, res) => {
 
     const formattedTeachers = await Promise.all(
       teachers.map(async (teacher) => {
-        const courseCount = await CourseSch.countDocuments({
-          createdby: teacher._id,
-        });
-
+        // Get all courses of the teacher
+        const courses = await CourseSch.find({ createdby: teacher._id }).select("_id");
         return {
           name: `${teacher.firstName} ${teacher.lastName}`,
           email: teacher.email,
           joiningDate: teacher.createdAt,
-          courses: courseCount,
+          courses: courses.length,
+          courseIds: courses.map((c) => c._id), // new field
           profileImg: teacher.profileImg,
           id: teacher._id,
         };
@@ -1077,6 +1159,7 @@ export const allTeacher = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
+ 
 
 export const allStudent = async (req, res) => {
   try {

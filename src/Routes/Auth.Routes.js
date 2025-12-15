@@ -37,6 +37,7 @@ import {
   previewSignIn,
   previewSignOut,
   updateParentEmail,
+  cleverCallback,
 } from "../Contollers/auth.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { upload } from "../lib/multer.config.js";
@@ -55,6 +56,7 @@ router.post("/verifyPhoneOTP", verifyPhoneOtp);
 router.post("/resendPhoneOTP", resendPhoneOTP);
 router.post("/resendOTP", resendOTP);
 
+router.get("/clever/callback", cleverCallback);
 router.post("/login", login);
 router.post("/forgotPassword", forgetPassword);
 router.post("/verifyForgotPassOTP", verifyOTPForgotPassword);

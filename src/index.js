@@ -41,6 +41,7 @@ import postCommentRoutes from "./Routes/PostRoutes/PostComment.Routes.js";
 import emailNotificationRoutes from "./Routes/EmailNotification.Routes.js";
 import StandardGradingRoutes from "./Routes/StandardGrading.Routes.js";
 import aiChatRoutes from "./Routes/AIChat.Routes.js";
+import cleverRoutes from "./Routes/clever.Routes.js";
 import "./cronJobs/assessmentReminder.js";
 
 import path from "path";
@@ -72,6 +73,7 @@ app.use(
 );
 
 app.use("/api/auth", authRoutes);
+app.use("/api/clever", cleverRoutes);
 app.use("/api/category", categoryRoutes);
 app.use("/api/subcategory", subCategoryRoutes);
 app.use("/api/course", coursesRoutes);
