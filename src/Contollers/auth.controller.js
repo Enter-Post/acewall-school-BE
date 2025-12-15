@@ -1025,21 +1025,39 @@ export const checkUser = async (req, res) => {
 
 export const allTeacher = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1; // default to page 1
-    const limit = parseInt(req.query.limit) || 6; // default to 6 per page
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 6;
     const skip = (page - 1) * limit;
     const search = req.query.search || "";
+    const courseId = req.query.courseId || ""; // course filter
 
     // Base query
-    const query = { role: "teacher" };
+    let query = { role: "teacher" };
 
-    // If search provided, filter by firstName, lastName, or email (case-insensitive)
+    // Search filter
     if (search) {
       query.$or = [
         { firstName: { $regex: search, $options: "i" } },
         { lastName: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } },
       ];
+    }
+
+    // If courseId is provided, filter teachers who created that course
+    if (courseId) {
+      // Find all teachers who created the selected course
+      const course = await CourseSch.findById(courseId);
+      if (course) {
+        query._id = course.createdby; // filter by teacher who created this course
+      } else {
+        // No course found, return empty
+        return res.status(200).json({
+          total: 0,
+          currentPage: page,
+          totalPages: 1,
+          teachers: [],
+        });
+      }
     }
 
     const totalTeachers = await User.countDocuments(query);
@@ -1052,15 +1070,14 @@ export const allTeacher = async (req, res) => {
 
     const formattedTeachers = await Promise.all(
       teachers.map(async (teacher) => {
-        const courseCount = await CourseSch.countDocuments({
-          createdby: teacher._id,
-        });
-
+        // Get all courses of the teacher
+        const courses = await CourseSch.find({ createdby: teacher._id }).select("_id");
         return {
           name: `${teacher.firstName} ${teacher.lastName}`,
           email: teacher.email,
           joiningDate: teacher.createdAt,
-          courses: courseCount,
+          courses: courses.length,
+          courseIds: courses.map((c) => c._id), // new field
           profileImg: teacher.profileImg,
           id: teacher._id,
         };
