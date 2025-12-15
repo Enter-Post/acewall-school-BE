@@ -1,6 +1,6 @@
 import model from "../../utils/gemini.js";
-import AIChat from "../Models/AIChat.model.js";
 import fs from "fs";
+import AIChat from "../Models/AIChat.model.js"
 import PDFDocument from 'pdfkit';
 import { Document, Packer, Paragraph, TextRun } from 'docx';
 import ExcelJS from 'exceljs';
@@ -314,8 +314,6 @@ Difficulty: ${difficulty}
             contents: [{ role: "user", parts }],
         });
 
-        console.log(aiResponse.response.text(), "aiResponse")
-
         let answer = aiResponse.response.text();
 
         // If file generation is requested, we need full content for the file
@@ -416,9 +414,6 @@ One per line, plain English, no bullets.
 
                 generatedFileUrl = `${baseURL}/uploads/file/${generatedFileName}`;
 
-                // Update answer to include download link
-                answer += `Download the file below: ${generatedFileUrl}`;
-
             } catch (fileGenError) {
                 console.error("File generation error:", fileGenError);
                 // Continue with normal response if file generation fails
@@ -432,23 +427,29 @@ One per line, plain English, no bullets.
             userId,
             question: { text: question, sender: "user" },
             answer: { text: answer, sender: "ai" },
-            difficulty
+            difficulty,
+            file: {
+                url: file ? file.path : null,
+                filename: file ? file.originalname : null,
+                sender: "user"
+            },
+            fileUsed: file ? file.originalname : null,
         };
 
         // Add generated file info if exists
         if (generatedFileUrl) {
-            chatData.file = {
+            chatData.generatedFile = {
                 url: generatedFileUrl,
                 filename: generatedFileName,
-                sender: "ai"
+                sender: "ai",
+                FileType: requestedFileType
             };
         }
 
+        console.log(chatData, "chatData")
+
         await AIChat.create(chatData);
 
-        // ------------------------------------------
-        // 11. Return response
-        // ------------------------------------------
         res.json({
             success: true,
             question,
@@ -458,7 +459,8 @@ One per line, plain English, no bullets.
             generatedFile: generatedFileUrl ? {
                 url: generatedFileUrl,
                 filename: generatedFileName,
-                type: requestedFileType
+                sender: "ai",
+                FileType: requestedFileType
             } : null
         });
 
