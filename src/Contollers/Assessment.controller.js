@@ -706,3 +706,101 @@ export const findReminderTime = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
+// GET /api/admin/courses/:courseId/assessments
+export const getAssessmentsByCourseForAdmin = async (req, res) => {
+  const { courseId } = req.params;
+
+  try {
+    const assessments = await Assessment.aggregate([
+      // Match assessments for the given course
+      { $match: { course: new mongoose.Types.ObjectId(courseId) } },
+
+      // Lookup category
+      {
+        $lookup: {
+          from: "assessmentcategories",
+          localField: "category",
+          foreignField: "_id",
+          as: "category",
+        },
+      },
+      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
+
+      // Lookup chapter
+      {
+        $lookup: {
+          from: "chapters",
+          localField: "chapter",
+          foreignField: "_id",
+          as: "chapter",
+        },
+      },
+      { $unwind: { path: "$chapter", preserveNullAndEmptyArrays: true } },
+
+      // Lookup lesson
+      {
+        $lookup: {
+          from: "lessons",
+          localField: "lesson",
+          foreignField: "_id",
+          as: "lesson",
+        },
+      },
+      { $unwind: { path: "$lesson", preserveNullAndEmptyArrays: true } },
+
+      // Lookup creator
+      {
+        $lookup: {
+          from: "users",
+          localField: "createdby",
+          foreignField: "_id",
+          as: "createdby",
+        },
+      },
+      { $unwind: { path: "$createdby", preserveNullAndEmptyArrays: true } },
+
+      // Add custom fields
+      {
+        $addFields: {
+          questionsCount: { $size: "$questions" },
+          dueDate: "$dueDate",
+          status: "$stutus", // keep typo as in schema
+          reminderSent: "$reminderSent",
+          reminderTimeBefore: "$reminderTimeBefore",
+        },
+      },
+
+      // Project only needed fields
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          assessmentType: 1,
+          type: 1,
+          category: { _id: 1, name: 1 },
+          chapter: { _id: 1, title: 1 },
+          lesson: { _id: 1, title: 1 },
+          dueDate: 1,
+          status: 1,
+          questionsCount: 1,
+          createdby: { _id: 1, name: 1, email: 1 },
+          createdAt: 1,
+          updatedAt: 1,
+          reminderSent: 1,
+          reminderTimeBefore: 1,
+        },
+      },
+
+      // Sort latest first
+      { $sort: { createdAt: -1 } },
+    ]);
+
+    res.status(200).json({ assessments });
+  } catch (error) {
+    console.error("Error fetching assessments for admin:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+

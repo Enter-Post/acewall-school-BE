@@ -12,12 +12,16 @@ import { isUser } from "../middlewares/Auth.Middleware.js";
 import { archivedSemester } from "../Contollers/CourseControllers/semester.controller.js";
 import { archivedQuarter } from "../Contollers/CourseControllers/quarter.controller.js";
 import { getCategoriesforAdmin } from "../Contollers/category.controller.js";
-import { toggleAllCoursesComments, toggleCourseComments } from "../Contollers/CourseControllers/courses.controller.sch.js";
+import { getAllCoursesForAdmin, toggleAllCoursesComments, toggleCourseComments } from "../Contollers/CourseControllers/courses.controller.sch.js";
+import { getAssessmentsByCourseForAdmin } from "../Contollers/Assessment.controller.js";
 // import { checkRole, isAllowed } from "../Middlewares/admins.Middleware.js";
 const router = express.Router();
 
 router.get("/allTeacher", allTeacher);
 router.get("/allstudent", allStudent);
+router.get("/courses", isUser , getAllCoursesForAdmin);
+router.get("/courses/:courseId/assessments", isUser, getAssessmentsByCourseForAdmin);
+
 router.get("/student-enrolled-courses/:id", getStudentEnrolledCourses);
 router.get("/getStudentById/:id", isUser, getStudentById);
 router.get("/getTeacherById/:id", isUser, getTeacherById);
