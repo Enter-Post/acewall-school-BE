@@ -38,9 +38,16 @@ export const sendAssessmentReminder = async (req, res) => {
     // ✅ Find enrolled students
     const enrollments = await Enrollment.find({
       course: assessment.course._id,
+      student: { $ne: assessment.createdby._id },
     }).populate("student", "email firstName lastName");
 
-    if (!enrollments.length) {
+    console.log(enrollments, "enrollments");
+
+    const filteredEnrollments = enrollments.filter(
+      (enr) => enr.student !== null
+    );
+
+    if (!filteredEnrollments.length) {
       return res
         .status(404)
         .json({ message: "No students enrolled in this course." });
@@ -51,8 +58,8 @@ export const sendAssessmentReminder = async (req, res) => {
       port: process.env.MAIL_PORT || 465,
       secure: true,
       auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
+        user: "support@acewallscholars.org",
+        pass: "dmwjwyfxaccrdxwi",
       },
     });
 
@@ -70,13 +77,14 @@ export const sendAssessmentReminder = async (req, res) => {
 
     let sentCount = 0;
 
-    for (const enrollment of enrollments) {
+    for (const enrollment of filteredEnrollments) {
       const student = enrollment.student;
       if (!student?.email) continue;
 
       const mailOptions = {
-        from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars"}" <${process.env.MAIL_USER
-          }>`,
+        from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars"}" <${
+          process.env.MAIL_USER
+        }>`,
         to: student.email,
         subject: `Reminder: ${assessment.title} - Due ${dueDate}`,
         html: `
@@ -90,17 +98,20 @@ export const sendAssessmentReminder = async (req, res) => {
 
             <!-- Body -->
             <div style="padding: 20px; color: #333;">
-              <p style="font-size: 16px;">Hello ${student.firstName + " " + student.lastName
-          },</p>
+              <p style="font-size: 16px;">Hello ${
+                student.firstName + " " + student.lastName
+              },</p>
               <p style="font-size: 16px;">
                 This is a reminder for your upcoming assessment:
               </p>
 
               <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #10b981;">
-                <p style="margin: 5px 0; font-size: 15px;"><strong>Assessment:</strong> ${assessment.title
-          }</p>
-                <p style="margin: 5px 0; font-size: 15px;"><strong>Course:</strong> ${assessment.course.courseTitle
-          }</p>
+                <p style="margin: 5px 0; font-size: 15px;"><strong>Assessment:</strong> ${
+                  assessment.title
+                }</p>
+                <p style="margin: 5px 0; font-size: 15px;"><strong>Course:</strong> ${
+                  assessment.course.courseTitle
+                }</p>
                 <p style="margin: 5px 0; font-size: 15px;"><strong>Due Date:</strong> ${dueDate}</p>
               </div>
 
@@ -112,8 +123,9 @@ export const sendAssessmentReminder = async (req, res) => {
 
               <p style="font-size: 14px; margin-top: 20px;">
                 Best regards,<br>
-                <strong>${assessment.createdby.firstName} ${assessment.createdby.lastName
-          }</strong><br>
+                <strong>${assessment.createdby.firstName} ${
+          assessment.createdby.lastName
+        }</strong><br>
                 ${assessment.createdby.email}
               </p>
             </div>
@@ -145,7 +157,7 @@ export const sendAssessmentReminder = async (req, res) => {
         assessmentTitle: assessment.title,
         dueDate,
         studentCount: sentCount,
-        allStudents: enrollments.map((e) => ({
+        allStudents: filteredEnrollments.map((e) => ({
           id: e.student._id,
           name: `${e.student.firstName} ${e.student.lastName}`,
           email: e.student.email,
@@ -400,7 +412,7 @@ export const allAssessmentByTeacher = async (req, res) => {
       )
       .populate({
         path: "course",
-        select: "courseTitle thumbnail" // <-- include thumbnail
+        select: "courseTitle thumbnail", // <-- include thumbnail
       })
       .populate({ path: "chapter", select: "title" })
       .populate({ path: "lesson", select: "title" })
@@ -636,7 +648,7 @@ export const getAllassessmentforStudent = async (req, res) => {
     console.error("Error fetching assessments/discussions for student:", err);
     res.status(500).json({ error: "Internal Server Error" });
   }
-};  
+};
 
 export const editAssessmentInfo = async (req, res) => {
   const { assessmentId } = req.params;
@@ -682,13 +694,14 @@ export const setReminderTime = async (req, res) => {
     assessment.reminderTimeBefore = reminder;
 
     assessment.save();
-    res.status(200).json({ message: "Assessment reminder time updated successfully" });
-
+    res
+      .status(200)
+      .json({ message: "Assessment reminder time updated successfully" });
   } catch (error) {
     console.log("error in the edit Assessment Info", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-}
+};
 
 export const findReminderTime = async (req, res) => {
   const { assessmentId } = req.params;
@@ -700,12 +713,17 @@ export const findReminderTime = async (req, res) => {
       return null;
     }
 
-    res.status(200).json({ message: "Assessment reminder time updated successfully", reminderTime: assessment.reminderTimeBefore }); // Return the reminder time
+    res
+      .status(200)
+      .json({
+        message: "Assessment reminder time updated successfully",
+        reminderTime: assessment.reminderTimeBefore,
+      }); // Return the reminder time
   } catch (error) {
     console.log("error in the edit Assessment Info", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-}
+};
 
 // GET /api/admin/courses/:courseId/assessments
 export const getAssessmentsByCourseForAdmin = async (req, res) => {
@@ -802,5 +820,3 @@ export const getAssessmentsByCourseForAdmin = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
-
