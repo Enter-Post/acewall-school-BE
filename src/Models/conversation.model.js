@@ -20,5 +20,5 @@ const ConversationSchema = mongoose.Schema(
   { timestamps: true }
 );
 
-const Conversation = mongoose.model("ConversationSchema", ConversationSchema);
+const Conversation = mongoose.model("Conversation", ConversationSchema);
 export default Conversation;

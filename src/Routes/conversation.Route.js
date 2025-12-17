@@ -3,6 +3,8 @@ import {
   createConversation,
   //   getConversationbyId,
   getMyConversations,
+  getStudentsByOfTeacher,
+  getTeacherCourses,
   getTeacherforStudent,
 } from "../Contollers/conversation.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
@@ -18,5 +20,8 @@ router.get("/getTeacherforStudent", isUser, getTeacherforStudent)
 //////// updated-apis
 router.get("/get-updated", isUser, getMyConversations_updated);
 router.patch("/lastSeen/:conversationId", isUser, updateLastSeen)
+
+router.get("/getStudentsByOfTeacher/:courseId", isUser, getStudentsByOfTeacher)
+router.get("/getTeacherCourses", isUser, getTeacherCourses)
 
 export default router;
