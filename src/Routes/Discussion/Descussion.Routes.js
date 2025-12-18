@@ -1,6 +1,7 @@
 import express from "express";
 import {
   chapterDiscussions,
+  courseDiscussions,
   createDiscussion,
   discussionforStudent,
   getDiscussionbyId,
@@ -16,6 +17,7 @@ router.post("/create", isUser, upload.array("files"), createDiscussion);
 router.get("/studentDiscussion", isUser, discussionforStudent);
 router.get("/chapter/:chapterId", isUser, chapterDiscussions);
 router.get("/lesson/:lessonId", isUser, lessonDiscussions);
+router.get("/course/:courseId", isUser, courseDiscussions);
 router.get("/all", isUser, getDiscussionsOfTeacher);
 router.get("/:id", isUser, getDiscussionbyId);
 

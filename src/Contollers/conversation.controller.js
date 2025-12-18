@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Conversation from "../Models/conversation.model.js";
 import Enrollment from "../Models/Enrollement.model.js";
+import CourseSch from "../Models/courses.model.sch.js";
 
 export const createConversation = async (req, res) => {
   const myId = req.user._id;
@@ -20,7 +21,7 @@ export const createConversation = async (req, res) => {
 
     if (existingConversation) {
       return res.status(200).json({
-        message: "Conversation already exist",
+        message: "Conversation Found",
         conversation: existingConversation,
       });
     }
@@ -31,7 +32,7 @@ export const createConversation = async (req, res) => {
     await newConversation.save();
     res.status(200).json({
       message: "conversation created successfully",
-      newConversation,
+      conversation: newConversation,
     });
   } catch (err) {
     res.status(500).json(err);
@@ -157,9 +158,6 @@ export const getTeacherforStudent = async (req, res) => {
       }
     ]);
 
-
-    console.log(teachers, "teachers")
-
     if (!teachers || teachers.length === 0) {
       return res.status(404).json({ message: "No teacher found" });
     }
@@ -172,5 +170,171 @@ export const getTeacherforStudent = async (req, res) => {
   } catch (error) {
     console.error("Error fetching teacher for student:", error);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+
+export const getStudentsByOfTeacher = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const teacherId = req.user._id;
+
+    // 1️⃣ Verify course belongs to teacher
+    const course = await CourseSch.findOne({
+      _id: courseId,
+      createdby: teacherId,
+    }).select("courseTitle");
+
+    if (!course) {
+      return res.status(403).json({
+        message: "You are not authorized to view students of this course",
+      });
+    }
+
+    // 2️⃣ Aggregation pipeline
+    const students = await Enrollment.aggregate([
+      // Match course
+      {
+        $match: {
+          course: new mongoose.Types.ObjectId(courseId),
+        },
+      },
+
+      // Join users collection
+      {
+        $lookup: {
+          from: "users",
+          localField: "student",
+          foreignField: "_id",
+          as: "student",
+        },
+      },
+
+      // Convert student array → object
+      { $unwind: "$student" },
+
+      // Remove teacher himself
+      {
+        $match: {
+          "student._id": {
+            $ne: new mongoose.Types.ObjectId(teacherId),
+          },
+        },
+      },
+
+      // Optional: ensure only students
+      {
+        $match: {
+          "student.role": "student",
+        },
+      },
+
+      // Shape final response
+      {
+        $project: {
+          _id: "$student._id",
+          firstName: "$student.firstName",
+          lastName: "$student.lastName",
+          email: "$student.email",
+          profileImg: "$student.profileImg",
+          enrolledAt: 1,
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      courseId,
+      courseTitle: course.courseTitle,
+      totalStudents: students.length,
+      students,
+    });
+  } catch (error) {
+    console.error("Error in getStudentsByOfTeacher:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const getTeacherCourses = async (req, res) => {
+  try {
+    const teacherId = req.user._id;
+
+    const courses = await CourseSch.aggregate([
+      // 1️⃣ Match teacher courses
+      {
+        $match: {
+          createdby: new mongoose.Types.ObjectId(teacherId),
+        },
+      },
+
+      // 2️⃣ Join Category
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "category",
+        },
+      },
+
+      // 3️⃣ Join Subcategory
+      {
+        $lookup: {
+          from: "subcategories",
+          localField: "subcategory",
+          foreignField: "_id",
+          as: "subcategory",
+        },
+      },
+
+      // 4️⃣ Convert arrays → objects
+      {
+        $unwind: {
+          path: "$category",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $unwind: {
+          path: "$subcategory",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+
+      // 5️⃣ Shape response
+      {
+        $project: {
+          courseTitle: 1,
+          courseCode: 1,
+          language: 1,
+          published: 1,
+          gradingSystem: 1,
+          thumbnail: 1,
+          createdAt: 1,
+          category: {
+            _id: "$category._id",
+            name: "$category.name",
+          },
+          subcategory: {
+            _id: "$subcategory._id",
+            name: "$subcategory.name",
+          },
+        },
+      },
+      {
+        $sort: {
+          published: -1,
+          createdAt: -1,
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      totalCourses: courses.length,
+      courses,
+    });
+  } catch (error) {
+    console.error("Error fetching teacher courses:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
