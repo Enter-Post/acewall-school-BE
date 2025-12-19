@@ -907,7 +907,10 @@ export const getallcoursesforteacher = async (req, res) => {
 
     // Apply course title filter (partial match)
     if (courseTitle) {
-      matchStage["courseDetails.courseTitle"] = { $regex: courseTitle, $options: "i" };
+      matchStage["courseDetails.courseTitle"] = {
+        $regex: courseTitle,
+        $options: "i",
+      };
     }
 
     const studentsWithCourses = await Enrollment.aggregate([
@@ -947,9 +950,24 @@ export const getallcoursesforteacher = async (req, res) => {
             {
               $match: {
                 $or: [
-                  { "studentDetails.firstName": { $regex: studentName, $options: "i" } },
-                  { "studentDetails.middleName": { $regex: studentName, $options: "i" } },
-                  { "studentDetails.lastName": { $regex: studentName, $options: "i" } },
+                  {
+                    "studentDetails.firstName": {
+                      $regex: studentName,
+                      $options: "i",
+                    },
+                  },
+                  {
+                    "studentDetails.middleName": {
+                      $regex: studentName,
+                      $options: "i",
+                    },
+                  },
+                  {
+                    "studentDetails.lastName": {
+                      $regex: studentName,
+                      $options: "i",
+                    },
+                  },
                 ],
               },
             },
@@ -1211,5 +1229,79 @@ export const searchCoursebycode = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+export const getAllCoursesForAdmin = async (req, res) => {
+  try {
+    // Pagination (optional but recommended)
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const courses = await CourseSch.aggregate([
+      // Sort latest first
+      { $sort: { createdAt: -1 } },
+
+      // Pagination
+      { $skip: skip },
+      { $limit: limit },
+
+      // Lookup creator (teacher)
+      {
+        $lookup: {
+          from: "users",
+          localField: "createdby",
+          foreignField: "_id",
+          as: "createdby",
+        },
+      },
+      { $unwind: "$createdby" },
+
+      // Lookup assessments for count
+      {
+        $lookup: {
+          from: "assessments",
+          localField: "_id",
+          foreignField: "course",
+          as: "assessments",
+        },
+      },
+
+      // Add assessment count
+      {
+        $addFields: {
+          assessmentCount: { $size: "$assessments" },
+        },
+      },
+
+      // Project only needed fields
+      {
+        $project: {
+          courseTitle: 1,
+          thumbnail: 1,
+          published: 1,
+          createdAt: 1,
+          assessmentCount: 1,
+          "createdby._id": 1,
+          "createdby.name": 1,
+          "createdby.email": 1,
+          "createdby.role": 1,
+        },
+      },
+    ]);
+
+    const totalCourses = await CourseSch.countDocuments();
+
+    res.status(200).json({
+      message: "Courses fetched successfully",
+      totalCourses,
+      currentPage: page,
+      totalPages: Math.ceil(totalCourses / limit),
+      courses,
+    });
+  } catch (error) {
+    console.error("Error fetching admin courses:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
