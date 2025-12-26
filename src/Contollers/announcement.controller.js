@@ -237,7 +237,7 @@ export const getAnnouncementsForStudent = async (req, res) => {
     const announcements = await Announcement.find({
       course: { $in: courseIds },
     })
-      .populate("course", "courseTitle _id")    // More fields if needed
+      .populate("course", "courseTitle _id thumbnail ")    // More fields if needed
       .populate("teacher", "firstName lastName email role _id")  // full teacher info
       .sort({ createdAt: -1 });
 
