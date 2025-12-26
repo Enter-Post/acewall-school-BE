@@ -477,12 +477,47 @@ CONTENT RULES BY TYPE:
   • Output 1–12 concise bullet points
   • Each point should be actionable and instructional
 
-- If usedfor = "learning_objectives":
-  • Output 1-12 bullet points
-  • Start each point with an action verb (e.g., Understand, Apply, Analyze)
+- If usedfor = "chapterTitle":
+  • Output a single clear, engaging chapter title (max 12 words)
 
-- If usedfor = "lesson_outline":
-  • Output a structured outline with short headings and subpoints
+- If usedfor = "chapterDescription":
+  • Output 1–2 short paragraphs
+  • Written for students
+  • No bullet points 
+  
+- If usedfor = "lessonTitle":
+  • Output a single clear, engaging lesson title (max 12 words)
+
+- If usedfor = "lessonDescription":
+  • Output 1–2 short paragraphs
+  • Written for students
+  • No bullet points   
+
+- If usedfor = "assessmentTitle":
+  • Output a single clear, engaging chapter title (max 12 words)
+
+- If usedfor = "assessmentDescription":
+  • Output 1–2 short paragraphs
+  • Written for students
+  • No bullet points 
+
+- If usedfor = "question-mcq":
+  • Output 1 short questions with 4 options each
+  • Indicate the correct answer in another line with headings [Answer].
+  • Written for students
+  • No bullet points
+
+- If usedfor = "question-truefalse":
+  • Output 1 short questions with 2 options each
+  • Indicate the correct answer in another line with headings [True] or [False]
+  • Written for students
+  • No bullet points
+
+- If usedfor = "question-qa":
+  • Output 1 short questions
+  • Written for students
+  • No bullet points  
+
 
 INPUT COMMAND:
 "${command}"
