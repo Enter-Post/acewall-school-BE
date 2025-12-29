@@ -501,6 +501,10 @@ CONTENT RULES BY TYPE:
   • Output 1–12 concise bullet points
   • Each point should be actionable and instructional
 
+- If usedfor = "requirements":
+  • Output 1–12 concise bullet points
+  • Each point should be actionable and instructional  
+
 - If usedfor = "chapterTitle":
   • Output a single clear, engaging chapter title (max 12 words)
 
