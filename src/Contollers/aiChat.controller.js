@@ -255,9 +255,32 @@ Format for a ${requestedFileType.toUpperCase()} document.
             generatedFileUrl = `${process.env.ASSET_URL}/uploads/file/${generatedFileName}`;
         }
 
-        // --------------------------------------------------
-        // 🔟 Save chat (UNCHANGED)
-        // --------------------------------------------------
+
+        const validationPrompt = `
+Is this a meaningful academic question? Reply only "yes" or "no".
+
+"${question}"
+`;
+
+        const validCheck = await model.generateContent(validationPrompt);
+        const isMeaningful = validCheck.response.text().trim().toLowerCase() === "yes";
+
+        let suggestedQuestions = [];
+
+        if (isMeaningful) {
+            const suggestions = await model.generateContent(`
+Generate exactly 5 practice questions based on:
+"${question}"
+One per line, plain English, no bullets.
+`);
+
+            suggestedQuestions = suggestions.response.text()
+                .split("\n")
+                .map(q => q.trim())
+                .filter(q => q.length > 3)
+                .slice(0, 5);
+        }
+
         await AIChat.create({
             userId,
             question: { text: question, sender: "user" },
@@ -281,6 +304,7 @@ Format for a ${requestedFileType.toUpperCase()} document.
             success: true,
             question,
             answer,
+            suggestedQuestions,
             fileUsed: file ? file.originalname : null,
             generatedFile: generatedFileUrl ? {
                 url: generatedFileUrl,
@@ -448,7 +472,7 @@ async function generateExcel(content, filePath) {
 
 export const generateContentForTeacher = async (req, res) => {
     try {
-        const { command, usedfor } = req.body;
+        const { command, usedfor, difficulty } = req.body;
 
         const prompt = `
 You are EduMentor AI, an expert educational content creator for a Learning Management System (LMS).
@@ -502,19 +526,19 @@ CONTENT RULES BY TYPE:
   • No bullet points 
 
 - If usedfor = "question-mcq":
-  • Output 1 short questions with 4 options each
-  • Indicate the correct answer in another line with headings [Answer].
+  • Output 1 short questions according to the difficulty of ${difficulty} with 4 options labeled as A, B, C, D.
+  • provide the full correct answer in another line as Answer: [correct answer] without the labels (A, B, C, D).
   • Written for students
   • No bullet points
 
 - If usedfor = "question-truefalse":
-  • Output 1 short questions with 2 options each
-  • Indicate the correct answer in another line with headings [True] or [False]
+  • Output 1 short questions to the difficulty of ${difficulty} with 2 options each
+  • Indicate the correct answer in another line with headings "True" or "False"
   • Written for students
   • No bullet points
 
 - If usedfor = "question-qa":
-  • Output 1 short questions
+  • Output 1 short questions to the difficulty of ${difficulty}.
   • Written for students
   • No bullet points  
 
