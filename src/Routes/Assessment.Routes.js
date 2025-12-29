@@ -8,6 +8,7 @@ import {
   findReminderTime,
   getAllassessmentforStudent,
   getAssesmentbyID,
+  getAssessmentStats,
   sendAssessmentReminder,
   setReminderTime,
   uploadFiles,
@@ -24,7 +25,7 @@ router.post(
   isUser, // ensures the sender is authenticated
   sendAssessmentReminder
 );
-
+router.get("/stats/:assessmentId", isUser, getAssessmentStats);
 router.post("/create", upload.array("files"), isUser, createAssessment);
 router.get("/allAssessmentByTeacher", isUser, allAssessmentByTeacher);
 router.get("/getAllassessmentforStudent", isUser, getAllassessmentforStudent);

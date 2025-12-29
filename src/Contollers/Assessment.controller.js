@@ -820,3 +820,35 @@ export const getAssessmentsByCourseForAdmin = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+// New API Controller
+export const getAssessmentStats = async (req, res) => {
+  const { assessmentId } = req.params;
+
+  try {
+    const assessment = await Assessment.findById(assessmentId);
+    if (!assessment) {
+      return res.status(404).json({ message: "Assessment not found" });
+    }
+
+    // 1. Get count of students who actually submitted
+    const submittedCount = await Submission.countDocuments({ assessment: assessmentId });
+
+    // 2. Get count of total students enrolled in the course this assessment belongs to
+    // Adjust 'Enrollment' and the field 'course' based on your schema
+    const totalEnrolled = await Enrollment.countDocuments({ course: assessment.course });
+
+    const notSubmittedCount = Math.max(0, totalEnrolled - submittedCount);
+
+    res.status(200).json({
+      totalEnrolled,
+      submittedCount,
+      notSubmittedCount,
+      completionRate: totalEnrolled > 0 ? ((submittedCount / totalEnrolled) * 100).toFixed(1) : 0
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching stats", error: err.message });
+  }
+};
+
+// Add this to your routes file

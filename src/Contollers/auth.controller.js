@@ -2077,3 +2077,35 @@ export const updateParentEmail = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+
+export const getChildrenData = async (req, res) => {
+  try {
+    // We assume the parent is logged in and their email is in req.user.email
+    const parentEmail = req.user.email;
+
+    // Find all students where the parent's email exists in the guardianEmails array
+    const children = await User.find({
+      role: { $in: ["student", "teacherAsStudent"] },
+      guardianEmails: parentEmail // MongoDB automatically checks if the string exists in the array
+    })
+    .select("-password") // Exclude sensitive info
+    .lean();
+
+    if (!children || children.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "No students found associated with this parent email." 
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      count: children.length,
+      children
+    });
+  } catch (error) {
+    console.error("Error fetching children data:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
