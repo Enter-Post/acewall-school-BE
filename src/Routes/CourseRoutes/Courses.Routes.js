@@ -21,6 +21,7 @@ import {
   searchCoursebycode,
   toggleCourseComments,
   toggleGradingSystem,
+  getCourseEnrollmentStats,
   
 
 } from "../../Contollers/CourseControllers/courses.controller.sch.js";
@@ -80,5 +81,7 @@ router.put(
 ); router.put(`/thumbnail/:courseId`, isUser, upload.single("thumbnail"), thumnailChange);
 router.get("/searchCoursebycode/:courseCode", isUser, searchCoursebycode);
 router.put("/course/:courseId/toggle-grading", toggleGradingSystem);
+
+router.get('/stats/:courseId', getCourseEnrollmentStats);
 export default router;
 

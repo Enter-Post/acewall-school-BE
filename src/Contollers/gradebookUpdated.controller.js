@@ -348,3 +348,145 @@ export const getGradebooksOfStudentCourseFormatted = async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 }
+
+
+
+
+export const getChildGradebookForParent = async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        const parentEmail = req.user.email;
+
+        // 1. AUTHORIZATION CHECK
+        // Ensure the student actually belongs to this parent
+        const student = await User.findOne({
+            _id: studentId,
+            guardianEmails: parentEmail,
+            role: { $in: ["student", "teacherAsStudent"] }
+        });
+
+        if (!student) {
+            return res.status(403).json({ 
+                success: false, 
+                message: "Unauthorized: You do not have access to this student's records." 
+            });
+        }
+
+        // 2. FETCH GRADING SCALES
+        const [gradingScale, gpaScale, standardScale] = await Promise.all([
+            GradingScale.findOne({}),
+            GPA.findOne({}),
+            StandardGrading.findOne({})
+        ]);
+
+        // 3. FETCH GRADEBOOKS
+        const gradebooks = await Gradebook.find({ studentId });
+
+        if (!gradebooks || gradebooks.length === 0) {
+            return res.json({
+                studentName: `${student.firstName} ${student.lastName}`,
+                totalCourses: 0,
+                overallGPA: 0,
+                courses: [],
+            });
+        }
+
+        // 4. FORMATTING LOGIC (Reused from your student API)
+        let overallGPA = 0;
+        let standardGradesList = [];
+
+        const courses = await Promise.all(
+            gradebooks.map(async (gb) => {
+                const courseData = await CourseSch.findById(gb.courseId).lean();
+                const gradingSystem = courseData?.gradingSystem || "normalGrading";
+
+                const semesters = gb.semesters.map((semester) => {
+                    const semesterPercentage = semester.gradePercentage || 0;
+                    let semDisplay = {};
+
+                    if (gradingSystem === "normalGrading") {
+                        semDisplay.letterGrade = getLetterFromScale(semesterPercentage, gradingScale);
+                        semDisplay.gpa = getGPAFromScale(semesterPercentage, gpaScale);
+                    } else {
+                        semDisplay.standardGrade = getStandardGrade(semesterPercentage, standardScale);
+                    }
+
+                    const quarters = semester.quarters.map((quarter) => {
+                        const quarterPercentage = quarter.gradePercentage || 0;
+                        let quarterDisplay = {};
+
+                        if (gradingSystem === "normalGrading") {
+                            quarterDisplay.letterGrade = getLetterFromScale(quarterPercentage, gradingScale);
+                            quarterDisplay.gpa = getGPAFromScale(quarterPercentage, gpaScale);
+                        } else {
+                            quarterDisplay.standardGrade = getStandardGrade(quarterPercentage, standardScale);
+                        }
+
+                        return {
+                            quarterId: quarter.quarterId,
+                            quarterTitle: quarter.quarterTitle,
+                            grade: quarterPercentage,
+                            ...quarterDisplay,
+                            assessments: quarter.items.map(item => ({
+                                assessmentId: item.itemId,
+                                assessmentTitle: item.title,
+                                category: item.categoryName,
+                                studentPoints: item.studentPoints,
+                                maxPoints: item.maxPoints
+                            })),
+                        };
+                    });
+
+                    return {
+                        semesterId: semester.semesterId,
+                        semesterTitle: semester.semesterTitle,
+                        semesterPercentage,
+                        ...semDisplay,
+                        quarters,
+                    };
+                });
+
+                const coursePercentage = gb.finalPercentage || 0;
+                let courseDisplay = {};
+
+                if (gradingSystem === "normalGrading") {
+                    courseDisplay.letterGrade = getLetterFromScale(coursePercentage, gradingScale);
+                    courseDisplay.gpa = getGPAFromScale(coursePercentage, gpaScale);
+                    overallGPA += courseDisplay.gpa;
+                } else {
+                    courseDisplay.standardGrade = getStandardGrade(coursePercentage, standardScale);
+                    standardGradesList.push(coursePercentage);
+                }
+
+                return {
+                    courseId: gb.courseId,
+                    courseName: courseData?.courseTitle || gb.courseTitle || "N/A",
+                    coursePercentage,
+                    ...courseDisplay,
+                    semesters,
+                    gradingSystem,
+                };
+            })
+        );
+
+        // Calculate Final Totals
+        let overallStandardGrade = null;
+        if (standardGradesList.length > 0) {
+            const avg = standardGradesList.reduce((a, b) => a + b, 0) / standardGradesList.length;
+            overallStandardGrade = getStandardGrade(avg, standardScale);
+        }
+
+        res.json({
+            success: true,
+            studentName: `${student.firstName} ${student.lastName}`,
+            totalCourses: gradebooks.length,
+            overallGPA: Number((overallGPA / gradebooks.length).toFixed(2)),
+            overallStandardGrade,
+            courses,
+        });
+
+    } catch (error) {
+        console.error("Error generating parent-view gradebook:", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
