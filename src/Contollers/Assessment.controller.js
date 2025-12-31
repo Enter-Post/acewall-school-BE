@@ -831,17 +831,28 @@ export const getAssessmentStats = async (req, res) => {
       return res.status(404).json({ message: "Assessment not found" });
     }
 
-    // 1. Get count of students who actually submitted
-    const submittedCount = await Submission.countDocuments({ assessment: assessmentId });
+    // 1. Count On-Time Submissions
+    const onTimeCount = await Submission.countDocuments({ 
+      assessment: assessmentId, 
+      status: "before due date" 
+    });
 
-    // 2. Get count of total students enrolled in the course this assessment belongs to
-    // Adjust 'Enrollment' and the field 'course' based on your schema
+    // 2. Count Late Submissions
+    const lateCount = await Submission.countDocuments({ 
+      assessment: assessmentId, 
+      status: "after due date" 
+    });
+
+    // 3. Get total students enrolled in the course
     const totalEnrolled = await Enrollment.countDocuments({ course: assessment.course });
 
+    const submittedCount = onTimeCount + lateCount;
     const notSubmittedCount = Math.max(0, totalEnrolled - submittedCount);
 
     res.status(200).json({
       totalEnrolled,
+      onTimeCount,
+      lateCount,
       submittedCount,
       notSubmittedCount,
       completionRate: totalEnrolled > 0 ? ((submittedCount / totalEnrolled) * 100).toFixed(1) : 0
