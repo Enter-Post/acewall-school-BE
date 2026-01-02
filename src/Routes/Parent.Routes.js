@@ -6,6 +6,7 @@ import { getChildEnrolledCourses, getParentChildCourseDetails } from "../Contoll
 import { getAnnouncementsForParent } from "../Contollers/announcement.controller.js";
 import { getAllAssessmentForParent } from "../Contollers/Assessment.controller.js";
 import { getAssessmentSubmissionForParent } from "../Contollers/Submission.controller.js";
+import { sendSupportMail } from "../Contollers/Support.controller.js";
 
 
 
@@ -25,4 +26,6 @@ router.get(
 router.get("/get-child-announcements/:studentId", isUser, getAnnouncementsForParent);
 router.get("/get-child-assessments/:studentId", isUser, getAllAssessmentForParent);
 router.get("/submission-detail/:studentId/:assessmentId", isUser, getAssessmentSubmissionForParent);
+router.post("/send", sendSupportMail);
+
 export default router;
