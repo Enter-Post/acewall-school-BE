@@ -603,3 +603,89 @@ export const teacherGrading = async (req, res) => {
 //       .json({ message: "Error grading submission", error: err.message });
 //   }
 // };
+
+
+
+export const getAssessmentSubmissionForParent = async (req, res) => {
+  const { assessmentId, studentId } = req.params;
+  const parentEmail = req.user.email;
+
+  try {
+    // 1. AUTHORIZATION CHECK
+    const student = await User.findOne({
+      _id: studentId,
+      guardianEmails: parentEmail,
+    });
+
+    if (!student) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized: Access denied.",
+      });
+    }
+
+    // 2. FETCH SUBMISSION & POPULATE EVERYTHING
+    const submission = await Submission.findOne({
+      assessment: assessmentId,
+      studentId: studentId,
+    })
+    .populate({
+      path: "assessment",
+      // We populate category for the name, and the questions array to show original prompts
+      populate: [
+        { path: "category", select: "name" },
+        { path: "chapter", select: "title" },
+        { path: "lesson", select: "title" }
+      ]
+    })
+    .lean(); // Use lean() for easier data manipulation
+
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        message: "No submission found for this student.",
+      });
+    }
+
+    // 3. MAP QUESTIONS TO ANSWERS (Optional but helpful)
+    // This merges the original question details into the answer object 
+    // so the frontend doesn't have to look them up by ID.
+    const detailedAnswers = submission.answers.map(answer => {
+      const originalQuestion = submission.assessment.questions.find(
+        q => q._id.toString() === answer.questionId.toString()
+      );
+      return {
+        ...answer,
+        questionData: originalQuestion // Includes question text, type, and max points
+      };
+    });
+
+    // Re-attach the detailed answers
+    submission.detailedAnswers = detailedAnswers;
+
+    res.status(200).json({
+      success: true,
+      studentName: `${student.firstName} ${student.lastName}`,
+      data: {
+        assessmentTitle: submission.assessment.title,
+        assessmentDescription: submission.assessment.description,
+        category: submission.assessment.category?.name,
+        type: submission.assessment.type,
+        dueDate: submission.assessment.dueDate,
+        
+        // Submission specific data
+        submittedAt: submission.submittedAt,
+        status: submission.status,
+        totalScore: submission.totalScore,
+        graded: submission.graded,
+        instructorFeedback: submission.feedback,
+        
+        // Combined question + answer data
+        results: detailedAnswers
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching submission for parent:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};

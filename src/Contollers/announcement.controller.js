@@ -255,3 +255,57 @@ export const getAnnouncementsForStudent = async (req, res) => {
   }
 };
 
+export const getAnnouncementsForParent = async (req, res) => {
+  const { studentId } = req.params; // The ID of the child passed from frontend
+  const parentEmail = req.user.email; // From your auth middleware
+
+  try {
+    // 1. AUTHORIZATION CHECK
+    // Verify this student belongs to the parent requesting the data
+    const student = await User.findOne({
+      _id: studentId,
+      guardianEmails: parentEmail,
+    });
+
+    if (!student) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized: You do not have permission to view this student's announcements.",
+      });
+    }
+
+    // 2. GET STUDENT ENROLLMENTS
+    const enrollments = await Enrollment.find({ student: studentId }).select("course");
+    const courseIds = enrollments.map((e) => e.course);
+
+    if (courseIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        announcements: [],
+        message: "Student is not enrolled in any courses.",
+      });
+    }
+
+    // 3. FETCH ANNOUNCEMENTS (with full data for parent visibility)
+    const announcements = await Announcement.find({
+      course: { $in: courseIds },
+    })
+      .populate("course", "courseTitle _id thumbnail") 
+      .populate("teacher", "firstName lastName email profileImg _id") // Included profileImg for a better UI
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      studentName: `${student.firstName} ${student.lastName}`,
+      announcements,
+    });
+
+  } catch (error) {
+    console.error("Error fetching announcements for parent:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};

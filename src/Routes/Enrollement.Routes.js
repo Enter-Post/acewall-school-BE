@@ -30,4 +30,7 @@ router.get("/getChapter/:chapterId", isUser, chapterDetails);
 router.get("/getChapterstdpre/:chapterId", isUser, chapterDetailsStdPre);
 router.delete("/unenroll/:courseId", isUser, unEnrollment);
 
+
+// Parent route
+
 export default router;
