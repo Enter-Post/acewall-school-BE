@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import CourseSch from "../Models/courses.model.sch.js";
 import Enrollment from "../Models/Enrollement.model.js";
 import Chapter from "../Models/chapter.model.sch.js";
+import User from "../Models/user.model.js";
 import Submission from "../Models/submission.model.js";
 import Assessment from "../Models/Assessment.model.js";
 import Lesson from "../Models/lesson.model.sch.js";
@@ -491,6 +492,7 @@ export const chapterDetailsStdPre = async (req, res) => {
 };
 
 
+
 // controller/adminController.js
 export const getStudentEnrolledCourses = async (req, res) => {
   const { id } = req.params;
@@ -535,3 +537,256 @@ export const enrollmentforTeacher = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
+
+
+export const getChildEnrolledCourses = async (req, res) => {
+    try {
+        const { studentId } = req.params; // The ID of the child
+        const parentEmail = req.user.email;
+        const search = req.query.search?.trim();
+
+        // 1. AUTHORIZATION CHECK
+        // Verify this student belongs to the parent
+        const student = await User.findOne({
+            _id: studentId,
+            guardianEmails: parentEmail,
+            role: { $in: ["student", "teacherAsStudent"] }
+        });
+
+        if (!student) {
+            return res.status(403).json({ 
+                success: false, 
+                message: "Unauthorized: You do not have access to this student's records." 
+            });
+        }
+
+        // 2. FETCH ENROLLMENTS
+        // We use the studentId from params instead of req.user._id
+        let enrolledCourses = await Enrollment.find({ student: studentId })
+            .sort({ createdAt: -1 })
+            .populate({
+                path: "course",
+                select: "courseTitle createdby category subcategory language thumbnail",
+                populate: [
+                    {
+                        path: "createdby",
+                        select: "firstName middleName lastName profileImg",
+                    },
+                    {
+                        path: "category",
+                        select: "title",
+                    },
+                ],
+            });
+
+        // 3. SEARCH FILTERING
+        if (search) {
+            enrolledCourses = enrolledCourses.filter((enroll) =>
+                enroll.course?.courseTitle?.toLowerCase().includes(search.toLowerCase())
+            );
+        }
+
+        res.status(200).json({ 
+            success: true,
+            studentName: `${student.firstName} ${student.lastName}`,
+            enrolledCourses 
+        });
+
+    } catch (err) {
+        console.error("Error fetching child courses for parent:", err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+};
+
+
+
+
+
+export const getParentChildCourseDetails = async (req, res) => {
+  const { enrollmentId, studentId } = req.params;
+  const parentEmail = req.user.email;
+
+  try {
+    // 1. AUTHORIZATION CHECK
+    const student = await User.findOne({
+      _id: studentId,
+      guardianEmails: parentEmail,
+    });
+
+    if (!student) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized: Access denied.",
+      });
+    }
+
+    // 2. FETCH DATA VIA AGGREGATION
+    const enrolledData = await Enrollment.aggregate([
+      {
+        $match: {
+          _id: new mongoose.Types.ObjectId(enrollmentId),
+          student: new mongoose.Types.ObjectId(studentId),
+        },
+      },
+      {
+        $lookup: {
+          from: "coursesches", 
+          localField: "course",
+          foreignField: "_id",
+          as: "courseDetails",
+          pipeline: [
+            // Lookups for linked data
+            {
+              $lookup: {
+                from: "users",
+                localField: "createdby",
+                foreignField: "_id",
+                as: "createdby",
+              },
+            },
+            { $unwind: { path: "$createdby", preserveNullAndEmptyArrays: true } },
+            {
+              $lookup: {
+                from: "categories",
+                localField: "category",
+                foreignField: "_id",
+                as: "category",
+              },
+            },
+            { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
+            {
+              $lookup: {
+                from: "subcategories",
+                localField: "subcategory",
+                foreignField: "_id",
+                as: "subcategory",
+              },
+            },
+            { $unwind: { path: "$subcategory", preserveNullAndEmptyArrays: true } },
+            
+            // Lookups for Semesters and Quarters
+            {
+              $lookup: {
+                from: "semesters",
+                localField: "semester",
+                foreignField: "_id",
+                as: "semester",
+                pipeline: [{ $match: { isArchived: false } }],
+              },
+            },
+            {
+              $lookup: {
+                from: "quarters",
+                localField: "quarter",
+                foreignField: "_id",
+                as: "quarter",
+                pipeline: [{ $match: { isArchived: false } }],
+              },
+            },
+
+            // Lookups for Chapters Summary (Lesson/Assessment Counts)
+            {
+              $lookup: {
+                from: "chapters",
+                localField: "_id",
+                foreignField: "course",
+                as: "chaptersSummary",
+                pipeline: [
+                  {
+                    $lookup: {
+                      from: "lessons",
+                      localField: "_id",
+                      foreignField: "chapter",
+                      as: "lessonData"
+                    }
+                  },
+                  {
+                    $lookup: {
+                      from: "assessments",
+                      localField: "_id",
+                      foreignField: "chapter",
+                      as: "chapterAssessments"
+                    }
+                  },
+                  {
+                    $project: {
+                      _id: 1,
+                      title: 1,
+                      lessonCount: { $size: "$lessonData" },
+                      assessmentCount: { $size: "$chapterAssessments" },
+                      lessonTitles: "$lessonData.title"
+                    }
+                  }
+                ]
+              }
+            },
+
+            // Lookup Final Assessments
+            {
+              $lookup: {
+                from: "assessments",
+                let: { courseId: "$_id" },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $and: [
+                          { $eq: ["$course", "$$courseId"] },
+                          { $eq: ["$type", "final-assessment"] },
+                        ],
+                      },
+                    },
+                  },
+                  { $project: { _id: 1, title: 1, description: 1 } },
+                ],
+                as: "finalAssessments",
+              },
+            },
+
+            // 3. FINAL PROJECT (Restoring Syllabus and all missing fields)
+            {
+              $project: {
+                courseTitle: 1,
+                courseDescription: 1,
+                language: 1,
+                thumbnail: 1,
+                syllabus: 1,        // RESTORED
+                teachingPoints: 1,  // RESTORED
+                requirements: 1,    // RESTORED
+                commentsEnabled: 1, // RESTORED
+                semester: 1,
+                quarter: 1,
+                chaptersSummary: 1, // ADDED
+                totalChapters: { $size: "$chaptersSummary" }, // ADDED
+                finalAssessments: 1,
+                createdby: {
+                  _id: 1,
+                  firstName: 1,
+                  lastName: 1,
+                  profileImg: 1,
+                },
+                category: { _id: 1, title: 1 },
+                subcategory: { _id: 1, title: 1 },
+              },
+            },
+          ],
+        },
+      },
+      { $unwind: "$courseDetails" },
+    ]);
+
+    if (!enrolledData || enrolledData.length === 0) {
+      return res.status(404).json({ success: false, message: "Not found." });
+    }
+
+    res.status(200).json({
+      success: true,
+      studentName: `${student.firstName} ${student.lastName}`,
+      enrolledCourse: enrolledData[0],
+    });
+  } catch (error) {
+    console.error("Error in getParentChildCourseDetails:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
