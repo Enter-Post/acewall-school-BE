@@ -1,5 +1,5 @@
 import express from "express";
-import { askAIupdated, generateContentForTeacher, getChatHistory } from "../Contollers/aiChat.controller.js";
+import { askAIupdated, generateContentForTeacher, generateImage, getChatHistory } from "../Contollers/aiChat.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { upload } from "../lib/DSmulter.config.js";
 
@@ -9,6 +9,6 @@ const router = express.Router();
 router.get("/getChatHistory", isUser, getChatHistory)
 router.post("/askupdated", upload.single("file"), isUser, askAIupdated);
 router.post("/generateContentForTeacher", isUser, generateContentForTeacher);
-
+router.post("/generateImage", isUser, generateImage);
 
 export default router;

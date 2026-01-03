@@ -294,19 +294,19 @@ One per line, plain English, no bullets.
       difficulty,
       file: file
         ? {
-            url: file.path,
-            filename: file.originalname,
-            sender: "user",
-          }
+          url: file.path,
+          filename: file.originalname,
+          sender: "user",
+        }
         : null,
       fileUsed: file ? file.originalname : null,
       generatedFile: generatedFileUrl
         ? {
-            url: generatedFileUrl,
-            filename: generatedFileName,
-            sender: "ai",
-            FileType: requestedFileType,
-          }
+          url: generatedFileUrl,
+          filename: generatedFileName,
+          sender: "ai",
+          FileType: requestedFileType,
+        }
         : null,
     });
 
@@ -318,10 +318,10 @@ One per line, plain English, no bullets.
       fileUsed: file ? file.originalname : null,
       generatedFile: generatedFileUrl
         ? {
-            url: generatedFileUrl,
-            filename: generatedFileName,
-            FileType: requestedFileType,
-          }
+          url: generatedFileUrl,
+          filename: generatedFileName,
+          FileType: requestedFileType,
+        }
         : null,
     });
   } catch (err) {
@@ -583,4 +583,36 @@ Generate content now.
     console.error("error in generateContentForTeacher", error);
     res.status(500).json({ message: "Failed to generate content for teacher" });
   }
-};  
+};
+
+export const generateImage = async (req, res) => {
+  try {
+    const { prompt, aspectRatio, numberOfImages } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({
+        success: false,
+        message: "Prompt is required",
+      });
+    }
+
+    // Call our utility function
+    const result = await model.generateImage({ prompt, aspectRatio, numberOfImages });
+
+    console.log(result, "result from gemini image");
+
+    // Send back the first image (or adjust logic to send an array if result has many)
+    res.status(200).json({
+      success: true,
+      mimeType: result.mimeType,
+      imageBase64: result.imageBase64,
+    });
+  } catch (error) {
+    console.error("Image generation error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate image",
+      error: error.message,
+    });
+  }
+};
