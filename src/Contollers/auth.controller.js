@@ -10,6 +10,7 @@ import { v2 as cloudinary } from "cloudinary";
 import Enrollment from "../Models/Enrollement.model.js";
 import mongoose from "mongoose";
 import twilio from "twilio";
+import jwt from "jsonwebtoken";
 
 import multer from "multer";
 import xlsx from "xlsx";
@@ -465,9 +466,8 @@ export const verifyPhoneOtp = async (req, res) => {
       });
 
       const mailOptions = {
-        from: `"${
-          process.env.MAIL_FROM_NAME || "Acewall Scholars"
-        }" <${"support@acewallscholars.org"}>`,
+        from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars"
+          }" <${"support@acewallscholars.org"}>`,
         to: newUser.email,
         subject: `Welcome to Acewall Scholars as an Instructor`,
         html: `
@@ -705,6 +705,216 @@ export const login = async (req, res) => {
     console.error("error in login==>", error.message);
     return res.status(500).json({
       message: "Something went wrong, sorry for inconvenience",
+    });
+  }
+};
+
+export const createGuardianAcc = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { guardianEmail } = req.body;
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Prevent duplicate guardian email
+    if (user.guardianEmails.includes(guardianEmail)) {
+      return res.status(400).json({ message: "Guardian email already exists" });
+    }
+
+    user.guardianEmails.push(guardianEmail);
+    await user.save();
+
+    // Check if parent account already exists
+    let parentAcc = { email: guardianEmail, role: "parent" };
+
+    const token = generateToken(parentAcc, "parent", req, null, {
+      setCookie: false,
+      expiresIn: "1d",
+      purpose: "passwordless",
+    });
+
+    // Frontend redirect URL
+    const loginUrl = `${process.env.CLIENT_URL}/passwordless-login?token=${token}`;
+
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: "support@acewallscholars.org",
+        pass: "dmwjwyfxaccrdxwi",
+      },
+    });
+
+    const mailOptions = {
+      from: `"Acewall Scholars Team" <support@acewallscholars.org>`,
+      to: guardianEmail,
+      subject: "Login to Acewall Scholars (No Password Required)",
+      html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
+          <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden;">
+            
+            <div style="text-align: center; padding: 20px;">
+              <img src="https://lirp.cdn-website.com/6602115c/dms3rep/multi/opt/acewall+scholars-431w.png"
+                alt="Acewall Scholars Logo" style="height: 60px;" />
+            </div>
+
+            <div style="background: #28a745; padding: 20px; text-align: center;">
+              <h2 style="color: #fff; margin: 0;">Password-less Login</h2>
+            </div>
+
+            <div style="padding: 30px; text-align: center;">
+              <p style="color: #555; font-size: 15px;">
+                Click the button below to securely log in to your guardian account.
+              </p>
+
+              <a href="${loginUrl}"
+                style="display: inline-block; margin-top: 20px; padding: 14px 30px;
+                background: #28a745; color: #fff; font-size: 16px;
+                font-weight: bold; border-radius: 6px; text-decoration: none;">
+                Verify & Login
+              </a>
+
+              <p style="margin-top: 20px; font-size: 12px; color: #999;">
+                This link will expire in 15 minutes.
+              </p>
+            </div>
+
+            <div style="background: #f0f4f8; text-align: center; padding: 15px; font-size: 12px;">
+              <p>Acewall Scholars © ${new Date().getFullYear()}</p>
+              <p>Do not reply to this automated email.</p>
+            </div>
+
+          </div>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    return res.status(200).json({
+      message: "Guardian account created and login email sent",
+      guardianEmail,
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+export const loginGuardianAcc = async (req, res) => {
+  try {
+    const { guardianEmail } = req.body;
+
+    // Check if parent account already exists
+    let parentAcc = { email: guardianEmail, role: "parent" };
+
+    const token = generateToken(parentAcc, "parent", req, null, {
+      setCookie: false,
+      expiresIn: "1d",
+      purpose: "passwordless",
+    });
+
+    const loginUrl = `${process.env.CLIENT_URL}/passwordless-login?token=${token}`;
+
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: "support@acewallscholars.org",
+        pass: "dmwjwyfxaccrdxwi",
+      },
+    });
+
+    const mailOptions = {
+      from: `"Acewall Scholars Team" <support@acewallscholars.org>`,
+      to: guardianEmail,
+      subject: "Login to Acewall Scholars (No Password Required)",
+      html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
+          <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden;">
+            
+            <div style="text-align: center; padding: 20px;">
+              <img src="https://lirp.cdn-website.com/6602115c/dms3rep/multi/opt/acewall+scholars-431w.png"
+                alt="Acewall Scholars Logo" style="height: 60px;" />
+            </div>
+
+            <div style="background: #28a745; padding: 20px; text-align: center;">
+              <h2 style="color: #fff; margin: 0;">Password-less Login</h2>
+            </div>
+
+            <div style="padding: 30px; text-align: center;">
+              <p style="color: #555; font-size: 15px;">
+                Click the button below to securely log in to your guardian account.
+              </p>
+
+              <a href="${loginUrl}"
+                style="display: inline-block; margin-top: 20px; padding: 14px 30px;
+                background: #28a745; color: #fff; font-size: 16px;
+                font-weight: bold; border-radius: 6px; text-decoration: none;">
+                Verify & Login
+              </a>
+            </div>
+
+            <div style="background: #f0f4f8; text-align: center; padding: 15px; font-size: 12px;">
+              <p>Acewall Scholars © ${new Date().getFullYear()}</p>
+              <p>Do not reply to this automated email.</p>
+            </div>
+
+          </div>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    return res.status(200).json({
+      message: "Email has been sended to your email address. verify it to login",
+      guardianEmail,
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+export const verifyPasswordlessLogin = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRAT);
+
+    if (decoded.purpose !== "passwordless") {
+      return res.status(401).json({ message: "Invalid token type" });
+    }
+
+    res.cookie("client_jwt", token, {
+      maxAge: 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      sameSite: "none",
+      secure: true,
+      path: "/",
+    });
+
+    return res.status(200).json({
+      message: "Login successful"
+    });
+
+  } catch (err) {
+    return res.status(401).json({
+      message: "Link expired or invalid",
     });
   }
 };
@@ -1150,7 +1360,7 @@ export const getStudentById = async (req, res) => {
     const user = await User.findById(id).select(
       "id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role guardianEmails"
     );
-    
+
     if (!user) {
       return res.status(404).json({ message: "Student not found." });
     }
@@ -1736,9 +1946,8 @@ export const updateEmailOTPById = async (req, res) => {
 
         <!-- Body -->
         <div style="padding: 20px; color: #333; text-align: center;">
-          <p style="font-size: 16px; margin: 0;">Hello${
-            user.firstName ? ` ${user.firstName}` : ""
-          },</p>
+          <p style="font-size: 16px; margin: 0;">Hello${user.firstName ? ` ${user.firstName}` : ""
+        },</p>
           <p style="font-size: 16px;">Your OTP code is:</p>
           
           <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #10b981; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
@@ -1890,9 +2099,8 @@ export const updatePasswordOTPById = async (req, res) => {
 
         <!-- Body -->
         <div style="padding: 20px; color: #333; text-align: center;">
-          <p style="font-size: 16px; margin: 0;">Hello${
-            user.firstName ? ` ${user.firstName}` : ""
-          },</p>
+          <p style="font-size: 16px; margin: 0;">Hello${user.firstName ? ` ${user.firstName}` : ""
+        },</p>
           <p style="font-size: 16px;">Your OTP code is:</p>
           
           <div style="margin: 20px auto; display: inline-block; padding: 12px 24px; background: #10b981; color: #fff; font-size: 22px; font-weight: bold; border-radius: 6px; letter-spacing: 3px;">
@@ -2089,13 +2297,13 @@ export const getChildrenData = async (req, res) => {
       role: { $in: ["student", "teacherAsStudent"] },
       guardianEmails: parentEmail // MongoDB automatically checks if the string exists in the array
     })
-    .select("-password") // Exclude sensitive info
-    .lean();
+      .select("-password") // Exclude sensitive info
+      .lean();
 
     if (!children || children.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "No students found associated with this parent email." 
+      return res.status(404).json({
+        success: false,
+        message: "No students found associated with this parent email."
       });
     }
 

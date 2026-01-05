@@ -8,10 +8,10 @@ const UserSchema = new mongoose.Schema(
       filename: { type: String },
       publicId: { type: String },
     },
-    firstName: { type: String, required: true },
+    firstName: { type: String },
     Bio: { type: String },
     middleName: { type: String },
-    lastName: { type: String, required: true },
+    lastName: { type: String },
     pronoun: {
       type: String,
       enum: ["he/him", "she/her", "they/them", "others", "prefer not to say"],

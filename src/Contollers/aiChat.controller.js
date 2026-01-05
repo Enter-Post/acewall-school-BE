@@ -530,7 +530,8 @@ CONTENT RULES BY TYPE:
 - If usedfor = "chapterDescription":
   • Output 1–2 short paragraphs
   • Written for students
-  • No bullet points 
+  • No bullet points
+  • Not more then 500 characters
   
 - If usedfor = "lessonTitle":
   • Output a single clear, engaging lesson title (max 12 words)

@@ -37,6 +37,9 @@ import {
   previewSignIn,
   previewSignOut,
   updateParentEmail,
+  createGuardianAcc,
+  verifyPasswordlessLogin,
+  loginGuardianAcc,
 } from "../Contollers/auth.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { upload } from "../lib/multer.config.js";
@@ -56,6 +59,10 @@ router.post("/resendPhoneOTP", resendPhoneOTP);
 router.post("/resendOTP", resendOTP);
 
 router.post("/login", login);
+router.post("/createGuardianAcc/:id", isUser, createGuardianAcc);
+router.post("/loginGuardianAcc", loginGuardianAcc);
+router.post("/verifyPasswordlessLogin", verifyPasswordlessLogin);
+
 router.post("/forgotPassword", forgetPassword);
 router.post("/verifyForgotPassOTP", verifyOTPForgotPassword);
 router.post("/resetPassword", resetPassword);
