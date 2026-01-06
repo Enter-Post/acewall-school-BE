@@ -15,6 +15,7 @@ import jwt from "jsonwebtoken";
 import multer from "multer";
 import xlsx from "xlsx";
 import OPT from "../Models/opt.model.js";
+import GuardianAcc from "../Models/guardianAcc.model.js";
 
 export const bulkSignup = async (req, res) => {
   try {
@@ -719,13 +720,15 @@ export const createGuardianAcc = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Prevent duplicate guardian email
     if (user.guardianEmails.includes(guardianEmail)) {
       return res.status(400).json({ message: "Guardian email already exists" });
     }
 
     user.guardianEmails.push(guardianEmail);
     await user.save();
+
+    const guardianAcc = new GuardianAcc({ email: guardianEmail });
+    await guardianAcc.save();
 
     // Check if parent account already exists
     let parentAcc = { email: guardianEmail, role: "parent" };
@@ -736,7 +739,6 @@ export const createGuardianAcc = async (req, res) => {
       purpose: "passwordless",
     });
 
-    // Frontend redirect URL
     const loginUrl = `${process.env.CLIENT_URL}/passwordless-login?token=${token}`;
 
     const transporter = nodemailer.createTransport({
@@ -813,7 +815,11 @@ export const loginGuardianAcc = async (req, res) => {
   try {
     const { guardianEmail } = req.body;
 
-    // Check if parent account already exists
+    const GuardianAccExist = await GuardianAcc.findOne({ email: guardianEmail });
+    if (!GuardianAccExist) {
+      return res.status(404).json({ message: "Guardian account not found" });
+    }
+
     let parentAcc = { email: guardianEmail, role: "parent" };
 
     const token = generateToken(parentAcc, "parent", req, null, {
