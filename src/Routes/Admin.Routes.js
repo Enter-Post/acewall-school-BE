@@ -14,6 +14,7 @@ import { archivedQuarter } from "../Contollers/CourseControllers/quarter.control
 import { getCategoriesforAdmin } from "../Contollers/category.controller.js";
 import { getAllCoursesForAdmin, toggleAllCoursesComments, toggleCourseComments } from "../Contollers/CourseControllers/courses.controller.sch.js";
 import { getAssessmentsByCourseForAdmin } from "../Contollers/Assessment.controller.js";
+import { getAdminMonthlyAttendance } from "../Contollers/Attendance.controller.js";
 // import { checkRole, isAllowed } from "../Middlewares/admins.Middleware.js";
 const router = express.Router();
 
@@ -32,5 +33,5 @@ router.get("/getCategories", isUser, getCategoriesforAdmin)
 router.put("/updateParentEmail/:id", isUser, updateParentEmail);
 router.patch("/:courseId/toggle-comments", toggleCourseComments);
 router.patch("/toggle-all-comments", isUser , toggleAllCoursesComments);
-
+router.get("/monthly/:courseId", isUser, getAdminMonthlyAttendance);
 export default router;

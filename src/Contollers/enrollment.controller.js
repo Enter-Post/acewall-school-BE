@@ -213,6 +213,7 @@ export const studentCourseDetails = async (req, res) => {
               $project: {
                 courseTitle: 1,
                 courseDescription: 1,
+                courseCode: 1,
                 language: 1,
                 thumbnail: 1,
                 syllabus: 1,
