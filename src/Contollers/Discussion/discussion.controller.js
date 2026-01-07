@@ -97,12 +97,29 @@ export const getDiscussionsOfTeacher = async (req, res) => {
 
 export const getDiscussionbyId = async (req, res) => {
   const id = req.params.id;
+  const userId = req.user._id;
   try {
     const discussion = await Discussion.findById(id)
       .populate("course", "courseTitle thumbnail")
       .populate("chapter", "title")
       .populate("lesson", "title")
       .populate("createdby", "firstName middleName lastName profileImg")
+
+    if (!discussion) {
+      return res.status(404).json({ message: "Discussion not found" });
+    }
+
+    const exists = await Enrollment.findOne({
+      student: userId,
+      course: discussion.course,
+    });
+
+    if (!exists) {
+      return res
+        .status(404)
+        .json({ message: "You are not enrolled in this course" });
+    }
+
     res
       .status(200)
       .json({ message: "Discussion fetched successfully", discussion });
@@ -175,7 +192,7 @@ export const lessonDiscussions = async (req, res) => {
     console.log("error in fetching chapter discussions", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-} 
+}
 
 export const courseDiscussions = async (req, res) => {
   const { courseId } = req.params

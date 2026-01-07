@@ -22,8 +22,7 @@ import {
   toggleCourseComments,
   toggleGradingSystem,
   getCourseEnrollmentStats,
-  
-
+  getUserCoursesforFilter,
 } from "../../Contollers/CourseControllers/courses.controller.sch.js";
 import { getAllCoursesSchupdated, getCoursesByTeacherSch_WEB } from "../../Contollers/UPDATED_API_CONTROLLER/course.controller.web.js";
 
@@ -37,7 +36,7 @@ router.patch("/:courseId/toggle-comments", toggleCourseComments);
 
 ///////// router.get("/getindividualcourse", isUser, getCoursesByTeacherSch);
 router.get("/getTeacherCourses", isUser, getCoursesByTeacherSch_WEB)
-
+router.get("/getUserCoursesforFilter", isUser, getUserCoursesforFilter);
 
 ////PREV APIS
 router.put(`/archive/:courseId`, isUser, archivedCourse);

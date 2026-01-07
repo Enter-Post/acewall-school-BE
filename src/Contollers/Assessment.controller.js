@@ -82,9 +82,8 @@ export const sendAssessmentReminder = async (req, res) => {
       if (!student?.email) continue;
 
       const mailOptions = {
-        from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars"}" <${
-          process.env.MAIL_USER
-        }>`,
+        from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars"}" <${process.env.MAIL_USER
+          }>`,
         to: student.email,
         subject: `Reminder: ${assessment.title} - Due ${dueDate}`,
         html: `
@@ -98,20 +97,17 @@ export const sendAssessmentReminder = async (req, res) => {
 
             <!-- Body -->
             <div style="padding: 20px; color: #333;">
-              <p style="font-size: 16px;">Hello ${
-                student.firstName + " " + student.lastName
-              },</p>
+              <p style="font-size: 16px;">Hello ${student.firstName + " " + student.lastName
+          },</p>
               <p style="font-size: 16px;">
                 This is a reminder for your upcoming assessment:
               </p>
 
               <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #10b981;">
-                <p style="margin: 5px 0; font-size: 15px;"><strong>Assessment:</strong> ${
-                  assessment.title
-                }</p>
-                <p style="margin: 5px 0; font-size: 15px;"><strong>Course:</strong> ${
-                  assessment.course.courseTitle
-                }</p>
+                <p style="margin: 5px 0; font-size: 15px;"><strong>Assessment:</strong> ${assessment.title
+          }</p>
+                <p style="margin: 5px 0; font-size: 15px;"><strong>Course:</strong> ${assessment.course.courseTitle
+          }</p>
                 <p style="margin: 5px 0; font-size: 15px;"><strong>Due Date:</strong> ${dueDate}</p>
               </div>
 
@@ -123,9 +119,8 @@ export const sendAssessmentReminder = async (req, res) => {
 
               <p style="font-size: 14px; margin-top: 20px;">
                 Best regards,<br>
-                <strong>${assessment.createdby.firstName} ${
-          assessment.createdby.lastName
-        }</strong><br>
+                <strong>${assessment.createdby.firstName} ${assessment.createdby.lastName
+          }</strong><br>
                 ${assessment.createdby.email}
               </p>
             </div>
@@ -381,13 +376,27 @@ export const deleteFile = async (req, res) => {
 export const getAssesmentbyID = async (req, res) => {
   const { assessmentId } = req.params;
   const validObjectId = new mongoose.Types.ObjectId(assessmentId);
+  const userId = req.user._id;
 
-  console.log(assessmentId, validObjectId);
   try {
     const assessment = await Assessment.findById(validObjectId).populate({
       path: "category",
       select: "name",
     });
+
+    const courseId = assessment.course;
+
+    const isEnrollment = await Enrollment.findOne({
+      student: userId,
+      course: courseId,
+    });
+
+    if (!isEnrollment) {
+      return res
+        .status(404)
+        .json({ message: "You are not enrolled in this course" });
+    }
+
     if (!assessment) {
       return res.status(404).json({ message: "Assessment not found" });
     }
@@ -832,15 +841,15 @@ export const getAssessmentStats = async (req, res) => {
     }
 
     // 1. Count On-Time Submissions
-    const onTimeCount = await Submission.countDocuments({ 
-      assessment: assessmentId, 
-      status: "before due date" 
+    const onTimeCount = await Submission.countDocuments({
+      assessment: assessmentId,
+      status: "before due date"
     });
 
     // 2. Count Late Submissions
-    const lateCount = await Submission.countDocuments({ 
-      assessment: assessmentId, 
-      status: "after due date" 
+    const lateCount = await Submission.countDocuments({
+      assessment: assessmentId,
+      status: "after due date"
     });
 
     // 3. Get total students enrolled in the course

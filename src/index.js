@@ -42,6 +42,7 @@ import emailNotificationRoutes from "./Routes/EmailNotification.Routes.js";
 import StandardGradingRoutes from "./Routes/StandardGrading.Routes.js";
 import aiChatRoutes from "./Routes/AIChat.Routes.js";
 import parentRoutes from "./Routes/Parent.Routes.js";
+import attendanceRoutes from "./Routes/Attendance.routes.js";
 import "./cronJobs/assessmentReminder.js";
 
 import path from "path";
@@ -108,6 +109,7 @@ app.use("/api/emailnotification", emailNotificationRoutes)
 app.use("/api/standardGrading", StandardGradingRoutes)
 app.use("/api/aichat", aiChatRoutes)
 app.use("/api/parent", parentRoutes);
+app.use("/api/attendance", attendanceRoutes);
 server.listen(PORT, () => {
   connectDB();
   console.log(`This app is running on localhost ${PORT}`);
