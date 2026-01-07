@@ -18,7 +18,7 @@ const router = express.Router();
 router.post("/create/:courseId", isUser, enrollment);
 router.get("/isEnrolled/:courseId", isUser, isEnrolled);
 router.get("/studentCourses", isUser, studenCourses);
-router.get("/studentCourseDetails/:enrollmentId", isUser, studentCourseDetails);
+router.get("/studentCourseDetails/:enrollmentId/:courseId", isUser, isEnrolledMiddleware, studentCourseDetails);
 router.get(
   "/studentEnrolledinCourse/:courseId",
   isUser,

@@ -2,6 +2,9 @@ import Enrollment from "../Models/Enrollement.model.js";
 
 export const isEnrolledMiddleware = async (req, res, next) => {
   const { courseId } = req.params;
+
+  console.log("courseId in isEnrolledMiddleware", courseId);
+
   const userId = req.user._id;
   try {
     const exists = await Enrollment.findOne({
