@@ -43,6 +43,7 @@ import StandardGradingRoutes from "./Routes/StandardGrading.Routes.js";
 import aiChatRoutes from "./Routes/AIChat.Routes.js";
 import parentRoutes from "./Routes/Parent.Routes.js";
 import attendanceRoutes from "./Routes/Attendance.routes.js";
+import loginActivityRoutes from "./Routes/LoginActivity.Routes.js";
 import "./cronJobs/assessmentReminder.js";
 
 import path from "path";
@@ -110,6 +111,9 @@ app.use("/api/standardGrading", StandardGradingRoutes)
 app.use("/api/aichat", aiChatRoutes)
 app.use("/api/parent", parentRoutes);
 app.use("/api/attendance", attendanceRoutes);
+app.use("/api/loginactivity", loginActivityRoutes)
+
+
 server.listen(PORT, () => {
   connectDB();
   console.log(`This app is running on localhost ${PORT}`);
