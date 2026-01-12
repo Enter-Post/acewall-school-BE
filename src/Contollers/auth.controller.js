@@ -16,6 +16,7 @@ import multer from "multer";
 import xlsx from "xlsx";
 import OPT from "../Models/opt.model.js";
 import GuardianAcc from "../Models/guardianAcc.model.js";
+import LoginActivity from "../Models/userActivity.model.js";
 
 export const bulkSignup = async (req, res) => {
   try {
@@ -692,6 +693,14 @@ export const login = async (req, res) => {
       return res.status(401).json({
         error: true,
         message: "Invalid Credentials",
+      });
+    }
+
+    if (user.role === "student") {
+      await LoginActivity.create({
+        userId: user._id,
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
       });
     }
 

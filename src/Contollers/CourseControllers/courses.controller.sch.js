@@ -900,7 +900,7 @@ export const getCoursesforadminofteacher = async (req, res) => {
 export const getallcoursesforteacher = async (req, res) => {
   const teacherId = req.user._id;
   const { courseTitle, studentName, page = 1, limit = 8 } = req.query;
-
+  const {courseId} = req.params
   try {
     const matchStage = {
       "courseDetails.createdby": new mongoose.Types.ObjectId(teacherId),
