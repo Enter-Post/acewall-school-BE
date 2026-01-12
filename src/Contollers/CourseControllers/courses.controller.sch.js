@@ -13,6 +13,173 @@ import Rating from "../../Models/rating.model.js";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 import { log } from "console";
+import Discussion from "../../Models/discussion.model.js";
+import Quarter from "../../Models/quarter.model.js";
+
+export const importFullCourse = async (req, res) => {
+  try {
+    const data = req.body;
+    // MATCH YOUR EXISTING AUTH PATTERN:
+    const userId = req.user._id;
+
+    // --- STEP 1: CREATE THE COURSE ---
+    const {
+      _id,
+      courseCode,
+      createdAt,
+      updatedAt,
+      __v,
+      curriculum,
+      assessments,
+      discussions,
+      published,
+      ...courseBody
+    } = data;
+
+    const newCourse = new CourseSch({
+      ...courseBody,
+      courseTitle: `${courseBody.courseTitle} (Imported)`,
+      // Generate code exactly like your original creator
+      courseCode: `CLN-${Math.random()
+        .toString(36)
+        .substring(2, 8)
+        .toUpperCase()}`,
+      createdby: userId, // This overrides the old ID from the JSON
+      published: false,
+      // We must extract only the IDs from the populated objects in your JSON
+      category: courseBody.category?._id || courseBody.category,
+      subcategory: courseBody.subcategory?._id || courseBody.subcategory,
+      // Handle semester array by mapping to IDs
+      semester: courseBody.semester?.map((s) => s._id || s) || [],
+      quarter: courseBody.quarter?.map((q) => q._id || q) || [],
+    });
+
+    const savedCourse = await newCourse.save();
+
+    // ID Maps to maintain relationships
+    const chapterMap = {};
+    const lessonMap = {};
+
+    // --- STEP 2: CREATE CURRICULUM ---
+    if (curriculum && curriculum.length > 0) {
+      for (const chap of curriculum) {
+        const { _id: oldChapId, lessons, ...chapBody } = chap;
+
+        const newChapter = await Chapter.create({
+          ...chapBody,
+          course: savedCourse._id,
+          createdby: userId, // Set current user as creator
+          // Ensure quarter is an ID, not an object
+          quarter: chapBody.quarter?._id || chapBody.quarter,
+        });
+
+        chapterMap[oldChapId] = newChapter._id;
+
+        if (lessons && lessons.length > 0) {
+          for (const lesson of lessons) {
+            const { _id: oldLessonId, ...lessonBody } = lesson;
+
+            const newLesson = await Lesson.create({
+              ...lessonBody,
+              chapter: newChapter._id,
+              createdby: userId, // Set current user as creator
+            });
+
+            lessonMap[oldLessonId] = newLesson._id;
+          }
+        }
+      }
+    }
+
+    // --- STEP 3: CREATE ASSESSMENTS ---
+    if (assessments && assessments.length > 0) {
+      const preparedAssessments = assessments.map((asmt) => {
+        const { _id: oldAsmtId, questions, ...asmtBody } = asmt;
+
+        // Strip internal IDs from questions
+        const cleanQuestions = questions.map(({ _id, ...q }) => q);
+
+        return {
+          ...asmtBody,
+          course: savedCourse._id,
+          createdby: userId,
+          category: asmtBody.category?._id || asmtBody.category,
+          semester: asmtBody.semester?._id || asmtBody.semester,
+          quarter: asmtBody.quarter?._id || asmtBody.quarter,
+          chapter: chapterMap[asmtBody.chapter] || null,
+          lesson: lessonMap[asmtBody.lesson] || null,
+          questions: cleanQuestions,
+        };
+      });
+
+      await Assessment.insertMany(preparedAssessments);
+    }
+
+    // Optional: Auto-enroll the creator (just like your original API)
+    // await Enrollment.create({ student: userId, course: savedCourse._id });
+
+    res.status(201).json({
+      success: true,
+      message: "A-Z Course Data imported successfully!",
+      newCourseId: savedCourse._id,
+    });
+  } catch (error) {
+    console.error("Import Error Detail:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getFullCourseData = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    // 1. Fetch the main course object
+    const course = await CourseSch.findById(courseId)
+      .populate("category subcategory semester")
+      .populate("createdby", "name email")
+      .lean();
+
+    if (!course) return res.status(404).json({ message: "Course not found" });
+
+    // --- ADDITION 1: ASSESSMENT CATEGORIES ---
+    // We fetch categories belonging to this specific course
+    const assessmentCategories = await AssessmentCategory.find({ course: courseId }).lean();
+
+    // --- ADDITION 2: QUARTERS ---
+    // We find all quarters linked to the semesters used in this course
+    const semesterIds = course.semester?.map(s => s._id) || [];
+    const quarters = await Quarter.find({ semester: { $in: semesterIds } }).lean();
+
+    // 2. Fetch Chapters and Lessons
+    const chapters = await Chapter.find({ course: courseId }).lean();
+    const chaptersWithLessons = await Promise.all(
+      chapters.map(async (chapter) => {
+        const lessons = await Lesson.find({ chapter: chapter._id }).lean();
+        return { ...chapter, lessons };
+      })
+    );
+
+    // 3. Fetch Assessments and Discussions
+    const assessments = await Assessment.find({ course: courseId }).lean();
+    const discussions = await Discussion.find({ course: courseId }).lean();
+
+    // 4. COMBINE EVERYTHING
+    // Note how quarters and assessmentCategories are added to the keys
+    res.status(200).json({
+      success: true,
+      data: {
+        ...course,
+        quarters,             // Included in the JSON
+        assessmentCategories, // Included in the JSON
+        curriculum: chaptersWithLessons,
+        assessments,
+        discussions,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 export const toggleGradingSystem = async (req, res) => {
   try {
@@ -55,8 +222,9 @@ export const toggleAllCoursesComments = async (req, res) => {
     const result = await CourseSch.updateMany({}, { commentsEnabled: enable });
 
     res.status(200).json({
-      message: `Comments & Ratings ${enable ? "enabled" : "disabled"
-        } for all courses`,
+      message: `Comments & Ratings ${
+        enable ? "enabled" : "disabled"
+      } for all courses`,
       commentsEnabled: enable,
       modifiedCount: result.modifiedCount, // optional: how many courses were updated
     });
@@ -83,8 +251,9 @@ export const toggleCourseComments = async (req, res) => {
     await course.save();
 
     res.status(200).json({
-      message: `Comments & Ratings ${enable ? "enabled" : "disabled"
-        } successfully`,
+      message: `Comments & Ratings ${
+        enable ? "enabled" : "disabled"
+      } successfully`,
       commentsEnabled: enable,
     });
     console.log(enable);
@@ -194,8 +363,9 @@ export const createCourseSch = async (req, res) => {
     });
 
     const mailOptions = {
-      from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars Team"
-        }" <support@acewallscholars.org>`,
+      from: `"${
+        process.env.MAIL_FROM_NAME || "Acewall Scholars Team"
+      }" <support@acewallscholars.org>`,
       to: teacher.email,
       subject: `Course Created Successfully: ${courseTitle}`,
       html: `
@@ -216,11 +386,13 @@ export const createCourseSch = async (req, res) => {
 
           <!-- Body -->
           <div style="padding: 20px; color: #333;">
-            <p style="font-size: 16px;">Hi, ${teacher.firstName} ${teacher.lastName
-        },</p>
+            <p style="font-size: 16px;">Hi, ${teacher.firstName} ${
+        teacher.lastName
+      },</p>
 
-            <p style="font-size: 16px;">Your course <strong>${course.courseTitle
-        }</strong> has been successfully created.</p>
+            <p style="font-size: 16px;">Your course <strong>${
+              course.courseTitle
+            }</strong> has been successfully created.</p>
 
             <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #007bff;">
               <p style="font-size: 16px; margin: 0;">
@@ -612,12 +784,17 @@ export const getCourseDetails = async (req, res) => {
   const { courseId } = req.params;
   const userId = req.user._id;
   try {
-    const courseData = await CourseSch.findById(courseId)
+    const courseData = await CourseSch.findById(courseId);
 
     const isCreated = courseData.createdby.toString() === userId.toString();
 
     if (!isCreated) {
-      return res.status(403).json({ error: "Forbidden", message: "You are not authorized to view this course" });
+      return res
+        .status(403)
+        .json({
+          error: "Forbidden",
+          message: "You are not authorized to view this course",
+        });
     }
 
     const course = await CourseSch.aggregate([
@@ -900,7 +1077,7 @@ export const getCoursesforadminofteacher = async (req, res) => {
 export const getallcoursesforteacher = async (req, res) => {
   const teacherId = req.user._id;
   const { courseTitle, studentName, page = 1, limit = 8 } = req.query;
-
+  const {courseId} = req.params
   try {
     const matchStage = {
       "courseDetails.createdby": new mongoose.Types.ObjectId(teacherId),
@@ -948,31 +1125,31 @@ export const getallcoursesforteacher = async (req, res) => {
       // Apply student name search if provided (partial match)
       ...(studentName
         ? [
-          {
-            $match: {
-              $or: [
-                {
-                  "studentDetails.firstName": {
-                    $regex: studentName,
-                    $options: "i",
+            {
+              $match: {
+                $or: [
+                  {
+                    "studentDetails.firstName": {
+                      $regex: studentName,
+                      $options: "i",
+                    },
                   },
-                },
-                {
-                  "studentDetails.middleName": {
-                    $regex: studentName,
-                    $options: "i",
+                  {
+                    "studentDetails.middleName": {
+                      $regex: studentName,
+                      $options: "i",
+                    },
                   },
-                },
-                {
-                  "studentDetails.lastName": {
-                    $regex: studentName,
-                    $options: "i",
+                  {
+                    "studentDetails.lastName": {
+                      $regex: studentName,
+                      $options: "i",
+                    },
                   },
-                },
-              ],
+                ],
+              },
             },
-          },
-        ]
+          ]
         : []),
 
       // Group by student
@@ -1307,11 +1484,6 @@ export const getAllCoursesForAdmin = async (req, res) => {
   }
 };
 
-
-
-
-
-
 export const getCourseEnrollmentStats = async (req, res) => {
   const { courseId } = req.params;
   const { range } = req.query;
@@ -1322,19 +1494,19 @@ export const getCourseEnrollmentStats = async (req, res) => {
     const now = new Date();
 
     // Calculate the date offset
-    if (range === '7d') {
+    if (range === "7d") {
       startDate = new Date();
       startDate.setDate(now.getDate() - 7);
-    } else if (range === '30d') {
+    } else if (range === "30d") {
       startDate = new Date();
       startDate.setMonth(now.getMonth() - 1);
-    } else if (range === '6m') {
+    } else if (range === "6m") {
       startDate = new Date();
       startDate.setMonth(now.getMonth() - 6);
     }
 
     const matchStage = {
-      course: new mongoose.Types.ObjectId(courseId)
+      course: new mongoose.Types.ObjectId(courseId),
     };
 
     if (startDate) {
@@ -1346,27 +1518,33 @@ export const getCourseEnrollmentStats = async (req, res) => {
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-          count: { $sum: 1 }
-        }
+          count: { $sum: 1 },
+        },
       },
-      { $sort: { "_id": 1 } },
+      { $sort: { _id: 1 } },
       {
         $project: {
           _id: 0,
           date: "$_id",
-          students: "$count"
-        }
-      }
+          students: "$count",
+        },
+      },
     ]);
 
     // Ensure we always return an array
     res.status(200).json({
       success: true,
-      data: stats || []
+      data: stats || [],
     });
   } catch (error) {
     console.error("Stats Error:", error);
-    res.status(500).json({ success: false, message: "Error fetching stats", error: error.message });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Error fetching stats",
+        error: error.message,
+      });
   }
 };
 
@@ -1378,8 +1556,8 @@ export const getUserCoursesforFilter = async (req, res) => {
 
     const searchFilter = search
       ? {
-        courseTitle: { $regex: search, $options: "i" },
-      }
+          courseTitle: { $regex: search, $options: "i" },
+        }
       : {};
 
     let courses = [];
@@ -1468,11 +1646,11 @@ export const getUserCoursesforFilter = async (req, res) => {
         {
           $match: search
             ? {
-              "course.courseTitle": {
-                $regex: search,
-                $options: "i",
-              },
-            }
+                "course.courseTitle": {
+                  $regex: search,
+                  $options: "i",
+                },
+              }
             : {},
         },
 
