@@ -5,7 +5,7 @@ export const generateToken = (
   role,
   req,
   res,
-  options = { setCookie: true, expiresIn: "7d", purpose: "auth" }
+  options = { setCookie: true, expiresIn: "1d", purpose: "auth" }
 ) => {
 
   // ----------------- Detect portal -----------------
