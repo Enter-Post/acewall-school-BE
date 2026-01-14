@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleAIFileManager } from "@google/generative-ai/server";
 
 const client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+export const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY);
 
 // 1. Model for Text Generation
 const geminiModel = client.getGenerativeModel({
@@ -8,8 +10,8 @@ const geminiModel = client.getGenerativeModel({
 });
 
 // 2. Model for Image Generation (Paid Tier)
-const imageModel = client.getGenerativeModel({ 
-    model: "gemini-2.5-flash-image" 
+const imageModel = client.getGenerativeModel({
+    model: "gemini-2.5-flash-image"
 });
 
 const model = {
@@ -38,7 +40,7 @@ const model = {
             });
 
             const response = await result.response;
-            
+
             // Find the image part in the response
             const imagePart = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
 

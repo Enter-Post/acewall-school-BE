@@ -41,6 +41,7 @@ router.get("/:assessmentId", isUser, getResultsMiddleware, getAssesmentbyID);
 router.put("/editAssessment/:assessmentId", isUser, editAssessmentInfo);
 router.get("/findReminderTime/:assessmentId", isUser, findReminderTime)
 router.put("/setReminder/:assessmentId", isUser, setReminderTime)
+router.get("/assessmentforTeacher/:assessmentId", isUser, getAssesmentbyID);
 
 //updated Assessment routes
 
