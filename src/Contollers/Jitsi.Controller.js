@@ -160,11 +160,15 @@ export const getMeetingAccess = async (req, res) => {
 /**
  * 4. End Meeting
  */
+// Import your Notification model at the top
+// import Notification from "../models/Notification.js"; 
+
 export const endMeeting = async (req, res) => {
   const { roomName } = req.body;
   const userId = req.user._id;
 
   try {
+    // 1. Find and update the meeting
     const meeting = await JitsiMeeting.findOne({ roomName, status: "active" });
     if (!meeting)
       return res.status(404).json({ message: "Active meeting not found." });
@@ -177,7 +181,14 @@ export const endMeeting = async (req, res) => {
     meeting.endedAt = Date.now();
     await meeting.save();
 
-    res.status(200).json({ message: "Meeting ended." });
+    // 2. Update all relevant notifications
+    // We use a Case-Insensitive Regex to find the roomName inside the link string
+    await Notification.updateMany(
+      { link: { $regex: roomName, $options: 'i' } },
+      { $set: { isEnded: true } }
+    );
+
+    res.status(200).json({ message: "Meeting ended and student links deactivated." });
   } catch (error) {
     res.status(500).json({ message: "Error", error: error.message });
   }
