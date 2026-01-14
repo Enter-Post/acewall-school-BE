@@ -43,7 +43,7 @@ import StandardGradingRoutes from "./Routes/StandardGrading.Routes.js";
 import aiChatRoutes from "./Routes/AIChat.Routes.js";
 import parentRoutes from "./Routes/Parent.Routes.js";
 import attendanceRoutes from "./Routes/Attendance.routes.js";
-import loginActivityRoutes from "./Routes/loginActivity.Routes.js";
+import loginActivityRoutes from "./Routes/LoginActivity.Routes.js";
 import jitsiRoutes from "./Routes/Jitsi.Routes.js";
 import notificationRoutes from "./Routes/notification.Routes.js"
 import "./cronJobs/assessmentReminder.js";
