@@ -10,6 +10,7 @@ import CourseSch from "../Models/courses.model.sch.js";
 import Lesson from "../Models/lesson.model.sch.js";
 import Chapter from "../Models/chapter.model.sch.js";
 import { updateGradebookOnSubmission } from "../Utiles/updateGradebookOnSubmission.js";
+import generateAssessmentSummary from "../../utils/generateAssessmentSummary.js";
 
 dotenv.config();
 
@@ -121,6 +122,8 @@ export const submission = async (req, res) => {
 
     const graded = processedAnswers.every((a) => !a.requiresManualCheck);
 
+
+
     // ✅ Save submission
     const submission = new Submission({
       assessment: assessmentId,
@@ -141,6 +144,20 @@ export const submission = async (req, res) => {
 
     // ✅ Email Notification
     const student = await User.findById(studentId);
+
+    let aiSummary = null;
+
+    if (graded) {
+      aiSummary = await generateAssessmentSummary({
+        studentName: `${student.firstName} ${student.lastName}`,
+        assessmentTitle: assessment.title,
+        score: totalScore,
+        maxScore,
+        masteredConcept,
+        needAssistantconcepts,
+      });
+    }
+
     if (student && student.email) {
       const transporter = nodemailer.createTransport({
         host: "smtp.gmail.com",
@@ -162,34 +179,46 @@ export const submission = async (req, res) => {
       if (graded) {
         subject = `Assessment Submitted and Graded: ${assessment.title}`;
         html = `
-          <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f7fb;">
-            <div style="max-width: 600px; margin:auto; background: #fff; border-radius: 10px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.1)">
-              <p>Dear ${student.firstName} ${student.lastName},</p>
-              <p>You have just completed ${assessmentContextText}. Your overall score is <strong>${totalScore}/${maxScore}</strong>.</p>
-              ${masteredConcept.length > 0
-            ? `<p>Congratulations, you have mastered the following concepts:</p>
-                     <ul>${masteredConcept.map((c) => `<li>${c}</li>`).join("")}</ul>`
-            : `<p>You have not yet mastered any concepts in this assessment.</p>`
-          }
-              ${needAssistantconcepts.length > 0
-            ? `<p>You have not mastered and need more assistance on the following concepts:</p>
-                     <ul>${needAssistantconcepts.map((c) => `<li>${c}</li>`).join("")}</ul>
-                     <p>Please visit the following lessons within your portal to review:</p>
-                     <ul>${needAssistantconcepts
-              .map(
-                (c) =>
-                  // `<li><a href="https://acewallscholars.org/lessons/${encodeURIComponent(
-                  //   c
-                  // )}" target="_blank">${c}</a></li>`
-                  `<li>${c}</li>`
-              )
-              .join("")}</ul>`
+<div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f7fb;">
+  <div style="max-width: 600px; margin:auto; background: #fff; border-radius: 10px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.1)">
+    
+    <p>Dear ${student.firstName} ${student.lastName},</p>
+
+    <p>You have completed <strong>${assessmentContextText}</strong>.</p>
+    <p>Your score: <strong>${totalScore}/${maxScore}</strong></p>
+
+    ${aiSummary
+            ? `
+        <div style="background:#f1f8ff; padding:15px; border-left:4px solid #1e88e5; margin:20px 0;">
+          <h4 style="margin-top:0;">📘 AI Performance Summary</h4>
+          <p>${aiSummary}</p>
+        </div>
+        `
             : ""
           }
-              <p>Keep up the great work!</p>
-              <p>Regards,<br>Acewall Scholars Team</p>
-            </div>
-          </div>`;
+
+    ${masteredConcept.length > 0
+            ? `
+        <p><strong>Concepts Mastered:</strong></p>
+        <ul>${masteredConcept.map(c => `<li>${c}</li>`).join("")}</ul>
+        `
+            : ""
+          }
+
+    ${needAssistantconcepts.length > 0
+            ? `
+        <p><strong>Needs More Practice:</strong></p>
+        <ul>${needAssistantconcepts.map(c => `<li>${c}</li>`).join("")}</ul>
+        `
+            : ""
+          }
+
+    <p>Keep learning and improving!</p>
+
+    <p>Regards,<br><strong>Acewall Scholars Team</strong></p>
+  </div>
+</div>
+`;
       } else {
         subject = `Assessment Submitted (Pending Grading): ${assessment.title}`;
         html = `
@@ -411,27 +440,29 @@ export const getSubmissionsofAssessment_forTeacher = async (req, res) => {
 export const teacherGrading = async (req, res) => {
   const { submissionId } = req.params;
   const manualGrades = req.body;
-  const totalCourseMarks = req.query.totalCourseMarks;
 
   try {
     const submission = await Submission.findById(submissionId).populate("studentId");
-
-    const assessment = await Assessment.findById(submission.assessment);
-
     if (!submission) {
       return res.status(404).json({ message: "Submission not found" });
     }
 
-    // Reset totalScore
-    submission.totalScore = 0;
+    const assessment = await Assessment.findById(submission.assessment);
+    if (!assessment) {
+      return res.status(404).json({ message: "Assessment not found" });
+    }
 
-    // ✅ Grade each manually graded question
+    // 🔁 Reset scores
+    submission.totalScore = 0;
+    let maxScore = 0;
+
+    // ✅ Grade manual questions
     for (const questionId in manualGrades) {
       const { awardedPoints, maxPoints } = manualGrades[questionId];
 
       if (awardedPoints > maxPoints || awardedPoints < 0) {
         return res.status(400).json({
-          message: `Points for question ${questionId} must be between 0 and ${maxPoints}.`,
+          message: `Points for question ${questionId} must be between 0 and ${maxPoints}`,
         });
       }
 
@@ -439,34 +470,33 @@ export const teacherGrading = async (req, res) => {
         (a) => String(a.questionId) === questionId
       );
 
-      if (answer) {
-        const isCorrect = awardedPoints >= maxPoints / 2;
-        answer.pointsAwarded = awardedPoints;
-        answer.isCorrect = isCorrect;
-        answer.requiresManualCheck = false;
-        submission.totalScore += awardedPoints;
-      }
+      if (!answer) continue;
+
+      const isCorrect = awardedPoints >= maxPoints / 2;
+
+      answer.pointsAwarded = awardedPoints;
+      answer.isCorrect = isCorrect;
+      answer.requiresManualCheck = false;
+
+      submission.totalScore += awardedPoints;
+      maxScore += maxPoints;
     }
 
     submission.graded = true;
     await submission.save();
 
-    console.log(assessment.course, "assessment.course")
+    // ✅ Update gradebook
+    await updateGradebookOnSubmission(
+      submission.studentId,
+      assessment.course,
+      submission.assessment,
+      "assessment"
+    );
 
-    if (submission.graded) {
-      await updateGradebookOnSubmission(
-        submission.studentId,
-        assessment.course,
-        submission.assessment,
-        "assessment"
-      );
-    }
-
-    // ✅ Fetch related data
+    // ✅ Fetch context
     const student = submission.studentId;
     const course = await CourseSch.findById(assessment.course);
 
-    // Find chapter and lesson
     let chapter = null;
     let lesson = null;
     if (assessment.chapter) chapter = await Chapter.findById(assessment.chapter);
@@ -475,6 +505,7 @@ export const teacherGrading = async (req, res) => {
     // ✅ Concept tracking
     const masteredConcept = [];
     const needAssistantconcepts = [];
+
     for (const ans of submission.answers) {
       const question = assessment.questions.find(
         (q) => q._id.toString() === ans.questionId.toString()
@@ -482,20 +513,22 @@ export const teacherGrading = async (req, res) => {
       if (!question) continue;
 
       if (ans.isCorrect) {
-        if (!masteredConcept.includes(question.concept)) masteredConcept.push(question.concept);
+        if (!masteredConcept.includes(question.concept)) {
+          masteredConcept.push(question.concept);
+        }
       } else {
-        if (!needAssistantconcepts.includes(question.concept))
+        if (!needAssistantconcepts.includes(question.concept)) {
           needAssistantconcepts.push(question.concept);
+        }
       }
     }
 
-    // ✅ Prepare assessment label
-    let assessmentContextText = "";
+    // ✅ Context label
+    let assessmentContextText = "Assessment";
     if (lesson && chapter) assessmentContextText = `Assessment of lesson ${lesson.title}`;
-    else if (chapter && !lesson) assessmentContextText = `Assessment of chapter ${chapter.title}`;
-    else assessmentContextText = `Assessment`;
+    else if (chapter) assessmentContextText = `Assessment of chapter ${chapter.title}`;
 
-    // ✅ Email Notification
+    // ✅ Email
     if (student?.email) {
       const transporter = nodemailer.createTransport({
         host: "smtp.gmail.com",
@@ -507,67 +540,72 @@ export const teacherGrading = async (req, res) => {
         },
       });
 
+      // 🤖 AI Summary (safe)
+      let aiSummary = null;
+      try {
+        aiSummary = await generateAssessmentSummary({
+          studentName: `${student.firstName} ${student.lastName}`,
+          assessmentTitle: assessment.title,
+          score: submission.totalScore,
+          maxScore,
+          masteredConcept,
+          needAssistantconcepts,
+        });
+      } catch (err) {
+        console.error("AI summary failed:", err);
+      }
+
       const subject = `Assessment Graded: ${assessment.title} - ${course.courseTitle}`;
+
       const html = `
-        <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f7fb;">
-          <div style="max-width: 600px; margin:auto; background: #fff; border-radius: 10px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.1)">
-            <p>Dear ${student.firstName} ${student.lastName},</p>
-            <p>You have just completed ${assessmentContextText}. Your overall score is <strong>${submission.totalScore}/${totalCourseMarks}</strong>.</p>
-            
-            ${masteredConcept.length > 0
-          ? `<p>Congratulations, you have mastered the following concepts:</p>
-                   <ul>${masteredConcept.map((c) => `<li>${c}</li>`).join("")}</ul>`
-          : `<p>You have not yet mastered any concepts in this assessment.</p>`
-        }
+<div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f7fb;">
+  <div style="max-width: 600px; margin:auto; background: #fff; border-radius: 10px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.1)">
+    
+    <p>Dear ${student.firstName} ${student.lastName},</p>
 
-            ${needAssistantconcepts.length > 0
-          ? `<p>You have not mastered and need more assistance on the following concepts:</p>
-                   <ul>${needAssistantconcepts.map((c) => `<li>${c}</li>`).join("")}</ul>
-                   <p>Please visit the following lessons within your portal to review:</p>
-                   <ul>${needAssistantconcepts
-            .map(
-              (c) =>
-                // `<li><a href="https://acewallscholars.org/lessons/${encodeURIComponent(
-                //   c
-                // )}" target="_blank">${c}</a></li>`
+    <p>You have completed <strong>${assessmentContextText}</strong>.</p>
+    <p>Your score: <strong>${submission.totalScore}/${maxScore}</strong></p>
 
-                `<li>${c}</li>`
-            )
-            .join("")}</ul>`
+    ${aiSummary
+          ? `
+      <div style="background:#f1f8ff; padding:15px; border-left:4px solid #1e88e5; margin:20px 0;">
+        <h4 style="margin-top:0;">📘 AI Performance Summary</h4>
+        <p>${aiSummary}</p>
+      </div>`
           : ""
         }
 
-            <p>Keep up the great work!</p>
-            <p>Regards,<br>Acewall Scholars Team</p>
-          </div>
-        </div>
-      `;
+    ${masteredConcept.length
+          ? `<p><strong>Concepts Mastered:</strong></p>
+           <ul>${masteredConcept.map(c => `<li>${c}</li>`).join("")}</ul>`
+          : ""
+        }
 
-      // ✅ Respect guardian email preferences
-      const preferences = student.guardianEmailPreferences || {
-        submission: true,
-        grading: true,
-        announcement: true,
-        assessments: true,
-      };
+    ${needAssistantconcepts.length
+          ? `<p><strong>Needs More Practice:</strong></p>
+           <ul>${needAssistantconcepts.map(c => `<li>${c}</li>`).join("")}</ul>`
+          : ""
+        }
 
+    <p>Keep learning and improving!</p>
+
+    <p>Regards,<br><strong>Acewall Scholars Team</strong></p>
+  </div>
+</div>`;
+
+      const preferences = student.guardianEmailPreferences || {};
       const recipients = [student.email];
-      if (student.guardianEmails?.length > 0 && preferences.grading) {
+
+      if (student.guardianEmails?.length && preferences.grading) {
         recipients.push(...student.guardianEmails);
       }
 
-      const mailOptions = {
+      await transporter.sendMail({
         from: `"Acewall Scholars" <support@acewallscholars.org>`,
         to: recipients,
         subject,
         html,
-      };
-
-      try {
-        await transporter.sendMail(mailOptions);
-      } catch (emailErr) {
-        console.error("Error sending email:", emailErr);
-      }
+      });
     }
 
     res.json({ message: "Submission graded successfully", submission });
@@ -629,16 +667,16 @@ export const getAssessmentSubmissionForParent = async (req, res) => {
       assessment: assessmentId,
       studentId: studentId,
     })
-    .populate({
-      path: "assessment",
-      // We populate category for the name, and the questions array to show original prompts
-      populate: [
-        { path: "category", select: "name" },
-        { path: "chapter", select: "title" },
-        { path: "lesson", select: "title" }
-      ]
-    })
-    .lean(); // Use lean() for easier data manipulation
+      .populate({
+        path: "assessment",
+        // We populate category for the name, and the questions array to show original prompts
+        populate: [
+          { path: "category", select: "name" },
+          { path: "chapter", select: "title" },
+          { path: "lesson", select: "title" }
+        ]
+      })
+      .lean(); // Use lean() for easier data manipulation
 
     if (!submission) {
       return res.status(404).json({
@@ -672,14 +710,14 @@ export const getAssessmentSubmissionForParent = async (req, res) => {
         category: submission.assessment.category?.name,
         type: submission.assessment.type,
         dueDate: submission.assessment.dueDate,
-        
+
         // Submission specific data
         submittedAt: submission.submittedAt,
         status: submission.status,
         totalScore: submission.totalScore,
         graded: submission.graded,
         instructorFeedback: submission.feedback,
-        
+
         // Combined question + answer data
         results: detailedAnswers
       }

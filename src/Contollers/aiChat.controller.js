@@ -1,10 +1,11 @@
-import model from "../../utils/gemini.js";
+import model, { fileManager } from "../../utils/gemini.js";
 import fs from "fs";
 import AIChat from "../Models/AIChat.model.js";
 import PDFDocument from "pdfkit";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import ExcelJS from "exceljs";
 import path from "path";
+import Book from "../Models/books.model.js";
 
 export const getChatHistory = async (req, res) => {
   try {
@@ -257,7 +258,7 @@ Format for a ${requestedFileType.toUpperCase()} document.
       if (requestedFileType === "excel")
         await generateExcel(fileContent, generatedPath);
 
-      generatedFileUrl = `${process.env.ASSET_URL}/uploads/file/${generatedFileName}`;
+      generatedFileUrl = `${process.env.ASSET_URL}uploads/file/${generatedFileName}`;
     }
 
     const validationPrompt = `
@@ -491,14 +492,32 @@ async function generateExcel(content, filePath) {
 
 export const generateContentForTeacher = async (req, res) => {
   try {
-    const { command, usedfor, difficulty } = req.body;
+    const { command, usedfor, difficulty, bookRefrence } = req.body;
+
+    let bookRef = null;
+    if (bookRefrence) {
+      bookRef = await Book.findById(bookRefrence);
+    }
+
+    console.log(bookRef, "bookRef")
+
+    // 2. Define Context-Specific Instructions
+    const sourceContext = bookRef
+      ? `SOURCE MATERIAL (Use this for reference):\n"${bookRef.rawText}" Subject:\"${bookRef.subject}"`
+      : `SOURCE MATERIAL: Use your general educational knowledge (No specific book provided).`;
+
+    const specificInstruction = bookRef
+      ? `Strictly prioritize the "SOURCE MATERIAL" above. If the teacher asks for a specific chapter or lesson, extract it from that text.`
+      : `Generate high-quality, accurate educational content based on the user's command.`;
 
     const prompt = `
 You are EduMentor AI, an expert educational content creator for a Learning Management System (LMS).
 
+${sourceContext}
+
 TASK:
-Generate content strictly for the following purpose:
-"${usedfor}"
+Generate content for: "${usedfor}"
+${specificInstruction}
 
 INSTRUCTIONS (VERY IMPORTANT):
 - Generate ONLY the final usable content.
@@ -575,6 +594,8 @@ Generate content now.
 
     const aiResponse = await model.generateContent(prompt);
 
+    console.log(aiResponse, "aiResponse")
+
     res.json({
       success: true,
       usedfor,
@@ -615,5 +636,57 @@ export const generateImage = async (req, res) => {
       message: "Failed to generate image",
       error: error.message,
     });
+  }
+};
+
+export const uploadBook = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    // 1. Upload the file to Google AI File API
+    const uploadResult = await fileManager.uploadFile(req.file.path, {
+      mimeType: "application/pdf",
+      displayName: req.body.title || "Uploaded Book",
+    });
+
+    // 2. Generate content using the File URI
+    const result = await model.generateContent([
+      {
+        fileData: {
+          mimeType: uploadResult.file.mimeType,
+          fileUri: uploadResult.file.uri,
+        },
+      },
+      { text: "Please extract all the text of this document and create bullet points for each chapter or it can be with there subchapters or lessons. which can use to generate the content based on these bullet points." },
+    ]);
+
+    const aiExtractedText = result.response.text();
+
+    // 3. Save reference and AI analysis to your backend
+    const fileUrl = `${process.env.ASSET_URL}uploads/file/${req.file.filename}`;
+
+    const book = await Book.create({
+      title: req.body.title,
+      subject: req.body.subject,
+      rawText: aiExtractedText,
+      originalfile: fileUrl,
+      googleFileUri: uploadResult.file.uri
+    });
+
+    res.json({ success: true, bookId: book._id, analysis: aiExtractedText });
+  } catch (err) {
+    console.error("AI File Processing Error:", err);
+    res.status(500).json({ message: "AI failed to read the file" });
+  }
+};
+
+export const getAllBooks = async (req, res) => {
+  try {
+    const books = await Book.find().sort({ createdAt: -1 });
+    res.status(200).json(books);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching books", error: err.message });
   }
 };
