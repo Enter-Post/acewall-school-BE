@@ -1,7 +1,7 @@
 import express from "express";
 import { getChildrenData } from "../Contollers/auth.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
-import { getChildGradebookForParent } from "../Contollers/gradebookUpdated.controller.js";
+import { getChildCourseAnalyticsForParent, getChildGradebookForParent } from "../Contollers/gradebookUpdated.controller.js";
 import { getChildEnrolledCourses, getParentChildCourseDetails } from "../Contollers/enrollment.controller.js";
 import { getAnnouncementsForParent } from "../Contollers/announcement.controller.js";
 import { getAllAssessmentForParent } from "../Contollers/Assessment.controller.js";
@@ -15,6 +15,7 @@ const router = express.Router();
 // GET /api/parent/my-children
 router.get("/my-children", isUser, getChildrenData);
 router.get("/child-gradebook/:studentId", isUser, getChildGradebookForParent);
+router.get("/getChildCourseAnalytics/:studentId/:courseId", isUser, getChildCourseAnalyticsForParent);
 router.get("/child-courses/:studentId", isUser, getChildEnrolledCourses);
 router.get(
   "/child-course-details/:studentId/:enrollmentId", 

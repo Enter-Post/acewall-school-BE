@@ -4,6 +4,11 @@ import GPA from "../Models/GPA.model.js";
 import StandardGrading from "../Models/StandardGrading.model.js";
 import CourseSch from "../Models/courses.model.sch.js";
 import User from "../Models/user.model.js";
+import AssessmentCategory from "../Models/assessment-category.js";
+import Submission from "../Models/submission.model.js";
+import DiscussionComment from "../Models/discussionComment.model.js";
+import Assessment from "../Models/Assessment.model.js";
+import Discussion from "../Models/discussion.model.js";
 
 // ======================================================
 // 🔥 Helper Methods
@@ -488,5 +493,271 @@ export const getChildGradebookForParent = async (req, res) => {
     } catch (error) {
         console.error("Error generating parent-view gradebook:", error);
         res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+export const getStudentGradebooksFormattedAnalytics = async (req, res) => {
+    try {
+        const studentId = req.user._id;
+
+        const gradingScale = await GradingScale.findOne({});
+        const gpaScale = await GPA.findOne({});
+        const standardScale = await StandardGrading.findOne({});
+
+        const gradebooks = await Gradebook.find({ studentId });
+
+        if (!gradebooks || gradebooks.length === 0) {
+            return res.json({ studentId, totalCourses: 0, overallGPA: 0, courses: [] });
+        }
+
+        const courses = await Promise.all(
+            gradebooks.map(async (gb) => {
+                const courseId = gb.courseId;
+                
+                // 1. Fetch Real-time Category Weights (Same as Teacher API)
+                const [categories, courseData, submissions, discussionComments] = await Promise.all([
+                    AssessmentCategory.find({ course: courseId }).lean(),
+                    CourseSch.findById(courseId).lean().select("courseTitle gradingSystem"),
+                    Submission.find({ studentId, graded: true }).lean(),
+                    DiscussionComment.find({ createdby: studentId, isGraded: true }).lean()
+                ]);
+
+                const subMap = new Map(submissions.map(s => [s.assessment.toString(), s]));
+                const discMap = new Map(discussionComments.map(d => [d.discussion.toString(), d]));
+
+                // 2. Fetch Item Details
+                const [gradedAssessments, gradedDiscussions] = await Promise.all([
+                    Assessment.find({ course: courseId, _id: { $in: submissions.map(s => s.assessment) } }).populate("category").lean(),
+                    Discussion.find({ course: courseId, _id: { $in: discussionComments.map(d => d.discussion) } }).populate("category").lean()
+                ]);
+
+                // 3. Flatten Items Chronologically
+                const allItems = [...gradedAssessments, ...gradedDiscussions].map(item => {
+                    let studentPoints = 0, maxPoints = 0, title = "";
+                    if (item.questions) {
+                        const sub = subMap.get(item._id.toString());
+                        studentPoints = sub?.totalScore || 0;
+                        maxPoints = item.questions.reduce((sum, q) => sum + q.points, 0);
+                        title = item.title;
+                    } else {
+                        const comm = discMap.get(item._id.toString());
+                        studentPoints = comm?.marksObtained || 0;
+                        maxPoints = item.totalMarks || 0;
+                        title = item.topic;
+                    }
+                    return {
+                        title,
+                        categoryId: item.category?._id?.toString(),
+                        categoryName: item.category?.name || "Uncategorized",
+                        studentPoints,
+                        maxPoints,
+                        percentage: maxPoints > 0 ? (studentPoints / maxPoints) * 100 : 0,
+                        createdAt: item.createdAt || new Date()
+                    };
+                }).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+                if (allItems.length === 0) return { courseId, courseName: courseData?.courseTitle, analytics: null };
+
+                // 4. Calculate Weighted Average (Matched Logic)
+                const categoryStats = {};
+                allItems.forEach(item => {
+                    if (!categoryStats[item.categoryId]) {
+                        const catDoc = categories.find(c => c._id.toString() === item.categoryId);
+                        categoryStats[item.categoryId] = { score: 0, max: 0, weight: catDoc?.weight || 0, name: item.categoryName };
+                    }
+                    categoryStats[item.categoryId].score += item.studentPoints;
+                    categoryStats[item.categoryId].max += item.maxPoints;
+                });
+
+                const activeCats = Object.values(categoryStats).filter(c => c.max > 0);
+                const totalActiveWeight = activeCats.reduce((sum, c) => sum + c.weight, 0);
+                
+                let coursePercentage = 0;
+                activeCats.forEach(cat => {
+                    const catPerc = (cat.score / cat.max) * 100;
+                    const normalizedWeight = (cat.weight / totalActiveWeight) * 100;
+                    coursePercentage += (catPerc * normalizedWeight) / 100;
+                });
+
+                // 5. Momentum & Projections
+                const recentWindow = 5;
+                const trendItems = allItems.slice(-recentWindow);
+                const recentAvg = trendItems.reduce((acc, i) => acc + i.percentage, 0) / trendItems.length;
+                const trendDiff = recentAvg - coursePercentage;
+                const projectedScore = (recentAvg * 0.6) + (coursePercentage * 0.4);
+
+                const categoryPerformance = activeCats.map(cat => ({
+                    category: cat.name,
+                    average: (cat.score / cat.max) * 100,
+                    count: allItems.filter(i => i.categoryName === cat.name).length
+                })).sort((a, b) => b.average - a.average);
+
+                const weakest = categoryPerformance[categoryPerformance.length - 1];
+                const best = categoryPerformance[0];
+
+                return {
+                    courseId,
+                    courseName: courseData?.courseTitle,
+                    coursePercentage: coursePercentage.toFixed(1),
+                    analytics: {
+                        trendStatus: trendDiff >= 0 ? "increasing" : "decreasing",
+                        percentageChange: Math.abs(trendDiff).toFixed(1),
+                        recentAverage: recentAvg.toFixed(1),
+                        overallAverage: coursePercentage.toFixed(1),
+                        projectedFinalScore: Math.min(100, projectedScore).toFixed(1),
+                        sampleSize: trendItems.length,
+                        weakestCategory: weakest ? { name: weakest.category, average: weakest.average.toFixed(1), gap: (best.average - weakest.average).toFixed(1) } : null,
+                        chartData: {
+                            lineChart: allItems.map(i => ({ name: i.title, score: i.percentage.toFixed(1) })),
+                            categoryPerformance
+                        }
+                    }
+                };
+            })
+        );
+
+        return res.json({ studentId, totalCourses: gradebooks.length, courses });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getChildCourseAnalyticsForParent = async (req, res) => {
+    try {
+        const { studentId, courseId } = req.params;
+        const parentEmail = req.user.email;
+
+        // 1. AUTHORIZATION CHECK
+        const student = await User.findOne({
+            _id: studentId,
+            guardianEmails: parentEmail,
+        });
+
+        if (!student) {
+            return res.status(403).json({ 
+                success: false, 
+                message: "Unauthorized: Access to this student's analytics is denied." 
+            });
+        }
+
+        // 2. FETCH REAL-TIME DATA (Same as Teacher/Student synced logic)
+        const [categories, course, submissions, discussionComments] = await Promise.all([
+            AssessmentCategory.find({ course: courseId }).lean(),
+            CourseSch.findById(courseId).lean().select("courseTitle"),
+            Submission.find({ studentId, graded: true }).lean(),
+            DiscussionComment.find({ createdby: studentId, isGraded: true }).lean()
+        ]);
+
+        if (!course) {
+            return res.status(404).json({ message: "Analytics data not found." });
+        }
+
+        const subMap = new Map(submissions.map(s => [s.assessment.toString(), s]));
+        const discMap = new Map(discussionComments.map(d => [d.discussion.toString(), d]));
+
+        // 3. FETCH ITEM DETAILS
+        const [gradedAssessments, gradedDiscussions] = await Promise.all([
+            Assessment.find({ course: courseId, _id: { $in: submissions.map(s => s.assessment) } }).populate("category").lean(),
+            Discussion.find({ course: courseId, _id: { $in: discussionComments.map(d => d.discussion) } }).populate("category").lean()
+        ]);
+
+        // 4. FORMAT ITEMS CHRONOLOGICALLY
+        const allItems = [...gradedAssessments, ...gradedDiscussions].map(item => {
+            let studentPoints = 0, maxPoints = 0, title = "";
+            if (item.questions) {
+                const sub = subMap.get(item._id.toString());
+                studentPoints = sub?.totalScore || 0;
+                maxPoints = item.questions.reduce((sum, q) => sum + q.points, 0);
+                title = item.title;
+            } else {
+                const comm = discMap.get(item._id.toString());
+                studentPoints = comm?.marksObtained || 0;
+                maxPoints = item.totalMarks || 0;
+                title = item.topic;
+            }
+            return {
+                title,
+                categoryId: item.category?._id?.toString(),
+                categoryName: item.category?.name || "Uncategorized",
+                studentPoints,
+                maxPoints,
+                percentage: maxPoints > 0 ? (studentPoints / maxPoints) * 100 : 0,
+                createdAt: item.createdAt || new Date()
+            };
+        }).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+        if (allItems.length === 0) {
+            return res.json({ success: true, message: "No graded items found.", summary: { currentPercentage: 0 }, insights: null });
+        }
+
+        // 5. CALCULATE WEIGHTED AVERAGE (Matching logic across all portals)
+        const categoryStats = {};
+        allItems.forEach(item => {
+            if (!categoryStats[item.categoryId]) {
+                const catDoc = categories.find(c => c._id.toString() === item.categoryId);
+                categoryStats[item.categoryId] = { score: 0, max: 0, weight: catDoc?.weight || 0, name: item.categoryName };
+            }
+            categoryStats[item.categoryId].score += item.studentPoints;
+            categoryStats[item.categoryId].max += item.maxPoints;
+        });
+
+        const activeCats = Object.values(categoryStats).filter(c => c.max > 0);
+        const totalActiveWeight = activeCats.reduce((sum, c) => sum + c.weight, 0);
+        
+        let currentOverallAvg = 0;
+        activeCats.forEach(cat => {
+            const catPerc = (cat.score / cat.max) * 100;
+            const normalizedWeight = (cat.weight / totalActiveWeight) * 100;
+            currentOverallAvg += (catPerc * normalizedWeight) / 100;
+        });
+
+        // 6. MOMENTUM & PROJECTION
+        const recentWindow = 5;
+        const trendItems = allItems.slice(-recentWindow);
+        const recentAvg = trendItems.reduce((acc, i) => acc + i.percentage, 0) / trendItems.length;
+        const trendDiff = recentAvg - currentOverallAvg;
+        const projectedScore = (recentAvg * 0.6) + (currentOverallAvg * 0.4);
+
+        const categoryPerformance = activeCats.map(cat => ({
+            category: cat.name,
+            average: (cat.score / cat.max) * 100,
+            count: allItems.filter(i => i.categoryId === cat.categoryId).length
+        })).sort((a, b) => b.average - a.average);
+
+        const weakest = categoryPerformance[categoryPerformance.length - 1];
+        const best = categoryPerformance[0];
+
+        // 7. RESPONSE
+        res.json({
+            success: true,
+            studentName: `${student.firstName} ${student.lastName}`,
+            courseName: course.courseTitle,
+            summary: {
+                currentPercentage: currentOverallAvg.toFixed(1),
+                totalAssessments: allItems.length,
+            },
+            insights: {
+                trendStatus: trendDiff >= 0 ? "increasing" : "decreasing",
+                percentageChange: Math.abs(trendDiff).toFixed(1),
+                recentAverage: recentAvg.toFixed(1),
+                overallAverage: currentOverallAvg.toFixed(1),
+                projectedFinalScore: Math.min(100, projectedScore).toFixed(1),
+                sampleSize: trendItems.length,
+                weakestCategory: weakest ? { 
+                    category: weakest.category, 
+                    average: weakest.average.toFixed(1), 
+                    gap: (best.average - weakest.average).toFixed(1) 
+                } : null
+            },
+            charts: {
+                lineChart: allItems.map(i => ({ name: i.title, score: i.percentage.toFixed(1) })),
+                categoryPerformance
+            }
+        });
+
+    } catch (error) {
+        console.error("Parent Sync Analytics Error:", error);
+        res.status(500).json({ success: false, error: "Internal server error" });
     }
 };
