@@ -24,4 +24,4 @@ const PostSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const Posts = mongoose.model("SocialPost", PostSchema);
-export default Posts;d 
+export default Posts;

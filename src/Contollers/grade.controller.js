@@ -804,3 +804,129 @@ export const getGradebookForCourse = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+export const getTeacherStudentAnalytics = async (req, res) => {
+  const { courseId, studentId } = req.params;
+
+  try {
+    // 1. Fetch Basic Info & Scales
+    const gradingScaleDoc = await GradingScale.findOne().lean();
+    const gradingScale = gradingScaleDoc?.scale || [];
+    const categories = await AssessmentCategory.find({ course: courseId }).lean();
+    const course = await CourseSch.findById(courseId).lean().select("courseTitle");
+
+    // 2. Fetch Graded Data (Submissions & Discussions)
+    const [submissions, discussionComments] = await Promise.all([
+      Submission.find({ studentId, graded: true }).lean(),
+      DiscussionComment.find({ createdby: studentId, isGraded: true }).lean()
+    ]);
+
+    const subMap = new Map(submissions.map(s => [s.assessment.toString(), s]));
+    const discMap = new Map(discussionComments.map(d => [d.discussion.toString(), d]));
+
+    // 3. Fetch Assessment/Discussion details to get maxPoints and categories
+    const [gradedAssessments, gradedDiscussions] = await Promise.all([
+      Assessment.find({ course: courseId, _id: { $in: submissions.map(s => s.assessment) } }).populate("category").lean(),
+      Discussion.find({ course: courseId, _id: { $in: discussionComments.map(d => d.discussion) } }).populate("category").lean()
+    ]);
+
+    // 4. Flatten and Format all items for Charts
+    const allItems = [...gradedAssessments, ...gradedDiscussions].map(item => {
+      let studentPoints = 0;
+      let maxPoints = 0;
+      let title = "";
+
+      if (item.questions) { // Assessment
+        const sub = subMap.get(item._id.toString());
+        studentPoints = sub?.totalScore || 0;
+        maxPoints = item.questions.reduce((sum, q) => sum + q.points, 0);
+        title = item.title;
+      } else { // Discussion
+        const comm = discMap.get(item._id.toString());
+        studentPoints = comm?.marksObtained || 0;
+        maxPoints = item.totalMarks || 0;
+        title = item.topic;
+      }
+
+      return {
+        id: item._id,
+        title,
+        category: item.category?.name || "Uncategorized",
+        categoryId: item.category?._id?.toString(),
+        studentPoints,
+        maxPoints,
+        percentage: maxPoints > 0 ? (studentPoints / maxPoints) * 100 : 0,
+        createdAt: item.createdAt || new Date()
+      };
+    }).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+    // 5. WEIGHTED CALCULATION (Matching your Gradebook logic)
+    const categoryStats = {};
+    allItems.forEach(item => {
+      if (!categoryStats[item.categoryId]) {
+        categoryStats[item.categoryId] = { score: 0, max: 0, weight: 0, name: item.category };
+        const catDoc = categories.find(c => c._id.toString() === item.categoryId);
+        categoryStats[item.categoryId].weight = catDoc?.weight || 0;
+      }
+      categoryStats[item.categoryId].score += item.studentPoints;
+      categoryStats[item.categoryId].max += item.maxPoints;
+    });
+
+    const activeCats = Object.values(categoryStats).filter(c => c.max > 0);
+    const totalWeight = activeCats.reduce((sum, c) => sum + c.weight, 0);
+    
+    let currentOverallAvg = 0;
+    activeCats.forEach(cat => {
+      const catPerc = (cat.score / cat.max) * 100;
+      const normalizedWeight = (cat.weight / totalWeight) * 100;
+      currentOverallAvg += (catPerc * normalizedWeight) / 100;
+    });
+
+    // 6. MOMENTUM & PROJECTION
+    const recentWindow = 5;
+    const trendItems = allItems.slice(-recentWindow);
+    const recentAvg = trendItems.length > 0 
+      ? trendItems.reduce((acc, item) => acc + item.percentage, 0) / trendItems.length 
+      : 0;
+
+    const trendDiff = recentAvg - currentOverallAvg;
+    const projectedScore = (recentAvg * 0.6) + (currentOverallAvg * 0.4);
+
+    // 7. FORMAT CATEGORY PERFORMANCE FOR BAR CHART
+    const categoryPerformance = activeCats.map(cat => ({
+      category: cat.name,
+      average: (cat.score / cat.max) * 100,
+      count: allItems.filter(i => i.category === cat.name).length
+    })).sort((a, b) => b.average - a.average);
+
+    const weakest = categoryPerformance[categoryPerformance.length - 1];
+    const best = categoryPerformance[0];
+
+    res.json({
+      courseName: course?.courseTitle,
+      summary: {
+        currentPercentage: currentOverallAvg.toFixed(1),
+        totalAssessments: allItems.length,
+      },
+      insights: {
+        trendStatus: trendDiff >= 0 ? "increasing" : "decreasing",
+        percentageChange: Math.abs(trendDiff).toFixed(1),
+        recentAverage: recentAvg.toFixed(1),
+        overallAverage: currentOverallAvg.toFixed(1),
+        projectedFinalScore: Math.min(100, projectedScore).toFixed(1),
+        weakestCategory: weakest ? {
+          name: weakest.category,
+          average: weakest.average.toFixed(1),
+          gap: (best.average - weakest.average).toFixed(1)
+        } : null
+      },
+      charts: {
+        lineChart: allItems.map(i => ({ name: i.title, score: i.percentage })),
+        categoryPerformance
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
