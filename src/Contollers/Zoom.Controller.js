@@ -156,6 +156,29 @@ export const getCourseMeetings = async (req, res) => {
   }
 };
 
+// 2.1 Get All Active Meetings for Student
+export const getActiveMeetings = async (req, res) => {
+  const userId = req.user._id;
+  try {
+    const enrollments = await Enrollment.find({ student: userId }).select(
+      "course",
+    );
+    const courseIds = enrollments.map((e) => e.course);
+
+    const activeMeetings = await ZoomMeeting.find({
+      course: { $in: courseIds },
+      status: { $in: ["active", "started"] },
+    }).populate("course", "courseTitle");
+
+    res.status(200).json(activeMeetings);
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching active meetings",
+      error: error.message,
+    });
+  }
+};
+
 // 3. Delete Meeting
 export const deleteMeeting = async (req, res) => {
   const { meetingId } = req.params;
@@ -206,6 +229,11 @@ export const joinMeeting = async (req, res) => {
 
     // Return appropriate URL
     if (isHost) {
+      // If host joins, mark meeting as active in DB
+      if (meeting.status !== "ended") {
+        meeting.status = "active";
+        await meeting.save();
+      }
       res.status(200).json({ url: meeting.startUrl, role: "host" });
     } else {
       res.status(200).json({ url: meeting.joinUrl, role: "student" });

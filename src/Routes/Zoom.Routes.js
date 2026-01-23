@@ -4,6 +4,7 @@ import {
   getCourseMeetings,
   deleteMeeting,
   joinMeeting,
+  getActiveMeetings,
 } from "../Contollers/Zoom.Controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 
@@ -11,6 +12,9 @@ const router = express.Router();
 
 // 1. Get meetings for a course
 router.get("/course/:courseId", isUser, getCourseMeetings);
+
+// 1.1 Get all active meetings for enrolled courses
+router.get("/active", isUser, getActiveMeetings);
 
 // 2. Schedule a new meeting
 router.post("/schedule", isUser, scheduleMeeting);
