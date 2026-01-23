@@ -66,7 +66,19 @@ const updateZoomMeetingStatus = async (zoomMeetingId, action = "end") => {
 
     if (!response.ok && response.status !== 404) {
       const err = await response.json();
-      console.error(`Zoom Status Update Error (${action}):`, err);
+
+      // Check for scope error
+      if (err.code === 4711) {
+        console.error(
+          `❌ ZOOM SCOPE ERROR: Your Zoom app is missing required scopes.`,
+        );
+        console.error(`   Please add these scopes in Zoom Marketplace:`);
+        console.error(`   - meeting:update:status`);
+        console.error(`   - meeting:update:status:admin`);
+        console.error(`   Then restart your server.`);
+      } else {
+        console.error(`Zoom Status Update Error (${action}):`, err);
+      }
     }
   } catch (error) {
     console.error("Failed to update Zoom meeting status:", error.message);
@@ -275,13 +287,11 @@ export const joinMeeting = async (req, res) => {
         .status(200)
         .json({ url: meeting.startUrl, role: "host", status: meeting.status });
     } else {
-      res
-        .status(200)
-        .json({
-          url: meeting.joinUrl,
-          role: "student",
-          status: meeting.status,
-        });
+      res.status(200).json({
+        url: meeting.joinUrl,
+        role: "student",
+        status: meeting.status,
+      });
     }
   } catch (error) {
     res

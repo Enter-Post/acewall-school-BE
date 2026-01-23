@@ -62,7 +62,19 @@ const endZoomMeeting = async (zoomMeetingId) => {
 
     if (!response.ok && response.status !== 404) {
       const err = await response.json();
-      console.error(`Zoom End Meeting Error:`, err);
+
+      // Check for scope error
+      if (err.code === 4711) {
+        console.error(
+          `❌ ZOOM SCOPE ERROR: Your Zoom app is missing required scopes.`,
+        );
+        console.error(`   Please add these scopes in Zoom Marketplace:`);
+        console.error(`   - meeting:update:status`);
+        console.error(`   - meeting:update:status:admin`);
+        console.error(`   Then restart your server.`);
+      } else {
+        console.error(`Zoom End Meeting Error:`, err);
+      }
       return false;
     }
     return true;
