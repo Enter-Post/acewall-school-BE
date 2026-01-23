@@ -48,6 +48,31 @@ const getZoomAccessToken = async () => {
   return cachedToken;
 };
 
+// Helper: End Zoom Meeting
+const updateZoomMeetingStatus = async (zoomMeetingId, action = "end") => {
+  try {
+    const token = await getZoomAccessToken();
+    const response = await fetch(
+      `https://api.zoom.us/v2/meetings/${zoomMeetingId}/status`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action }),
+      },
+    );
+
+    if (!response.ok && response.status !== 404) {
+      const err = await response.json();
+      console.error(`Zoom Status Update Error (${action}):`, err);
+    }
+  } catch (error) {
+    console.error("Failed to update Zoom meeting status:", error.message);
+  }
+};
+
 // 1. Schedule a Meeting
 export const scheduleMeeting = async (req, res) => {
   const { courseId, topic, scheduledAt, duration = 40 } = req.body;
@@ -192,9 +217,13 @@ export const deleteMeeting = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-    // Try to delete from Zoom
+    // Try to end and delete from Zoom
     try {
       const token = await getZoomAccessToken();
+      // First, try to end the meeting if it's active
+      await updateZoomMeetingStatus(meeting.meetingId, "end");
+
+      // Then delete
       await fetch(`https://api.zoom.us/v2/meetings/${meeting.meetingId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
@@ -205,7 +234,7 @@ export const deleteMeeting = async (req, res) => {
     }
 
     await ZoomMeeting.findByIdAndDelete(meetingId);
-    res.status(200).json({ message: "Meeting deleted" });
+    res.status(200).json({ message: "Meeting deleted and ended" });
   } catch (error) {
     res
       .status(500)
@@ -225,6 +254,14 @@ export const joinMeeting = async (req, res) => {
     const meeting = await ZoomMeeting.findById(meetingId);
     if (!meeting) return res.status(404).json({ message: "Meeting not found" });
 
+    // Check if meeting has ended
+    if (meeting.status === "ended") {
+      return res.status(400).json({
+        message: "This meeting has ended and cannot be joined",
+        status: "ended",
+      });
+    }
+
     const isHost = meeting.createdBy.toString() === userId.toString();
 
     // Return appropriate URL
@@ -234,13 +271,96 @@ export const joinMeeting = async (req, res) => {
         meeting.status = "active";
         await meeting.save();
       }
-      res.status(200).json({ url: meeting.startUrl, role: "host" });
+      res
+        .status(200)
+        .json({ url: meeting.startUrl, role: "host", status: meeting.status });
     } else {
-      res.status(200).json({ url: meeting.joinUrl, role: "student" });
+      res
+        .status(200)
+        .json({
+          url: meeting.joinUrl,
+          role: "student",
+          status: meeting.status,
+        });
     }
   } catch (error) {
     res
       .status(500)
       .json({ message: "Error joining meeting", error: error.message });
   }
+};
+
+// 5. End Meeting (Manual)
+export const endMeeting = async (req, res) => {
+  const { meetingId } = req.params;
+  const userId = req.user._id;
+
+  try {
+    const meeting = await ZoomMeeting.findById(meetingId);
+    if (!meeting) return res.status(404).json({ message: "Meeting not found" });
+
+    if (meeting.createdBy.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    if (meeting.status === "ended") {
+      return res.status(400).json({ message: "Meeting already ended" });
+    }
+
+    // End the meeting on Zoom
+    await updateZoomMeetingStatus(meeting.meetingId, "end");
+
+    // Update status in database
+    meeting.status = "ended";
+    await meeting.save();
+
+    res.status(200).json({ message: "Meeting ended successfully", meeting });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error ending meeting", error: error.message });
+  }
+};
+
+// 6. Zoom Webhook Handler
+export const handleZoomWebhook = async (req, res) => {
+  const event = req.body;
+
+  // Zoom Webhook Verification (De-validation)
+  if (event.event === "endpoint.url_validation") {
+    const plainToken = event.payload.plainToken;
+    const crypto = await import("crypto");
+    const hash = crypto
+      .createHmac("sha256", process.env.ZOOM_WEBHOOK_SECRET || "")
+      .update(plainToken)
+      .digest("hex");
+
+    return res.status(200).json({
+      plainToken: plainToken,
+      encryptedToken: hash,
+    });
+  }
+
+  const { event: eventType, payload } = event;
+  const zoomMeetingId = payload?.object?.id?.toString();
+
+  if (!zoomMeetingId) return res.status(200).send("OK");
+
+  try {
+    if (eventType === "meeting.started") {
+      await ZoomMeeting.findOneAndUpdate(
+        { meetingId: zoomMeetingId },
+        { status: "active" },
+      );
+    } else if (eventType === "meeting.ended") {
+      await ZoomMeeting.findOneAndUpdate(
+        { meetingId: zoomMeetingId },
+        { status: "ended" },
+      );
+    }
+  } catch (err) {
+    console.error("Webhook processing error:", err);
+  }
+
+  res.status(200).send("OK");
 };

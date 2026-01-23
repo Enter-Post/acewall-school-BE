@@ -5,6 +5,8 @@ import {
   deleteMeeting,
   joinMeeting,
   getActiveMeetings,
+  handleZoomWebhook,
+  endMeeting,
 } from "../Contollers/Zoom.Controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 
@@ -25,5 +27,11 @@ router.get("/join/:meetingId", isUser, joinMeeting);
 
 // 4. Delete a meeting
 router.delete("/:meetingId", isUser, deleteMeeting);
+
+// 5. End a meeting manually
+router.put("/end/:meetingId", isUser, endMeeting);
+
+// 6. Zoom Webhook
+router.post("/webhook", handleZoomWebhook);
 
 export default router;

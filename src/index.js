@@ -47,6 +47,7 @@ import loginActivityRoutes from "./Routes/LoginActivity.Routes.js";
 import zoomRoutes from "./Routes/Zoom.Routes.js";
 import notificationRoutes from "./Routes/notification.Routes.js";
 import "./cronJobs/assessmentReminder.js";
+import { startZoomMeetingMonitor } from "./cronJobs/zoomMeetingMonitor.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -118,5 +119,6 @@ app.use("/api/zoom", zoomRoutes);
 app.use("/api/notifications", notificationRoutes);
 server.listen(PORT, () => {
   connectDB();
+  startZoomMeetingMonitor();
   console.log(`This app is running on localhost ${PORT}`);
 });
