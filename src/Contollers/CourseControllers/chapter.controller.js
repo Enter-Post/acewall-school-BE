@@ -69,6 +69,10 @@ export const getChapterOfQuarter = async (req, res) => {
   try {
     const quarter = await Quarter.findById(quarterId);
 
+    if (!quarter) {
+      return res.status(404).json({ message: "Quarter not found" });
+    }
+
     const chapters = await Chapter.aggregate([
       {
         $match: {

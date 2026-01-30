@@ -9,35 +9,34 @@ import Lesson from "../Models/lesson.model.sch.js";
 
 // In your Course or Enrollment Controller
 export const getMyEnrolledCourses = async (req, res) => {
-    try {
-        const userId = req.user._id;
-        const userRole = req.user.role; 
+  try {
+    const userId = req.user._id;
+    const userRole = req.user.role;
 
-        let courses = [];
+    let courses = [];
 
-        if (userRole === "teacher" || userRole === "admin") {
-            // Teachers see courses they OWN/CREATED
-            courses = await CourseSch.find({ createdby: userId })
-                .select('courseTitle courseCode thumbnail')
-                .lean();
-        } else {
-            // Students see courses they are ENROLLED in
-            const enrollments = await Enrollment.find({ student: userId })
-                .populate('course', 'courseTitle courseCode thumbnail')
-                .lean();
-            
-            courses = enrollments
-                .filter(e => e.course) // Security check in case course was deleted
-                .map(e => e.course);
-        }
+    if (userRole === "teacher" || userRole === "admin") {
+      // Teachers see courses they OWN/CREATED
+      courses = await CourseSch.find({ createdby: userId })
+        .select("courseTitle courseCode thumbnail")
+        .lean();
+    } else {
+      // Students see courses they are ENROLLED in
+      const enrollments = await Enrollment.find({ student: userId })
+        .populate("course", "courseTitle courseCode thumbnail")
+        .lean();
 
-        res.status(200).json(courses);
-    } catch (error) {
-        console.error("Error in getMyEnrolledCourses:", error);
-        res.status(500).json({ message: "Error fetching courses" });
+      courses = enrollments
+        .filter((e) => e.course) // Security check in case course was deleted
+        .map((e) => e.course);
     }
-};
 
+    res.status(200).json(courses);
+  } catch (error) {
+    console.error("Error in getMyEnrolledCourses:", error);
+    res.status(500).json({ message: "Error fetching courses" });
+  }
+};
 
 export const enrollment = async (req, res) => {
   const { courseId } = req.params;
@@ -94,25 +93,29 @@ export const studenCourses = async (req, res) => {
     const filter = { student: userId }; // Find enrollments by student ID
 
     // Find enrollments with optional search filter
-    let enrolledCourses = await Enrollment.find(filter).sort({ createdAt: -1 }).populate({
-      path: "course",
-      select: "courseTitle createdby category subcategory language thumbnail",
-      populate: [
-        {
-          path: "createdby",
-          select: "firstName middleName lastName profileImg",
-        },
-        {
-          path: "category",
-          select: "title",
-        },
-      ],
-    });
+    let enrolledCourses = await Enrollment.find(filter)
+      .sort({ createdAt: -1 })
+      .populate({
+        path: "course",
+        select: "courseTitle createdby category subcategory language thumbnail",
+        populate: [
+          {
+            path: "createdby",
+            select: "firstName middleName lastName profileImg",
+          },
+          {
+            path: "category",
+            select: "title",
+          },
+        ],
+      });
 
     // If a search query is provided, filter courses by courseTitle
     if (search) {
       enrolledCourses = enrolledCourses.filter((enroll) =>
-        enroll.course?.courseTitle?.toLowerCase().includes(search.toLowerCase())
+        enroll.course?.courseTitle
+          ?.toLowerCase()
+          .includes(search.toLowerCase()),
       );
     }
 
@@ -128,7 +131,8 @@ export const studentsEnrolledinCourse = async (req, res) => {
     const enrolledStudents = await Enrollment.find({
       course: courseId,
     })
-      .sort({ createdAt: -1 }).populate("student", "firstName middleName lastName profileImg");
+      .sort({ createdAt: -1 })
+      .populate("student", "firstName middleName lastName profileImg");
     res.status(200).json(enrolledStudents);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -172,7 +176,9 @@ export const studentCourseDetails = async (req, res) => {
                 as: "createdby",
               },
             },
-            { $unwind: { path: "$createdby", preserveNullAndEmptyArrays: true } },
+            {
+              $unwind: { path: "$createdby", preserveNullAndEmptyArrays: true },
+            },
 
             {
               $lookup: {
@@ -182,7 +188,9 @@ export const studentCourseDetails = async (req, res) => {
                 as: "category",
               },
             },
-            { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
+            {
+              $unwind: { path: "$category", preserveNullAndEmptyArrays: true },
+            },
 
             {
               $lookup: {
@@ -192,7 +200,12 @@ export const studentCourseDetails = async (req, res) => {
                 as: "subcategory",
               },
             },
-            { $unwind: { path: "$subcategory", preserveNullAndEmptyArrays: true } },
+            {
+              $unwind: {
+                path: "$subcategory",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
 
             {
               $lookup: {
@@ -243,6 +256,7 @@ export const studentCourseDetails = async (req, res) => {
 
             {
               $project: {
+                _id: 1,
                 courseTitle: 1,
                 courseDescription: 1,
                 courseCode: 1,
@@ -299,8 +313,6 @@ export const studentCourseDetails = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
-
-
 
 export const chapterDetails = async (req, res) => {
   const { chapterId } = req.params;
@@ -418,7 +430,6 @@ export const chapterDetails = async (req, res) => {
   }
 };
 
-
 export const chapterDetailsStdPre = async (req, res) => {
   const { chapterId } = req.params;
 
@@ -524,25 +535,25 @@ export const chapterDetailsStdPre = async (req, res) => {
   }
 };
 
-
-
 // controller/adminController.js
 export const getStudentEnrolledCourses = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const enrolledCourses = await Enrollment.find({ student: id }).sort({ createdAt: -1 }).populate({
-      path: "course",
-      select: "courseTitle createdby category subcategory language thumbnail",
-      populate: [
-        {
-          path: "createdby",
-          select: "firstName middleName lastName profileImg",
-        },
-        { path: "category", select: "title" },
-        { path: "subcategory", select: "title" },
-      ],
-    });
+    const enrolledCourses = await Enrollment.find({ student: id })
+      .sort({ createdAt: -1 })
+      .populate({
+        path: "course",
+        select: "courseTitle createdby category subcategory language thumbnail",
+        populate: [
+          {
+            path: "createdby",
+            select: "firstName middleName lastName profileImg",
+          },
+          { path: "category", select: "title" },
+          { path: "subcategory", select: "title" },
+        ],
+      });
 
     res
       .status(200)
@@ -552,89 +563,88 @@ export const getStudentEnrolledCourses = async (req, res) => {
   }
 };
 
-
 export const enrollmentforTeacher = async (req, res) => {
   try {
     const { teacherId, courseId } = req.body;
 
-    const enrollments = await Enrollment.find({ student: teacherId, course: courseId });
+    const enrollments = await Enrollment.find({
+      student: teacherId,
+      course: courseId,
+    });
     const enrollment = enrollments[0];
     if (enrollment) {
-      res.status(200).json({ message: "Enrollments fetched successfully", enrollment });
+      res
+        .status(200)
+        .json({ message: "Enrollments fetched successfully", enrollment });
     } else {
       res.status(404).json({ message: "No enrollments found" });
     }
-
   } catch (error) {
     console.log("Error in the enrollmentforTeacher", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-}
-
-
-
-export const getChildEnrolledCourses = async (req, res) => {
-    try {
-        const { studentId } = req.params; // The ID of the child
-        const parentEmail = req.user.email;
-        const search = req.query.search?.trim();
-
-        // 1. AUTHORIZATION CHECK
-        // Verify this student belongs to the parent
-        const student = await User.findOne({
-            _id: studentId,
-            guardianEmails: parentEmail,
-            role: { $in: ["student", "teacherAsStudent"] }
-        });
-
-        if (!student) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "Unauthorized: You do not have access to this student's records." 
-            });
-        }
-
-        // 2. FETCH ENROLLMENTS
-        // We use the studentId from params instead of req.user._id
-        let enrolledCourses = await Enrollment.find({ student: studentId })
-            .sort({ createdAt: -1 })
-            .populate({
-                path: "course",
-                select: "courseTitle createdby category subcategory language thumbnail",
-                populate: [
-                    {
-                        path: "createdby",
-                        select: "firstName middleName lastName profileImg",
-                    },
-                    {
-                        path: "category",
-                        select: "title",
-                    },
-                ],
-            });
-
-        // 3. SEARCH FILTERING
-        if (search) {
-            enrolledCourses = enrolledCourses.filter((enroll) =>
-                enroll.course?.courseTitle?.toLowerCase().includes(search.toLowerCase())
-            );
-        }
-
-        res.status(200).json({ 
-            success: true,
-            studentName: `${student.firstName} ${student.lastName}`,
-            enrolledCourses 
-        });
-
-    } catch (err) {
-        console.error("Error fetching child courses for parent:", err);
-        res.status(500).json({ success: false, error: err.message });
-    }
 };
 
+export const getChildEnrolledCourses = async (req, res) => {
+  try {
+    const { studentId } = req.params; // The ID of the child
+    const parentEmail = req.user.email;
+    const search = req.query.search?.trim();
 
+    // 1. AUTHORIZATION CHECK
+    // Verify this student belongs to the parent
+    const student = await User.findOne({
+      _id: studentId,
+      guardianEmails: parentEmail,
+      role: { $in: ["student", "teacherAsStudent"] },
+    });
 
+    if (!student) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Unauthorized: You do not have access to this student's records.",
+      });
+    }
 
+    // 2. FETCH ENROLLMENTS
+    // We use the studentId from params instead of req.user._id
+    let enrolledCourses = await Enrollment.find({ student: studentId })
+      .sort({ createdAt: -1 })
+      .populate({
+        path: "course",
+        select: "courseTitle createdby category subcategory language thumbnail",
+        populate: [
+          {
+            path: "createdby",
+            select: "firstName middleName lastName profileImg",
+          },
+          {
+            path: "category",
+            select: "title",
+          },
+        ],
+      });
+
+    // 3. SEARCH FILTERING
+    if (search) {
+      enrolledCourses = enrolledCourses.filter((enroll) =>
+        enroll.course?.courseTitle
+          ?.toLowerCase()
+          .includes(search.toLowerCase()),
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      studentName: `${student.firstName} ${student.lastName}`,
+      enrolledCourses,
+    });
+  } catch (err) {
+    console.error("Error fetching child courses for parent:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
 
 export const getParentChildCourseDetails = async (req, res) => {
   const { enrollmentId, studentId } = req.params;
@@ -664,7 +674,7 @@ export const getParentChildCourseDetails = async (req, res) => {
       },
       {
         $lookup: {
-          from: "coursesches", 
+          from: "coursesches",
           localField: "course",
           foreignField: "_id",
           as: "courseDetails",
@@ -678,7 +688,9 @@ export const getParentChildCourseDetails = async (req, res) => {
                 as: "createdby",
               },
             },
-            { $unwind: { path: "$createdby", preserveNullAndEmptyArrays: true } },
+            {
+              $unwind: { path: "$createdby", preserveNullAndEmptyArrays: true },
+            },
             {
               $lookup: {
                 from: "categories",
@@ -687,7 +699,9 @@ export const getParentChildCourseDetails = async (req, res) => {
                 as: "category",
               },
             },
-            { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
+            {
+              $unwind: { path: "$category", preserveNullAndEmptyArrays: true },
+            },
             {
               $lookup: {
                 from: "subcategories",
@@ -696,8 +710,13 @@ export const getParentChildCourseDetails = async (req, res) => {
                 as: "subcategory",
               },
             },
-            { $unwind: { path: "$subcategory", preserveNullAndEmptyArrays: true } },
-            
+            {
+              $unwind: {
+                path: "$subcategory",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+
             // Lookups for Semesters and Quarters
             {
               $lookup: {
@@ -731,16 +750,16 @@ export const getParentChildCourseDetails = async (req, res) => {
                       from: "lessons",
                       localField: "_id",
                       foreignField: "chapter",
-                      as: "lessonData"
-                    }
+                      as: "lessonData",
+                    },
                   },
                   {
                     $lookup: {
                       from: "assessments",
                       localField: "_id",
                       foreignField: "chapter",
-                      as: "chapterAssessments"
-                    }
+                      as: "chapterAssessments",
+                    },
                   },
                   {
                     $project: {
@@ -748,11 +767,11 @@ export const getParentChildCourseDetails = async (req, res) => {
                       title: 1,
                       lessonCount: { $size: "$lessonData" },
                       assessmentCount: { $size: "$chapterAssessments" },
-                      lessonTitles: "$lessonData.title"
-                    }
-                  }
-                ]
-              }
+                      lessonTitles: "$lessonData.title",
+                    },
+                  },
+                ],
+              },
             },
 
             // Lookup Final Assessments
@@ -780,13 +799,14 @@ export const getParentChildCourseDetails = async (req, res) => {
             // 3. FINAL PROJECT (Restoring Syllabus and all missing fields)
             {
               $project: {
+                _id: 1,
                 courseTitle: 1,
                 courseDescription: 1,
                 language: 1,
                 thumbnail: 1,
-                syllabus: 1,        // RESTORED
-                teachingPoints: 1,  // RESTORED
-                requirements: 1,    // RESTORED
+                syllabus: 1, // RESTORED
+                teachingPoints: 1, // RESTORED
+                requirements: 1, // RESTORED
                 commentsEnabled: 1, // RESTORED
                 semester: 1,
                 quarter: 1,

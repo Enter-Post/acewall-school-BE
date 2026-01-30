@@ -44,9 +44,10 @@ import aiChatRoutes from "./Routes/AIChat.Routes.js";
 import parentRoutes from "./Routes/Parent.Routes.js";
 import attendanceRoutes from "./Routes/Attendance.routes.js";
 import loginActivityRoutes from "./Routes/LoginActivity.Routes.js";
-import jitsiRoutes from "./Routes/Jitsi.Routes.js";
-import notificationRoutes from "./Routes/notification.Routes.js"
+import zoomRoutes from "./Routes/Zoom.Routes.js";
+import notificationRoutes from "./Routes/notification.Routes.js";
 import "./cronJobs/assessmentReminder.js";
+import { startZoomMeetingMonitor } from "./cronJobs/zoomMeetingMonitor.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -58,7 +59,7 @@ const PORT = process.env.PORT || 5051;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use(express.json());
 app.use(cookieParser());
 app.use(
@@ -73,7 +74,7 @@ app.use(
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     credentials: true,
-  })
+  }),
 );
 
 app.use("/api/auth", authRoutes);
@@ -108,15 +109,16 @@ app.use("/api/gpa", gpaRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/postlike", likesRoutes);
 app.use("/api/postComment", postCommentRoutes);
-app.use("/api/emailnotification", emailNotificationRoutes)
-app.use("/api/standardGrading", StandardGradingRoutes)
-app.use("/api/aichat", aiChatRoutes)
+app.use("/api/emailnotification", emailNotificationRoutes);
+app.use("/api/standardGrading", StandardGradingRoutes);
+app.use("/api/aichat", aiChatRoutes);
 app.use("/api/parent", parentRoutes);
 app.use("/api/attendance", attendanceRoutes);
-app.use("/api/loginactivity", loginActivityRoutes)
-app.use("/api/jitsi", jitsiRoutes);
+app.use("/api/loginactivity", loginActivityRoutes);
+app.use("/api/zoom", zoomRoutes);
 app.use("/api/notifications", notificationRoutes);
 server.listen(PORT, () => {
   connectDB();
+  startZoomMeetingMonitor();
   console.log(`This app is running on localhost ${PORT}`);
 });
