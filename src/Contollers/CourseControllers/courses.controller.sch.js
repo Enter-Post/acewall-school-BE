@@ -115,8 +115,8 @@ export const importFullCourse = async (req, res) => {
       await Assessment.insertMany(preparedAssessments);
     }
 
-    // Optional: Auto-enroll the creator (just like your original API)
-    // await Enrollment.create({ student: userId, course: savedCourse._id });
+    // Auto-enroll the creator (just like in createCourseSch)
+    await Enrollment.create({ student: userId, course: savedCourse._id });
 
     res.status(201).json({
       success: true,
@@ -143,12 +143,16 @@ export const getFullCourseData = async (req, res) => {
 
     // --- ADDITION 1: ASSESSMENT CATEGORIES ---
     // We fetch categories belonging to this specific course
-    const assessmentCategories = await AssessmentCategory.find({ course: courseId }).lean();
+    const assessmentCategories = await AssessmentCategory.find({
+      course: courseId,
+    }).lean();
 
     // --- ADDITION 2: QUARTERS ---
     // We find all quarters linked to the semesters used in this course
-    const semesterIds = course.semester?.map(s => s._id) || [];
-    const quarters = await Quarter.find({ semester: { $in: semesterIds } }).lean();
+    const semesterIds = course.semester?.map((s) => s._id) || [];
+    const quarters = await Quarter.find({
+      semester: { $in: semesterIds },
+    }).lean();
 
     // 2. Fetch Chapters and Lessons
     const chapters = await Chapter.find({ course: courseId }).lean();
@@ -156,7 +160,7 @@ export const getFullCourseData = async (req, res) => {
       chapters.map(async (chapter) => {
         const lessons = await Lesson.find({ chapter: chapter._id }).lean();
         return { ...chapter, lessons };
-      })
+      }),
     );
 
     // 3. Fetch Assessments and Discussions
@@ -169,7 +173,7 @@ export const getFullCourseData = async (req, res) => {
       success: true,
       data: {
         ...course,
-        quarters,             // Included in the JSON
+        quarters, // Included in the JSON
         assessmentCategories, // Included in the JSON
         curriculum: chaptersWithLessons,
         assessments,
@@ -286,7 +290,7 @@ export const createCourseSch = async (req, res) => {
   try {
     // Find teacher info for email
     const teacher = await User.findById(createdby).select(
-      "firstName lastName email"
+      "firstName lastName email",
     );
 
     let thumbnail = { url: "", altText: "" };
@@ -297,7 +301,7 @@ export const createCourseSch = async (req, res) => {
       const thumb = files.thumbnail[0];
       const result = await uploadToCloudinary(
         thumb.buffer,
-        "course_thumbnails"
+        "course_thumbnails",
       );
       thumbnail.url = result.secure_url;
       thumbnail.altText = thumb.originalname;
@@ -308,7 +312,7 @@ export const createCourseSch = async (req, res) => {
       const syllabus = files.syllabus[0];
       const result = await uploadToCloudinary(
         syllabus.buffer,
-        "course_syllabi"
+        "course_syllabi",
       );
       syllabusFile.url = result.secure_url;
       syllabusFile.filename = syllabus.originalname;
@@ -387,8 +391,8 @@ export const createCourseSch = async (req, res) => {
           <!-- Body -->
           <div style="padding: 20px; color: #333;">
             <p style="font-size: 16px;">Hi, ${teacher.firstName} ${
-        teacher.lastName
-      },</p>
+              teacher.lastName
+            },</p>
 
             <p style="font-size: 16px;">Your course <strong>${
               course.courseTitle
@@ -434,7 +438,7 @@ export const getAllCoursesSch = async (req, res) => {
       .sort({ createdAt: -1 })
       .populate(
         "createdby",
-        "firstName middleName lastName Bio email profileImg"
+        "firstName middleName lastName Bio email profileImg",
       ) // only include necessary fields
       .populate("category", "name") // populate category name only
       .populate("subcategory", "name"); // if you want to include subcategory too
@@ -789,12 +793,10 @@ export const getCourseDetails = async (req, res) => {
     const isCreated = courseData.createdby.toString() === userId.toString();
 
     if (!isCreated) {
-      return res
-        .status(403)
-        .json({
-          error: "Forbidden",
-          message: "You are not authorized to view this course",
-        });
+      return res.status(403).json({
+        error: "Forbidden",
+        message: "You are not authorized to view this course",
+      });
     }
 
     const course = await CourseSch.aggregate([
@@ -1077,7 +1079,7 @@ export const getCoursesforadminofteacher = async (req, res) => {
 export const getallcoursesforteacher = async (req, res) => {
   const teacherId = req.user._id;
   const { courseTitle, studentName, page = 1, limit = 8 } = req.query;
-  const {courseId} = req.params
+  const { courseId } = req.params;
   try {
     const matchStage = {
       "courseDetails.createdby": new mongoose.Types.ObjectId(teacherId),
@@ -1212,7 +1214,7 @@ export const getDueDate = async (req, res) => {
   const { courseId } = req.params;
   try {
     const course = await CourseSch.findById(courseId).select(
-      "startingDate endingDate"
+      "startingDate endingDate",
     );
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
@@ -1354,7 +1356,7 @@ export const thumnailChange = async (req, res) => {
     if (thumbnail) {
       const result = await uploadToCloudinary(
         thumbnail.buffer,
-        "course_thumbnails"
+        "course_thumbnails",
       );
       course.thumbnail = {
         url: result.secure_url,
@@ -1391,7 +1393,7 @@ export const searchCoursebycode = async (req, res) => {
         createdby: 1,
         language: 1,
         courseDescription: 1,
-      }
+      },
     )
       .populate("createdby", "firstName lastName Bio profileImg _id")
       .populate("category", "title")
@@ -1538,13 +1540,11 @@ export const getCourseEnrollmentStats = async (req, res) => {
     });
   } catch (error) {
     console.error("Stats Error:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Error fetching stats",
-        error: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Error fetching stats",
+      error: error.message,
+    });
   }
 };
 

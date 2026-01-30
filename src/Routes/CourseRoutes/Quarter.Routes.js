@@ -17,6 +17,8 @@ router.post("/create", createQuarter);
 router.get("/get", getQuarter);
 router.post("/getquarters", getQuartersofSemester);
 router.get("/get/:courseId/:semesterId", isUser, isEnrolledMiddleware, getSemesterQuarter);
+router.get("/getforteacher/:courseId/:semesterId", isUser, getSemesterQuarter);
+
 router.get("/get/:semesterId", isUser, getSemesterQuarter);
 router.get(`/getDatesofQuarter/:quarterId`, getDatesofQuarter);
 
