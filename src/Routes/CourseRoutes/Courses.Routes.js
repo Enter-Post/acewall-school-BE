@@ -25,23 +25,25 @@ import {
   getUserCoursesforFilter,
   importFullCourse,
   getFullCourseData,
+  getCoursesWithMeetings,
 } from "../../Contollers/CourseControllers/courses.controller.sch.js";
-import { getAllCoursesSchupdated, getCoursesByTeacherSch_WEB } from "../../Contollers/UPDATED_API_CONTROLLER/course.controller.web.js";
+import {
+  getAllCoursesSchupdated,
+  getCoursesByTeacherSch_WEB,
+} from "../../Contollers/UPDATED_API_CONTROLLER/course.controller.web.js";
 
 const router = express.Router();
 
 router.patch("/:courseId/toggle-comments", toggleCourseComments);
 
+router.get("/export-full-course/:courseId", getFullCourseData);
 
-router.get('/export-full-course/:courseId', getFullCourseData);
- 
- 
-router.post('/import-full-course', isUser, importFullCourse);
+router.post("/import-full-course", isUser, importFullCourse);
 
 ////WEB APIS
 
 ///////// router.get("/getindividualcourse", isUser, getCoursesByTeacherSch);
-router.get("/getTeacherCourses", isUser, getCoursesByTeacherSch_WEB)
+router.get("/getTeacherCourses", isUser, getCoursesByTeacherSch_WEB);
 router.get("/getUserCoursesforFilter", isUser, getUserCoursesforFilter);
 
 ////PREV APIS
@@ -61,13 +63,14 @@ router.post(
     { name: "thumbnail", maxCount: 1 },
     { name: "syllabus", maxCount: 1 },
   ]),
-  createCourseSch
+  createCourseSch,
 );
 router.get("/all", getAllCoursesSch);
 router.get("/getindividualcourse", isUser, getCoursesByTeacherSch);
 router.get("/getCoursesforadminofteacher", getCoursesforadminofteacher);
 
 router.get("/getallCoursesforTeacher", isUser, getallcoursesforteacher);
+router.get("/with-meetings",isUser, getCoursesWithMeetings);
 
 // ❌ KEEP THIS AT THE BOTTOM
 router.get("/:subCategoryId", getCoursesbySubcategorySch);
@@ -82,11 +85,16 @@ router.get(`/getCourseBasics/:courseId`, isUser, getCourseBasics);
 router.put(
   "/editCourseBasics/:courseId",
   upload.single("syllabus"), // <--- handle syllabus upload
-  editCourseInfo
-); router.put(`/thumbnail/:courseId`, isUser, upload.single("thumbnail"), thumnailChange);
+  editCourseInfo,
+);
+router.put(
+  `/thumbnail/:courseId`,
+  isUser,
+  upload.single("thumbnail"),
+  thumnailChange,
+);
 router.get("/searchCoursebycode/:courseCode", isUser, searchCoursebycode);
 router.put("/course/:courseId/toggle-grading", toggleGradingSystem);
 
-router.get('/stats/:courseId', getCourseEnrollmentStats);
+router.get("/stats/:courseId", getCourseEnrollmentStats);
 export default router;
-

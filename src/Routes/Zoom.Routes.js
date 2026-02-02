@@ -7,6 +7,7 @@ import {
   getActiveMeetings,
   handleZoomWebhook,
   endMeeting,
+  getUpcomingStudentMeeting,
 } from "../Contollers/Zoom.Controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 
@@ -14,6 +15,7 @@ const router = express.Router();
 
 // 1. Get meetings for a course
 router.get("/course/:courseId", isUser, getCourseMeetings);
+router.get("/upcoming", isUser, getUpcomingStudentMeeting);
 
 // 1.1 Get all active meetings for enrolled courses
 router.get("/active", isUser, getActiveMeetings);
