@@ -27,6 +27,7 @@ import {
   getFullCourseData,
   getCoursesWithMeetings,
 } from "../../Contollers/CourseControllers/courses.controller.sch.js";
+import { getPacingChartByCourse } from "../../Contollers/PacingChart.controller.js";
 import {
   getAllCoursesSchupdated,
   getCoursesByTeacherSch_WEB,
@@ -70,7 +71,7 @@ router.get("/getindividualcourse", isUser, getCoursesByTeacherSch);
 router.get("/getCoursesforadminofteacher", getCoursesforadminofteacher);
 
 router.get("/getallCoursesforTeacher", isUser, getallcoursesforteacher);
-router.get("/with-meetings",isUser, getCoursesWithMeetings);
+router.get("/with-meetings", isUser, getCoursesWithMeetings);
 
 // ❌ KEEP THIS AT THE BOTTOM
 router.get("/:subCategoryId", getCoursesbySubcategorySch);
@@ -97,4 +98,7 @@ router.get("/searchCoursebycode/:courseCode", isUser, searchCoursebycode);
 router.put("/course/:courseId/toggle-grading", toggleGradingSystem);
 
 router.get("/stats/:courseId", getCourseEnrollmentStats);
+
+router.get("/:courseId/pacing-chart", isUser, getPacingChartByCourse);
+
 export default router;
