@@ -48,6 +48,47 @@ const getZoomAccessToken = async () => {
   return cachedToken;
 };
 
+// In your backend zoom routes
+
+// In your controller
+export const getUpcomingStudentMeeting = async (req, res) => {
+  try {
+    // 1. Get all courses the student is enrolled in (assuming you have enrollment logic)
+    // OR simply find the nearest meeting across ALL courses if that's the intended behavior for now.
+    // A better approach is to find the nearest meeting where scheduledAt >= NOW.
+
+    const now = new Date();
+
+    const upcomingMeeting = await ZoomMeeting.findOne({
+      scheduledAt: { $gte: now },
+      status: { $ne: "ended" } // Optional: exclude ended meetings
+    })
+    .sort({ scheduledAt: 1 }) // Sort by nearest date ascending
+    .populate({
+        path: "course",
+        select: "courseTitle createdby",
+        populate: {
+            path: "createdby",
+            select: "firstName lastName"
+        }
+    })
+    .lean();
+
+    if (!upcomingMeeting) {
+      return res.status(200).json({ success: true, meeting: null, message: "No upcoming meetings found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      meeting: upcomingMeeting,
+    });
+  } catch (error) {
+    console.error("Error fetching upcoming meeting:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
 // Helper: End Zoom Meeting
 const updateZoomMeetingStatus = async (zoomMeetingId, action = "end") => {
   try {
