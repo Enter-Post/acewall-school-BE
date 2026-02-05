@@ -844,8 +844,13 @@ export const getCourseDetails = async (req, res) => {
     const courseData = await CourseSch.findById(courseId);
 
     const isCreated = courseData.createdby.toString() === userId.toString();
+    const isAdmin = req.user.role === "admin";
+    const isEnrolled = await Enrollment.findOne({
+      student: userId,
+      course: courseId,
+    });
 
-    if (!isCreated) {
+    if (!isCreated && !isAdmin && !isEnrolled) {
       return res.status(403).json({
         error: "Forbidden",
         message: "You are not authorized to view this course",

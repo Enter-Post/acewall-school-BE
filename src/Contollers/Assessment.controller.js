@@ -375,37 +375,47 @@ export const deleteFile = async (req, res) => {
 
 export const getAssesmentbyID = async (req, res) => {
   const { assessmentId } = req.params;
-  const validObjectId = new mongoose.Types.ObjectId(assessmentId);
   const userId = req.user._id;
 
   try {
-    const assessment = await Assessment.findById(validObjectId).populate({
+    // ✅ ADMIN CHECK
+    const isAdmin = req.user.role === "admin" || req.user.isAdmin === true;
+
+    const assessment = await Assessment.findById(assessmentId).populate({
       path: "category",
       select: "name",
     });
-
-    const courseId = assessment.course;
-
-    const isEnrollment = await Enrollment.findOne({
-      student: userId,
-      course: courseId,
-    });
-
-    if (!isEnrollment) {
-      return res
-        .status(404)
-        .json({ message: "You are not enrolled in this course" });
-    }
 
     if (!assessment) {
       return res.status(404).json({ message: "Assessment not found" });
     }
 
-    res.status(200).json({ message: "Assessment found", assessment });
+    // ✅ Admin can access without enrollment
+    if (!isAdmin) {
+      const courseId = assessment.course;
+
+      const isEnrollment = await Enrollment.findOne({
+        student: userId,
+        course: courseId,
+      });
+
+      if (!isEnrollment) {
+        return res.status(403).json({
+          message: "You are not enrolled in this course",
+        });
+      }
+    }
+
+    res.status(200).json({
+      message: "Assessment found",
+      assessment,
+    });
   } catch (error) {
+    console.error("getAssesmentbyID error:", error);
     res.status(500).json({ message: "Something went wrong" });
   }
 };
+
 
 export const allAssessmentByTeacher = async (req, res) => {
   const createdby = req.user._id;
