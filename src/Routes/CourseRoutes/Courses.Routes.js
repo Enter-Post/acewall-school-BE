@@ -33,6 +33,7 @@ import {
   getAllCoursesSchupdated,
   getCoursesByTeacherSch_WEB,
 } from "../../Contollers/UPDATED_API_CONTROLLER/course.controller.web.js";
+import { acceptShare, getSharedWithMe, rejectShare, shareCourse } from "../../Contollers/CourseControllers/courseShare.controller.js";
 
 const router = express.Router();
 
@@ -41,6 +42,12 @@ router.patch("/:courseId/toggle-comments", toggleCourseComments);
 router.get("/export-full-course/:courseId", getFullCourseData);
 
 router.post("/import-full-course", isUser, importFullCourse);
+
+// Course Sharing Routes
+router.post("/share", isUser, shareCourse);
+router.get("/shared-with-me", isUser, getSharedWithMe);
+router.post("/accept-share/:shareId", isUser, acceptShare);
+router.post("/reject-share/:shareId", isUser, rejectShare);
 
 ////WEB APIS
 
@@ -99,7 +106,6 @@ router.get("/searchCoursebycode/:courseCode", isUser, searchCoursebycode);
 router.put("/course/:courseId/toggle-grading", toggleGradingSystem);
 
 router.get("/stats/:courseId", getCourseEnrollmentStats);
-
 
 router.get("/:courseId/pacing-chart", isUser, getPacingChartByCourse);
 export default router;
