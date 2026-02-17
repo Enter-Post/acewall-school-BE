@@ -43,12 +43,13 @@ import {
 } from "../Contollers/auth.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { upload } from "../lib/multer.config.js";
+import cleverRoutes from "../modules/clever/clever.routes.js";
 // import { checkRole, isAllowed } from "../Middlewares/admins.Middleware.js";
 const router = express.Router();
 
+router.use("/clever", cleverRoutes);
 
 router.post("/bulk-signup", upload.single("file"), bulkSignup);
-
 
 router.post("/register", initiateSignup);
 router.post("/registerwithoutOTP", SignupwithoutOTP);
@@ -79,20 +80,20 @@ router.put(
   "/updateProfileImg",
   isUser,
   upload.single("profileImg"),
-  updateProfileImg
+  updateProfileImg,
 );
 router.put(
   "/updateUserProfileImgById/:id",
   upload.single("profileImg"),
-  updateUserProfileImgById
+  updateUserProfileImgById,
 );
 
 router.post("/updatePasswordOTP", isUser, updatePasswordOTP);
 router.put("/updatePassword", isUser, updatePassword);
 router.post("/updateEmailOTP", isUser, updateEmailOTP);
 router.put("/updateEmail", isUser, updateEmail);
-router.post("/updatePhoneOTP", isUser, updatePhoneOTP)
-router.put("/updatePhone", isUser, updatePhone)
+router.post("/updatePhoneOTP", isUser, updatePhoneOTP);
+router.put("/updatePhone", isUser, updatePhone);
 
 router.put("/auth/updateEmailOTPById/:id", updateEmailOTPById);
 router.put("/auth/updateEmailById/:id", updateEmailById);
@@ -100,8 +101,8 @@ router.put("/auth/updatePasswordOTPById/:id", updatePasswordOTPById);
 router.put("/auth/updatePasswordById/:id", updatePasswordById);
 router.delete("/users/:userId", isUser, deleteUser);
 
-router.post("/previewSignIn", isUser, previewSignIn)
-router.post("/previewSignOut", isUser, previewSignOut)
+router.post("/previewSignIn", isUser, previewSignIn);
+router.post("/previewSignOut", isUser, previewSignOut);
 router.put("/updateParentEmail/:id", isUser, updateParentEmail);
 
 export default router;
