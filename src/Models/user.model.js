@@ -24,14 +24,29 @@ const UserSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["student", "teacher", "admin", "teacherAsStudent", "parent"],
+      enum: [
+        "student",
+        "teacher",
+        "admin",
+        "teacherAsStudent",
+        "parent",
+        "instructor",
+      ],
       required: true,
     },
     email: { type: String, required: true, unique: true },
     phone: { type: String },
     homeAddress: { type: String },
     mailingAddress: { type: String },
-    password: { type: String, required: true },
+    password: { type: String, required: false },
+    cleverId: { type: String, unique: true, sparse: true },
+    districtId: { type: String },
+    schoolIds: [{ type: String }],
+    authProvider: {
+      type: String,
+      enum: ["local", "google", "clever"],
+      default: "local",
+    },
     guardianEmails: [{ type: String }],
     guardianEmailPreferences: {
       submission: { type: Boolean, default: true },
@@ -40,7 +55,7 @@ const UserSchema = new mongoose.Schema(
       assessments: { type: Boolean, default: true },
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // 🔹 Pre-remove hook to delete all enrollments when a user is deleted
