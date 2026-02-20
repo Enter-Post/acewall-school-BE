@@ -16,108 +16,15 @@ import { log } from "console";
 import Discussion from "../../Models/discussion.model.js";
 import Quarter from "../../Models/quarter.model.js";
 import { ZoomMeeting } from "../../Models/ZoomMeeting.model.js";
+import CourseShare from "../../Models/CourseShare.model.js";
+import { processCourseImport } from "./courseShare.service.js";
 
 export const importFullCourse = async (req, res) => {
   try {
     const data = req.body;
-    // MATCH YOUR EXISTING AUTH PATTERN:
     const userId = req.user._id;
 
-    // --- STEP 1: CREATE THE COURSE ---
-    const {
-      _id,
-      courseCode,
-      createdAt,
-      updatedAt,
-      __v,
-      curriculum,
-      assessments,
-      discussions,
-      published,
-      ...courseBody
-    } = data;
-
-    const newCourse = new CourseSch({
-      ...courseBody,
-      courseTitle: `${courseBody.courseTitle} (Imported)`,
-      // Generate code exactly like your original creator
-      courseCode: `CLN-${Math.random()
-        .toString(36)
-        .substring(2, 8)
-        .toUpperCase()}`,
-      createdby: userId, // This overrides the old ID from the JSON
-      published: false,
-      // We must extract only the IDs from the populated objects in your JSON
-      category: courseBody.category?._id || courseBody.category,
-      subcategory: courseBody.subcategory?._id || courseBody.subcategory,
-      // Handle semester array by mapping to IDs
-      semester: courseBody.semester?.map((s) => s._id || s) || [],
-      quarter: courseBody.quarter?.map((q) => q._id || q) || [],
-    });
-
-    const savedCourse = await newCourse.save();
-
-    // ID Maps to maintain relationships
-    const chapterMap = {};
-    const lessonMap = {};
-
-    // --- STEP 2: CREATE CURRICULUM ---
-    if (curriculum && curriculum.length > 0) {
-      for (const chap of curriculum) {
-        const { _id: oldChapId, lessons, ...chapBody } = chap;
-
-        const newChapter = await Chapter.create({
-          ...chapBody,
-          course: savedCourse._id,
-          createdby: userId, // Set current user as creator
-          // Ensure quarter is an ID, not an object
-          quarter: chapBody.quarter?._id || chapBody.quarter,
-        });
-
-        chapterMap[oldChapId] = newChapter._id;
-
-        if (lessons && lessons.length > 0) {
-          for (const lesson of lessons) {
-            const { _id: oldLessonId, ...lessonBody } = lesson;
-
-            const newLesson = await Lesson.create({
-              ...lessonBody,
-              chapter: newChapter._id,
-              createdby: userId, // Set current user as creator
-            });
-
-            lessonMap[oldLessonId] = newLesson._id;
-          }
-        }
-      }
-    }
-
-    // --- STEP 3: CREATE ASSESSMENTS ---
-    if (assessments && assessments.length > 0) {
-      const preparedAssessments = assessments.map((asmt) => {
-        const { _id: oldAsmtId, questions, ...asmtBody } = asmt;
-
-        // Strip internal IDs from questions
-        const cleanQuestions = questions.map(({ _id, ...q }) => q);
-
-        return {
-          ...asmtBody,
-          course: savedCourse._id,
-          createdby: userId,
-          category: asmtBody.category?._id || asmtBody.category,
-          semester: asmtBody.semester?._id || asmtBody.semester,
-          quarter: asmtBody.quarter?._id || asmtBody.quarter,
-          chapter: chapterMap[asmtBody.chapter] || null,
-          lesson: lessonMap[asmtBody.lesson] || null,
-          questions: cleanQuestions,
-        };
-      });
-
-      await Assessment.insertMany(preparedAssessments);
-    }
-
-    // Auto-enroll the creator (just like in createCourseSch)
-    await Enrollment.create({ student: userId, course: savedCourse._id });
+    const savedCourse = await processCourseImport(data, userId, "(Imported)");
 
     res.status(201).json({
       success: true,
