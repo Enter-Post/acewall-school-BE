@@ -163,7 +163,7 @@ export const initiateSignup = async (req, res) => {
       secure: true, // true for 465, false for 587
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        pass: "bpwvhmhiivrpkekl",
       },
     });
     await transporter.sendMail({
@@ -301,7 +301,7 @@ export const resendOTP = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        pass: "bpwvhmhiivrpkekl",
       },
     });
 
@@ -463,7 +463,7 @@ export const verifyPhoneOtp = async (req, res) => {
         secure: true,
         auth: {
           user: "support@acewallscholars.org",
-          pass: "dmwjwyfxaccrdxwi",
+          pass: "bpwvhmhiivrpkekl",
         },
       });
 
@@ -756,7 +756,7 @@ export const createGuardianAcc = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        pass: "bpwvhmhiivrpkekl",
       },
     });
 
@@ -845,7 +845,7 @@ export const loginGuardianAcc = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        pass: "bpwvhmhiivrpkekl",
       },
     });
 
@@ -983,7 +983,7 @@ export const forgetPassword = async (req, res) => {
       secure: true, // true for 465, false for 587
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        pass: "bpwvhmhiivrpkekl",
       },
     });
 
@@ -1667,7 +1667,7 @@ export const updatePasswordOTP = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        pass: "bpwvhmhiivrpkekl",
       },
     });
 
@@ -1807,7 +1807,7 @@ export const updateEmailOTP = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        pass: "bpwvhmhiivrpkekl",
       },
     });
 
@@ -1942,7 +1942,7 @@ export const updateEmailOTPById = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        pass: "bpwvhmhiivrpkekl",
       },
     });
 
@@ -2095,7 +2095,7 @@ export const updatePasswordOTPById = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dmwjwyfxaccrdxwi",
+        pass: "bpwvhmhiivrpkekl",
       },
     });
 
