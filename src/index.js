@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import express from "express";
 import cookieParser from "cookie-parser";
+import session from "express-session";
 import cors from "cors";
 import { connectDB } from "./lib/connectDB.js";
 import { app, server, io } from "./lib/socket.io.js";
@@ -46,6 +47,7 @@ import attendanceRoutes from "./Routes/Attendance.routes.js";
 import loginActivityRoutes from "./Routes/LoginActivity.Routes.js";
 import zoomRoutes from "./Routes/Zoom.Routes.js";
 import notificationRoutes from "./Routes/notification.Routes.js";
+import edlinkRoutes from "./modules/edlink/edlink.routes.js";
 import "./cronJobs/assessmentReminder.js";
 import { startZoomMeetingMonitor } from "./cronJobs/zoomMeetingMonitor.js";
 
@@ -62,6 +64,19 @@ const __dirname = path.dirname(__filename);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use(express.json());
 app.use(cookieParser());
+app.set("trust proxy", 1);
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "acewall_secret_key",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: true,        // REQUIRED for HTTPS (ngrok)
+      sameSite: "none",    // REQUIRED for OAuth redirects
+    },
+  })
+);
 app.use(
   cors({
     origin: [
@@ -117,6 +132,7 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api/loginactivity", loginActivityRoutes);
 app.use("/api/zoom", zoomRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/edlink", edlinkRoutes);
 server.listen(PORT, () => {
   connectDB();
   startZoomMeetingMonitor();

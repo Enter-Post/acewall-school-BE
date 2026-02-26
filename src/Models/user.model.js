@@ -39,12 +39,10 @@ const UserSchema = new mongoose.Schema(
     homeAddress: { type: String },
     mailingAddress: { type: String },
     password: { type: String, required: false },
-    cleverId: { type: String, unique: true, sparse: true },
-    districtId: { type: String },
     schoolIds: [{ type: String }],
     authProvider: {
       type: String,
-      enum: ["local", "google", "clever"],
+      enum: ["local", "google"],
       default: "local",
     },
     guardianEmails: [{ type: String }],
@@ -54,6 +52,8 @@ const UserSchema = new mongoose.Schema(
       announcement: { type: Boolean, default: true },
       assessments: { type: Boolean, default: true },
     },
+    externalProvider: { type: String, default: "local" },
+    externalId: { type: String },
   },
   { timestamps: true },
 );
