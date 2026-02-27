@@ -43,11 +43,8 @@ import {
 } from "../Contollers/auth.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { upload } from "../lib/multer.config.js";
-import cleverRoutes from "../modules/clever/clever.routes.js";
 // import { checkRole, isAllowed } from "../Middlewares/admins.Middleware.js";
 const router = express.Router();
-
-router.use("/clever", cleverRoutes);
 
 router.post("/bulk-signup", upload.single("file"), bulkSignup);
 
