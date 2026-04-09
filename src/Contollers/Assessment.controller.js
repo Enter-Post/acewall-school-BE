@@ -1118,7 +1118,67 @@ export const getAllAssessmentForParent = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("Error fetching assessments for parent:", err);
+    console.error("Error setting allow resubmission:", err);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+export const settingAllowResubmission = async (req, res) => {
+  try {
+    const { assessmentId } = req.params;
+    const { allowResubmission } = req.body;
+
+    const assessment = await Assessment.findById(assessmentId);
+
+    console.log(allowResubmission, "allowResubmission in resubmission setting");
+
+    if (!assessment) {
+      return res.status(404).json({ success: false, message: "Assessment not found" });
+    }
+
+    assessment.allowResubmission = allowResubmission;
+    await assessment.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Resubmission setting updated successfully",
+      allowResubmission: assessment.allowResubmission
+    });
+  } catch (err) {
+    console.error("Error setting allow resubmission:", err);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+export const updateLatePolicy = async (req, res) => {
+  try {
+    const { assessmentId } = req.params;
+    const { enabled, strategy, deductionType, deductionValue } = req.body;
+
+    const assessment = await Assessment.findByIdAndUpdate(
+      assessmentId,
+      {
+        $set: {
+          "lateSubmissionPolicy.enabled": enabled,
+          "lateSubmissionPolicy.policyType": strategy,
+          "lateSubmissionPolicy.deductionType": deductionType,
+          "lateSubmissionPolicy.deductionValue": deductionValue,
+        },
+      },
+      { new: true }
+    );
+
+    if (!assessment) {
+      return res.status(404).json({ success: false, message: "Assessment not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Late penalty policy updated successfully",
+      assessment,
+    });
+  } catch (err) {
+    console.error("Error updating late policy:", err);
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
