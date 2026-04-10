@@ -270,7 +270,7 @@ export const createCourseSch = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "bpwvhmhiivrpkekl",
+        pass: "dackrjjdvfezbule",
       },
     });
 
