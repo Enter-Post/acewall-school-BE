@@ -121,7 +121,7 @@ app.use("/api/zoom", zoomRoutes);
 app.use("/api/notifications", notificationRoutes);
 
 // Swagger API Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+app.use('/api/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
   explorer: true,
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: "AceWall Scholars API Documentation"
