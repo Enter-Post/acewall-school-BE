@@ -3,6 +3,8 @@ dotenv.config();
 import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import swaggerUi from 'swagger-ui-express';
+import { specs } from './config/swagger.js';
 import { connectDB } from "./lib/connectDB.js";
 import { app, server, io } from "./lib/socket.io.js";
 
@@ -117,8 +119,17 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api/loginactivity", loginActivityRoutes);
 app.use("/api/zoom", zoomRoutes);
 app.use("/api/notifications", notificationRoutes);
+
+// Swagger API Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: "AceWall Scholars API Documentation"
+}));
+
 server.listen(PORT, () => {
   connectDB();
   startZoomMeetingMonitor();
   console.log(`This app is running on localhost ${PORT}`);
+  console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
 });
