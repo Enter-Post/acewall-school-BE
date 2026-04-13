@@ -11,6 +11,8 @@ import {
   getAssessmentStats,
   sendAssessmentReminder,
   setReminderTime,
+  settingAllowResubmission,
+  updateLatePolicy,
   uploadFiles,
 } from "../Contollers/Assessment.controller.js";
 import { upload } from "../lib/multer.config.js";
@@ -346,111 +348,9 @@ router.put(
  */
 router.delete("/deleteFile/:assessmentId/:fileId", deleteFile);
 
-/**
- * @swagger
- * /api/assessment/{assessmentId}:
- *   get:
- *     summary: Get assessment details by ID (with submission results)
- *     tags: [Assessments]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: assessmentId
- *         required: true
- *         schema:
- *           type: string
- *         description: Assessment ID
- *     responses:
- *       200:
- *         description: Assessment details with results
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: object
- *                   properties:
- *                     assessment:
- *                       $ref: '#/components/schemas/Assessment'
- *                     submissions:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           student:
- *                             $ref: '#/components/schemas/User'
- *                           score:
- *                             type: number
- *                           submittedAt:
- *                             type: string
- *                             format: date-time
- *       404:
- *         description: Assessment not found
- *       401:
- *         description: Unauthorized
- */
+router.get("/v2/:assessmentId", isUser, isEnrolledMiddleware, getResultsMiddleware, getAssesmentbyID);
 router.get("/:assessmentId", isUser, getResultsMiddleware, getAssesmentbyID);
 
-/**
- * @swagger
- * /api/assessment/editAssessment/{assessmentId}:
- *   put:
- *     summary: Update assessment information
- *     tags: [Assessments]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: assessmentId
- *         required: true
- *         schema:
- *           type: string
- *         description: Assessment ID to update
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               title:
- *                 type: string
- *                 description: Updated assessment title
- *               description:
- *                 type: string
- *                 description: Updated assessment description
- *               totalPoints:
- *                 type: number
- *                 description: Updated total points
- *               dueDate:
- *                 type: string
- *                 format: date-time
- *                 description: Updated due date
- *     responses:
- *       200:
- *         description: Assessment updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 message:
- *                   type: string
- *                 data:
- *                   $ref: '#/components/schemas/Assessment'
- *       404:
- *         description: Assessment not found
- *       400:
- *         description: Invalid input data
- *       401:
- *         description: Unauthorized
- */
 router.put("/editAssessment/:assessmentId", isUser, editAssessmentInfo);
 
 /**
@@ -634,5 +534,7 @@ router.get("/assessmentforTeacher/:assessmentId", isUser, getAssesmentbyID);
  *         description: Unauthorized
  */
 router.post("/createAssessment/updated", upload.any(), isUser, createAssessment_updated);
+router.put("/setAllowResubmission/:assessmentId", isUser, settingAllowResubmission);
+router.put("/updateLatePolicy/:assessmentId", isUser, updateLatePolicy);
 
 export default router;
