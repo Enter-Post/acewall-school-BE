@@ -26,6 +26,7 @@ import {
   importFullCourse,
   getFullCourseData,
   getCoursesWithMeetings,
+  getStudentofCourse,
 } from "../../Contollers/CourseControllers/courses.controller.sch.js";
 
 import { getPacingChartByCourse } from "../../Contollers/PacingChart.controller.js";
@@ -651,4 +652,6 @@ router.put("/course/:courseId/toggle-grading", toggleGradingSystem);
 router.get("/stats/:courseId", getCourseEnrollmentStats);
 
 router.get("/:courseId/pacing-chart", isUser, getPacingChartByCourse);
+router.get("/getStudentofCourse/:courseId", isUser, getStudentofCourse)
+
 export default router;

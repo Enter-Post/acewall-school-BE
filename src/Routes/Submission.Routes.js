@@ -8,6 +8,7 @@ import {
   teacherGrading,
 } from "../Contollers/Submission.controller.js";
 import { upload } from "../lib/multer.config.js";
+import { isEnrolledMiddleware } from "../middlewares/isEnrolled.middleware.js";
 
 const router = express.Router();
 
@@ -96,6 +97,14 @@ router.post(
   submission
 );
 
+router.post(
+  "/submission/v2/:assessmentId/:courseId",
+  isUser,
+  isEnrolledMiddleware,
+  upload.array("files"),
+  submission
+);
+
 /**
  * @swagger
  * /api/assessmentSubmission/submission/{submissionId}:
@@ -162,6 +171,7 @@ router.post(
  *       401:
  *         description: Unauthorized
  */
+router.get("/submission/v2/:submissionId", isUser, isEnrolledMiddleware, getSubmissionById);
 router.get("/submission/:submissionId", isUser, getSubmissionById);
 
 /**
