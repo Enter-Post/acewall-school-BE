@@ -1682,3 +1682,49 @@ export const getUserCoursesforFilter = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+export const getStudentofCourse = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { search } = req.query;
+
+    if (!courseId || !mongoose.Types.ObjectId.isValid(courseId)) {
+      throw new Error("Valid course ID is required");
+    }
+
+    const enrollments = await Enrollment.find({ course: courseId })
+      .populate("student", "firstName middleName lastName email profileImg");
+
+    if (!enrollments || enrollments.length === 0) {
+      return res.status(200).json({
+        students: [],
+        message: "No students enrolled in this course"
+      });
+    }
+
+    let students = enrollments
+      .filter(enrollment => enrollment.student !== null)
+      .map(enrollment => enrollment.student);
+
+    // Search filter
+    if (search) {
+      const searchLower = search.toLowerCase();
+
+      students = students.filter(student =>
+        student.firstName?.toLowerCase().includes(searchLower) ||
+        student.middleName?.toLowerCase().includes(searchLower) ||
+        student.lastName?.toLowerCase().includes(searchLower) ||
+        student.email?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    res.status(200).json({
+      count: students.length,
+      students
+    });
+  } catch (error) {
+    console.error("Error fetching students of course:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};

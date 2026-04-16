@@ -10,6 +10,7 @@ import {
   getAssesmentbyID,
   getAssessmentStats,
   sendAssessmentReminder,
+  setDueDateForStudent,
   setReminderTime,
   settingAllowResubmission,
   updateLatePolicy,
@@ -348,8 +349,10 @@ router.put(
  */
 router.delete("/deleteFile/:assessmentId/:fileId", deleteFile);
 
-router.get("/v2/:assessmentId", isUser, isEnrolledMiddleware, getResultsMiddleware, getAssesmentbyID);
+router.get("/v2/:assessmentId/:courseId", isUser, isEnrolledMiddleware, getResultsMiddleware, getAssesmentbyID);
 router.get("/:assessmentId", isUser, getResultsMiddleware, getAssesmentbyID);
+
+router.get("/resubmit/:assessmentId", isUser, getAssesmentbyID);
 
 router.put("/editAssessment/:assessmentId", isUser, editAssessmentInfo);
 
@@ -534,6 +537,7 @@ router.get("/assessmentforTeacher/:assessmentId", isUser, getAssesmentbyID);
  *         description: Unauthorized
  */
 router.post("/createAssessment/updated", upload.any(), isUser, createAssessment_updated);
+router.put(`/setDueDateForStudent/:assessmentId`, isUser, setDueDateForStudent);
 router.put("/setAllowResubmission/:assessmentId", isUser, settingAllowResubmission);
 router.put("/updateLatePolicy/:assessmentId", isUser, updateLatePolicy);
 

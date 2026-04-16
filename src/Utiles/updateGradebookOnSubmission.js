@@ -55,7 +55,11 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
   console.log("=== GRADEBOOK UPDATE STARTED ===");
 
   try {
-    // 1) Fetch or create gradebook
+    // 1️⃣ Fetch course & grading system
+    const course = await CourseSch.findById(courseId).lean();
+    const gradingSystem = course?.gradingSystem || "normalGrading";
+
+    // 2️⃣ Fetch or create gradebook
     let gradebook = await Gradebook.findOne({ studentId, courseId });
 
     if (!gradebook) {
@@ -63,17 +67,15 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
         studentId,
         courseId,
         semesters: [],
+        courseItems: [],
         finalPercentage: 0,
         finalGPA: 0,
         finalLetterGrade: "N/A",
+        finalRemarks: "N/A",
       });
     }
 
-    // 2) Load standard scale
-    const standardScaleDoc = await StandardGrading.findOne().lean();
-    const standardScale = standardScaleDoc?.scale || [];
-
-    // 3) Load changed item
+    // 3️⃣ Load assessment/discussion item
     let item, studentPoints, maxPoints;
 
     if (type === "assessment") {
@@ -81,82 +83,46 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
         .populate("semester quarter category")
         .lean();
 
-      if (!item || !item.semester || !item.quarter) return false;
+      if (!item) return false;
 
+      // 🟢 CHANGE: Fetch the BEST graded submission (Highest Score)
       const submission = await Submission.findOne({
         studentId,
         assessment: itemId,
-      });
+        graded: true,
+      })
+        .sort({ createdAt: -1 }) // 👈 This ensures the NEWEST attempt is used, regardless of score
+        .lean();
 
-      if (!submission || !submission.graded) return false;
+      if (!submission) return false;
 
-      studentPoints = submission.totalScore || 0;
-      maxPoints = item.questions.reduce((sum, q) => sum + (q.points || 0), 0);
+      studentPoints = Number(submission.totalScore) || 0;
+      maxPoints = item.questions.reduce((sum, q) => sum + (Number(q.points) || 0), 0);
 
     } else if (type === "discussion") {
       item = await Discussion.findById(itemId)
         .populate("semester quarter category")
         .lean();
 
-      if (!item || !item.semester || !item.quarter) return false;
+      if (!item) return false;
 
       const comment = await DiscussionComment.findOne({
         createdby: studentId,
         discussion: itemId,
-      });
+        isGraded: true,
+      }).sort({ createdAt: -1 }).lean();
 
-      if (!comment || !comment.isGraded) return false;
+      if (!comment) return false;
 
-      studentPoints = comment.marksObtained || 0;
-      maxPoints = item.totalMarks || 0;
+      studentPoints = Number(comment.marksObtained) || 0;
+      maxPoints = Number(item.totalMarks) || 0;
 
     } else {
       return false;
     }
 
-    const semesterId = item.semester._id.toString();
-    const quarterId = item.quarter._id.toString();
-
-    // 4) Ensure semester block
-    let semesterBlock = gradebook.semesters.find(
-      (s) => s.semesterId.toString() === semesterId
-    );
-
-    if (!semesterBlock) {
-      const semDoc = await Semester.findById(semesterId).lean();
-
-      semesterBlock = {
-        semesterId,
-        semesterTitle: semDoc?.title || "Unknown Semester",
-        quarters: [],
-        gradePercentage: 0,
-        letterGrade: "N/A",
-      };
-
-      gradebook.semesters.push(semesterBlock);
-    }
-
-    // 5) Ensure quarter block
-    let quarterBlock = semesterBlock.quarters.find(
-      (q) => q.quarterId.toString() === quarterId
-    );
-
-    if (!quarterBlock) {
-      const quarterDoc = await Quarter.findById(quarterId).lean();
-
-      quarterBlock = {
-        quarterId,
-        quarterTitle: quarterDoc?.title || "Unknown Quarter",
-        items: [],
-        gradePercentage: 0,
-        letterGrade: "N/A",
-        gpa: 0,
-      };
-
-      semesterBlock.quarters.push(quarterBlock);
-    }
-
-    // 6) UPSERT this item (mutation-safe!)
+    // 4️⃣ Prepare item object
+    const isCourseBased = !item.semester && !item.quarter;
     const newItem = {
       itemId,
       itemType: type,
@@ -167,100 +133,155 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
       maxPoints,
     };
 
+    const categories = await AssessmentCategory.find({ course: courseId }).lean();
+
+    // ================================================================
+    // #######################  COURSE-BASED ##########################
+    // ================================================================
+    if (isCourseBased) {
+      console.log("PROCESSING COURSE-BASED GRADEBOOK");
+
+      // Replace old version of this item with the new high score
+      gradebook.courseItems = [
+        ...gradebook.courseItems.filter((i) => i.itemId.toString() !== itemId.toString()),
+        newItem,
+      ];
+
+      let finalPerc = 0;
+      const active = categories
+        .map((cat) => ({
+          category: cat,
+          items: gradebook.courseItems.filter(
+            (i) => i.categoryId.toString() === cat._id.toString()
+          ),
+        }))
+        .filter((x) => x.items.length > 0);
+
+      if (active.length > 0) {
+        const totalWeight = active.reduce((sum, c) => sum + (c.category.weight || 0), 0);
+        active.forEach(({ category, items }) => {
+          let earned = 0, total = 0;
+          items.forEach((i) => {
+            earned += Number(i.studentPoints) || 0;
+            total += Number(i.maxPoints) || 0;
+          });
+          const percent = total > 0 ? (earned / total) * 100 : 0;
+          finalPerc += (percent * (category.weight || 0)) / totalWeight;
+        });
+      }
+
+      gradebook.finalPercentage = Number(finalPerc.toFixed(2)) || 0;
+
+      // Update Letters/GPA
+      if (gradingSystem === "normalGrading") {
+        gradebook.finalLetterGrade = await getLetterGrade(courseId, gradebook.finalPercentage);
+      } else {
+        gradebook.finalGPA = await getStandardPoints(courseId, gradebook.finalPercentage);
+        gradebook.finalRemarks = await getStandardRemarks(courseId, gradebook.finalPercentage);
+      }
+
+      gradebook.markModified('courseItems');
+      gradebook.markModified('finalPercentage');
+      await gradebook.save();
+      return true;
+    }
+
+    // ================================================================
+    // #################### SEMESTER-BASED GRADEBOOK ##################
+    // ================================================================
+    const semesterId = item.semester._id.toString();
+    const quarterId = item.quarter._id.toString();
+
+    // Find/Create Semester
+    let semIndex = gradebook.semesters.findIndex((s) => s.semesterId.toString() === semesterId);
+    if (semIndex === -1) {
+      const semDoc = await Semester.findById(semesterId).lean();
+      gradebook.semesters.push({
+        semesterId,
+        semesterTitle: semDoc?.title || "Unknown Semester",
+        quarters: [],
+        gradePercentage: 0,
+      });
+      semIndex = gradebook.semesters.length - 1;
+    }
+
+    const semesterBlock = gradebook.semesters[semIndex];
+
+    // Find/Create Quarter
+    let qIndex = semesterBlock.quarters.findIndex((q) => q.quarterId.toString() === quarterId);
+    if (qIndex === -1) {
+      const quarterDoc = await Quarter.findById(quarterId).lean();
+      semesterBlock.quarters.push({
+        quarterId,
+        quarterTitle: quarterDoc?.title || "Unknown Quarter",
+        items: [],
+        gradePercentage: 0,
+      });
+      qIndex = semesterBlock.quarters.length - 1;
+    }
+
+    const quarterBlock = semesterBlock.quarters[qIndex];
+
+    // UPSERT ITEM with new score
     quarterBlock.items = [
       ...quarterBlock.items.filter((i) => i.itemId.toString() !== itemId.toString()),
       newItem,
     ];
 
-    // 7) Recalculate Quarter Grade
-    const categories = await AssessmentCategory.find({ course: courseId }).lean();
+    // ---------- Quarter Calculation ----------
     let quarterPerc = 0;
-
-    const active = categories
+    const activeQuarter = categories
       .map((cat) => ({
         category: cat,
-        items: quarterBlock.items.filter(
-          (i) => i.categoryId.toString() === cat._id.toString()
-        ),
+        items: quarterBlock.items.filter((i) => i.categoryId.toString() === cat._id.toString()),
       }))
       .filter((x) => x.items.length > 0);
 
-    if (active.length > 0) {
-      const totalWeight = active.reduce(
-        (sum, c) => sum + (c.category.weight || 0),
-        0
-      );
-
-      active.forEach(({ category, items }) => {
-        let earned = 0,
-          total = 0;
-
+    if (activeQuarter.length > 0) {
+      const totalWeight = activeQuarter.reduce((sum, c) => sum + (c.category.weight || 0), 0);
+      activeQuarter.forEach(({ category, items }) => {
+        let earned = 0, total = 0;
         items.forEach((i) => {
-          earned += i.studentPoints || 0;
-          total += i.maxPoints || 0;
+          earned += Number(i.studentPoints) || 0;
+          total += Number(i.maxPoints) || 0;
         });
-
         const percent = total > 0 ? (earned / total) * 100 : 0;
-        quarterPerc += (percent * category.weight) / totalWeight;
+        quarterPerc += (percent * (category.weight || 0)) / totalWeight;
       });
     }
 
-    quarterPerc = Number(quarterPerc.toFixed(2)) || 0;
+    quarterBlock.gradePercentage = Number(quarterPerc.toFixed(2));
 
-    quarterBlock.gradePercentage = quarterPerc;
-    quarterBlock.gpa = await percentageToGPA(quarterPerc);
-    quarterBlock.letterGrade = await getLetterGrade(standardScale, quarterPerc);
+    // ---------- Semester Calculation ----------
+    const semAvg = semesterBlock.quarters.reduce((sum, q) => sum + q.gradePercentage, 0) / semesterBlock.quarters.length;
+    semesterBlock.gradePercentage = Number(semAvg.toFixed(2));
 
-    // 8) Recalculate Semester Grade
-    semesterBlock.quarters = semesterBlock.quarters.map((q) =>
-      q.quarterId.toString() === quarterId ? quarterBlock : q
-    );
+    // ---------- Final Course Percentage ----------
+    const finalAvg = gradebook.semesters.reduce((sum, s) => sum + s.gradePercentage, 0) / gradebook.semesters.length;
+    gradebook.finalPercentage = Number(finalAvg.toFixed(2));
 
-    let semPerc = 0;
-
-    if (semesterBlock.quarters.length > 0) {
-      const total = semesterBlock.quarters.reduce(
-        (sum, q) => sum + (q.gradePercentage || 0),
-        0
-      );
-      semPerc = total / semesterBlock.quarters.length;
+    // ---------- Update Final Grades/GPA ----------
+    if (gradingSystem === "normalGrading") {
+      gradebook.finalLetterGrade = await getLetterGrade(courseId, gradebook.finalPercentage);
+      quarterBlock.letterGrade = await getLetterGrade(courseId, quarterPerc);
+      semesterBlock.letterGrade = await getLetterGrade(courseId, semesterBlock.gradePercentage);
+    } else {
+      gradebook.finalGPA = await getStandardPoints(courseId, gradebook.finalPercentage);
+      gradebook.finalRemarks = await getStandardRemarks(courseId, gradebook.finalPercentage);
+      quarterBlock.gpa = await getStandardPoints(courseId, quarterPerc);
+      semesterBlock.gpa = await getStandardPoints(courseId, semesterBlock.gradePercentage);
     }
 
-    semPerc = Number(semPerc.toFixed(2)) || 0;
+    // 🟢 CRITICAL: Force Mongoose to save nested changes
+    gradebook.markModified('semesters');
+    gradebook.markModified('finalPercentage');
 
-    semesterBlock.gradePercentage = semPerc;
-    semesterBlock.letterGrade = await getLetterGrade(standardScale, semPerc);
-
-    // Update semester array
-    gradebook.semesters = gradebook.semesters.map((s) =>
-      s.semesterId.toString() === semesterId ? semesterBlock : s
-    );
-
-    // 9) FINAL GRADE (NaN-proof)
-    let finalPerc = 0;
-
-    if (gradebook.semesters.length > 0) {
-      const total = gradebook.semesters.reduce(
-        (sum, s) => sum + (s.gradePercentage || 0),
-        0
-      );
-      finalPerc = total / gradebook.semesters.length;
-    }
-
-    finalPerc = Number(finalPerc.toFixed(2)) || 0;
-
-    gradebook.finalPercentage = finalPerc;
-    gradebook.finalGPA = await percentageToGPA(finalPerc);
-    gradebook.finalLetterGrade = await getLetterGrade(standardScale, finalPerc);
-
-    // 10) Save
-    gradebook.markModified("semesters");
     await gradebook.save();
-
-    console.log("=== GRADEBOOK UPDATE COMPLETE ===");
+    console.log("=== GRADEBOOK UPDATED SUCCESSFULLY ===");
     return true;
+
   } catch (err) {
-    console.error(err);
+    console.error("GRADEBOOK UPDATE ERROR:", err);
     return false;
   }
 }

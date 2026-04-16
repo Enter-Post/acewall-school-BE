@@ -937,6 +937,627 @@ const options = {
               format: 'date-time'
             }
           }
+        },
+        Post: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Post unique identifier'
+            },
+            text: {
+              type: 'string',
+              description: 'Post content'
+            },
+            assets: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  url: { type: 'string' },
+                  fileName: { type: 'string' },
+                  type: { type: 'string' }
+                }
+              }
+            },
+            author: {
+              type: 'string',
+              description: 'Author user ID reference'
+            },
+            color: {
+              type: 'string',
+              description: 'Post color theme'
+            },
+            postType: {
+              type: 'string',
+              enum: ['public', 'course'],
+              description: 'Post visibility type'
+            },
+            course: {
+              type: 'string',
+              description: 'Course ID reference (required if postType is course)'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        PostComment: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Comment unique identifier'
+            },
+            text: {
+              type: 'string',
+              description: 'Comment text'
+            },
+            author: {
+              type: 'string',
+              description: 'Author user ID reference'
+            },
+            post: {
+              type: 'string',
+              description: 'Post ID reference'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        GuardianAcc: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Guardian account unique identifier'
+            },
+            email: {
+              type: 'string',
+              format: 'email',
+              description: 'Guardian email address'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        OTP: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'OTP unique identifier'
+            },
+            email: {
+              type: 'string',
+              format: 'email',
+              description: 'Email address'
+            },
+            otp: {
+              type: 'string',
+              description: 'One-time password'
+            },
+            expiresAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'OTP expiration time'
+            },
+            isVerified: {
+              type: 'boolean',
+              description: 'Verification status'
+            },
+            userData: {
+              type: 'object',
+              description: 'User data for registration'
+            },
+            phoneOtp: {
+              type: 'string',
+              description: 'Phone OTP'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        AIChat: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'AI Chat unique identifier'
+            },
+            userId: {
+              type: 'string',
+              description: 'User ID'
+            },
+            question: {
+              type: 'object',
+              properties: {
+                text: { type: 'string' },
+                sender: { type: 'string' }
+              }
+            },
+            answer: {
+              type: 'object',
+              properties: {
+                text: { type: 'string' },
+                sender: { type: 'string' }
+              }
+            },
+            generatedFile: {
+              type: 'object',
+              properties: {
+                url: { type: 'string' },
+                filename: { type: 'string' },
+                sender: { type: 'string' },
+                FileType: { type: 'string' }
+              }
+            },
+            file: {
+              type: 'object',
+              properties: {
+                url: { type: 'string' },
+                filename: { type: 'string' },
+                sender: { type: 'string' }
+              }
+            },
+            difficulty: {
+              type: 'string',
+              description: 'Difficulty level'
+            },
+            fileUsed: {
+              type: 'string',
+              description: 'File used for context'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        Book: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Book unique identifier'
+            },
+            title: {
+              type: 'string',
+              description: 'Book title'
+            },
+            subject: {
+              type: 'string',
+              description: 'Book subject'
+            },
+            rawText: {
+              type: 'string',
+              description: 'Extracted text content'
+            },
+            originalfile: {
+              type: 'string',
+              description: 'Original file path'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        PacingChart: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Pacing chart unique identifier'
+            },
+            course: {
+              type: 'string',
+              description: 'Course ID reference'
+            },
+            items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  startDate: { type: 'string', format: 'date-time' },
+                  endDate: { type: 'string', format: 'date-time' },
+                  week: { type: 'string' },
+                  topic: { type: 'string' },
+                  description: { type: 'string' },
+                  objectives: { type: 'array', items: { type: 'string' } },
+                  resources: { type: 'array', items: { type: 'string' } }
+                }
+              }
+            },
+            createdby: {
+              type: 'string',
+              description: 'Creator user ID'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        AssessmentCategory: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Assessment category unique identifier'
+            },
+            name: {
+              type: 'string',
+              description: 'Category name'
+            },
+            weight: {
+              type: 'number',
+              description: 'Category weight percentage'
+            },
+            course: {
+              type: 'string',
+              description: 'Course ID reference'
+            },
+            createdBy: {
+              type: 'string',
+              description: 'Creator user ID'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        Gradebook: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Gradebook unique identifier'
+            },
+            studentId: {
+              type: 'string',
+              description: 'Student ID reference'
+            },
+            courseId: {
+              type: 'string',
+              description: 'Course ID reference'
+            },
+            courseTitle: {
+              type: 'string',
+              description: 'Course title'
+            },
+            semesters: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  semesterId: { type: 'string' },
+                  semesterTitle: { type: 'string' },
+                  gradePercentage: { type: 'number' },
+                  letterGrade: { type: 'string' },
+                  quarters: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        quarterId: { type: 'string' },
+                        quarterTitle: { type: 'string' },
+                        gradePercentage: { type: 'number' },
+                        gpa: { type: 'number' },
+                        letterGrade: { type: 'string' },
+                        standardGrade: {
+                          type: 'object',
+                          properties: {
+                            points: { type: 'number' },
+                            remarks: { type: 'string' }
+                          }
+                        },
+                        categoryBreakdown: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              categoryId: { type: 'string' },
+                              categoryName: { type: 'string' },
+                              percentage: { type: 'number' },
+                              weight: { type: 'number' }
+                            }
+                          }
+                        },
+                        items: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              itemId: { type: 'string' },
+                              itemType: { type: 'string' },
+                              title: { type: 'string' },
+                              categoryId: { type: 'string' },
+                              categoryName: { type: 'string' },
+                              maxPoints: { type: 'number' },
+                              studentPoints: { type: 'number' }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            finalPercentage: {
+              type: 'number',
+              description: 'Final course percentage'
+            },
+            finalGPA: {
+              type: 'number',
+              description: 'Final GPA'
+            },
+            finalLetterGrade: {
+              type: 'string',
+              description: 'Final letter grade'
+            },
+            standardGrade: {
+              type: 'object',
+              properties: {
+                points: { type: 'number' },
+                remarks: { type: 'string' }
+              }
+            },
+            totalAssessments: {
+              type: 'number',
+              description: 'Total number of assessments'
+            },
+            lastUpdated: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        GPA: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'GPA scale unique identifier'
+            },
+            gpaScale: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  gpa: { type: 'number' },
+                  minPercentage: { type: 'number' },
+                  maxPercentage: { type: 'number' }
+                }
+              }
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        StandardGrading: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Standard grading scale unique identifier'
+            },
+            scale: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  points: { type: 'string' },
+                  remarks: { type: 'string' },
+                  minPercentage: { type: 'number' },
+                  maxPercentage: { type: 'number' }
+                }
+              }
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        GradingScale: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Grading scale unique identifier'
+            },
+            scale: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  grade: { type: 'string' },
+                  min: { type: 'number' },
+                  max: { type: 'number' },
+                  letter: { type: 'string' }
+                }
+              }
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        Rating: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Rating unique identifier'
+            },
+            star: {
+              type: 'number',
+              description: 'Star rating (1-5)'
+            },
+            course: {
+              type: 'string',
+              description: 'Course ID reference'
+            },
+            createdby: {
+              type: 'string',
+              description: 'Creator user ID'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        CourseShare: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Course share unique identifier'
+            },
+            course: {
+              type: 'string',
+              description: 'Course ID reference'
+            },
+            sharedBy: {
+              type: 'string',
+              description: 'User ID who shared the course'
+            },
+            sharedWith: {
+              type: 'string',
+              description: 'User ID who received the share'
+            },
+            status: {
+              type: 'string',
+              enum: ['pending', 'imported', 'rejected'],
+              description: 'Share status'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        Purchase: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Purchase unique identifier'
+            },
+            student: {
+              type: 'string',
+              description: 'Student user ID reference'
+            },
+            course: {
+              type: 'string',
+              description: 'Course ID reference'
+            },
+            status: {
+              type: 'string',
+              enum: ['pending', 'completed', 'failed'],
+              description: 'Purchase status'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
+        LoginActivity: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'Login activity unique identifier'
+            },
+            userId: {
+              type: 'string',
+              description: 'User ID reference'
+            },
+            loginAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Login timestamp'
+            },
+            ipAddress: {
+              type: 'string',
+              description: 'IP address'
+            },
+            userAgent: {
+              type: 'string',
+              description: 'User agent string'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
         }
       }
     },
@@ -1005,6 +1626,38 @@ const options = {
       {
         name: 'Support',
         description: 'Customer support system'
+      },
+      {
+        name: 'Posts',
+        description: 'Social posts and content sharing'
+      },
+      {
+        name: 'Semester',
+        description: 'Academic semester management'
+      },
+      {
+        name: 'Quarter',
+        description: 'Academic quarter management'
+      },
+      {
+        name: 'Submissions',
+        description: 'Assessment submission management'
+      },
+      {
+        name: 'GPA',
+        description: 'GPA scale and grading management'
+      },
+      {
+        name: 'Conversation',
+        description: 'Conversation and messaging management'
+      },
+      {
+        name: 'Comments',
+        description: 'Course comments management'
+      },
+      {
+        name: 'AI Chat',
+        description: 'AI-powered chat and content generation'
       }
     ]
   },

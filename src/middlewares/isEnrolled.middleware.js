@@ -10,10 +10,14 @@ export const isEnrolledMiddleware = async (req, res, next) => {
       return next();
     }
 
+    console.log(courseId, "courseId")
+    console.log(userId, "userId")
     const exists = await Enrollment.findOne({
       student: userId,
       course: courseId,
     });
+
+    console.log(exists, "exists")
 
     if (!exists) {
       return res.status(403).json({

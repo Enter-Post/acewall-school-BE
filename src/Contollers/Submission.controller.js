@@ -19,10 +19,12 @@ export const submission = async (req, res) => {
   const { assessmentId } = req.params;
   const answers = req.body;
   const files = req.files;
+  const { resubmission } = req.query;
 
   let finalQuestionsubmitted;
   let lesson;
   let chapter;
+  let submissionCount;
 
   try {
     // ✅ Check if already submitted
@@ -32,12 +34,22 @@ export const submission = async (req, res) => {
     });
 
     if (alreadySubmitted) {
-      return res.status(400).json({
-        message: "You have already submitted this assessment",
-      });
+      const lastSubmission = await Submission.find({
+        studentId,
+        assessment: assessmentId,
+      }).sort({ createdAt: -1 }).limit(1);
+
+      submissionCount = ++lastSubmission[0].resubmitted.count || 0;
     }
 
     const assessment = await Assessment.findById(assessmentId);
+
+    if (alreadySubmitted && !assessment.allowResubmission) {
+      return res.status(300).json({
+        message: "You have already submitted this assessment and you are not allowed to resubmit.",
+      });
+    }
+
     if (!assessment)
       return res.status(404).json({ message: "Assessment not found" });
 
@@ -67,11 +79,30 @@ export const submission = async (req, res) => {
     const needAssistantconcepts = [];
     const masteredConcept = [];
 
+    // --- DUE DATE & OVERRIDE LOGIC ---
     const dueDate = new Date(assessment.dueDate.date).toISOString().split("T")[0];
     const dueTime = assessment.dueDate.time;
     const dueDateTime = new Date(`${dueDate}T${dueTime}`);
     const now = new Date();
-    let status = now > dueDateTime ? "after due date" : "before due date";
+
+    const override = assessment.studentDueDateOverrides.find(
+      o => o.student.toString() === studentId.toString()
+    );
+
+    let finalDueDate = dueDateTime;
+
+    if (override) {
+      if (override.newDueDate) {
+        const overDate = new Date(override.newDueDate.date).toISOString().split("T")[0];
+        const overTime = override.newDueDate.time;
+        finalDueDate = new Date(`${overDate}T${overTime}`);
+      }
+    }
+
+    let status = "before due date";
+    if (now > finalDueDate) {
+      status = "after due date";
+    }
 
     const processedAnswers = finalQuestionsubmitted.map((ans) => {
       const question = assessment.questions.find(
@@ -120,9 +151,33 @@ export const submission = async (req, res) => {
       }
     });
 
+    // --- LATE PENALTY LOGIC START ---
+    let penaltyApplied = 0;
+    if (status === "after due date" && assessment.lateSubmissionPolicy?.enabled) {
+      const { strategy, deductionType, deductionValue } = assessment.lateSubmissionPolicy;
+      const diffInMs = now - finalDueDate;
+      const daysLate = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
+
+      let deductionPerUnit = 0;
+      if (deductionType === "points") {
+        deductionPerUnit = deductionValue;
+      } else {
+        // Percentage based on max possible marks
+        deductionPerUnit = (maxScore * (deductionValue / 100));
+      }
+
+      if (strategy === "daily") {
+        penaltyApplied = deductionPerUnit * daysLate;
+      } else {
+        // One-time deduction
+        penaltyApplied = deductionPerUnit;
+      }
+
+      totalScore = Math.max(0, totalScore - penaltyApplied);
+    }
+    // --- LATE PENALTY LOGIC END ---
+
     const graded = processedAnswers.every((a) => !a.requiresManualCheck);
-
-
 
     // ✅ Save submission
     const submission = new Submission({
@@ -131,7 +186,10 @@ export const submission = async (req, res) => {
       answers: processedAnswers,
       status,
       totalScore,
+      latePenaltyApplied: penaltyApplied, // Added tracking
       graded,
+      allowResubmission: assessment.allowResubmission || false,
+      resubmitted: { status: resubmission, count: submissionCount },
     });
     await submission.save();
 
@@ -142,9 +200,8 @@ export const submission = async (req, res) => {
       "assessment"
     );
 
-    // ✅ Email Notification
+    // ✅ Email Notification Logic
     const student = await User.findById(studentId);
-
     let aiSummary = null;
 
     if (graded) {
@@ -169,7 +226,6 @@ export const submission = async (req, res) => {
         },
       });
 
-      // Determine assessment context
       let assessmentContextText = "";
       if (lesson && chapter) assessmentContextText = `Assessment of lesson ${lesson.title}`;
       else if (chapter && !lesson) assessmentContextText = `Assessment of chapter ${chapter.title}`;
@@ -181,87 +237,32 @@ export const submission = async (req, res) => {
         html = `
 <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f7fb;">
   <div style="max-width: 600px; margin:auto; background: #fff; border-radius: 10px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.1)">
-    
     <p>Dear ${student.firstName} ${student.lastName},</p>
-
     <p>You have completed <strong>${assessmentContextText}</strong>.</p>
+    <p>Status: <strong>${status}</strong></p>
+    ${penaltyApplied > 0 ? `<p style="color: red;"><strong>Late Penalty:</strong> -${penaltyApplied.toFixed(2)} marks applied.</p>` : ''}
     <p>Your score: <strong>${totalScore}/${maxScore}</strong></p>
-
-    ${aiSummary
-            ? `
-        <div style="background:#f1f8ff; padding:15px; border-left:4px solid #1e88e5; margin:20px 0;">
-          <h4 style="margin-top:0;">📘 AI Performance Summary</h4>
-          <p>${aiSummary}</p>
-        </div>
-        `
-            : ""
-          }
-
-    ${masteredConcept.length > 0
-            ? `
-        <p><strong>Concepts Mastered:</strong></p>
-        <ul>${masteredConcept.map(c => `<li>${c}</li>`).join("")}</ul>
-        `
-            : ""
-          }
-
-    ${needAssistantconcepts.length > 0
-            ? `
-        <p><strong>Needs More Practice:</strong></p>
-        <ul>${needAssistantconcepts.map(c => `<li>${c}</li>`).join("")}</ul>
-        `
-            : ""
-          }
-
+    ${aiSummary ? `<div style="background:#f1f8ff; padding:15px; border-left:4px solid #1e88e5; margin:20px 0;"><h4>📘 AI Performance Summary</h4><p>${aiSummary}</p></div>` : ""}
+    ${masteredConcept.length > 0 ? `<p><strong>Concepts Mastered:</strong></p><ul>${masteredConcept.map(c => `<li>${c}</li>`).join("")}</ul>` : ""}
+    ${needAssistantconcepts.length > 0 ? `<p><strong>Needs More Practice:</strong></p><ul>${needAssistantconcepts.map(c => `<li>${c}</li>`).join("")}</ul>` : ""}
     <p>Keep learning and improving!</p>
-
     <p>Regards,<br><strong>Acewall Scholars Team</strong></p>
   </div>
-</div>
-`;
+</div>`;
       } else {
         subject = `Assessment Submitted (Pending Grading): ${assessment.title}`;
-        html = `
-          <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f7fb;">
-            <div style="max-width: 600px; margin:auto; background: #fff; border-radius: 10px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.1)">
-              <p>Dear ${student.firstName} ${student.lastName},</p>
-              <p>You have just completed ${assessmentContextText}. Your submission has been received and is awaiting teacher review.</p>
-              <p>Once the grading is complete, you will receive another email notification.</p>
-              <p>Regards,<br>Acewall Scholars Team</p>
-            </div>
-          </div>`;
+        html = `<div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f7fb;"><div style="max-width: 600px; margin:auto; background: #fff; border-radius: 10px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.1)"><p>Dear ${student.firstName} ${student.lastName},</p><p>You have just completed ${assessmentContextText}. Your submission has been received and is awaiting teacher review.</p><p>Once the grading is complete, you will receive another email notification.</p><p>Regards,<br>Acewall Scholars Team</p></div></div>`;
       }
 
-      // ✅ Respect guardian email preferences
-      const preferences = student.guardianEmailPreferences || {
-        submission: true,
-        grading: true,
-        announcement: true,
-        assessments: true,
-      };
-
+      // Respect guardian preferences
+      const preferences = student.guardianEmailPreferences || { submission: true, grading: true, announcement: true, assessments: true };
       const notificationType = graded ? "grading" : "submission";
       const recipients = [student.email];
-
-      if (
-        student.guardianEmails?.length > 0 &&
-        preferences[notificationType]
-      ) {
+      if (student.guardianEmails?.length > 0 && preferences[notificationType]) {
         recipients.push(...student.guardianEmails);
       }
 
-      const mailOptions = {
-        from: `"Acewall Scholars" <support@acewallscholars.org>`,
-        to: recipients,
-        subject,
-        html,
-      };
-
-      try {
-        await transporter.sendMail(mailOptions);
-      } catch (emailErr) {
-        console.error("Error sending email:", emailErr);
-      }
+      await transporter.sendMail({ from: `"Acewall Scholars" <support@acewallscholars.org>`, to: recipients, subject, html }).catch(err => console.error("Email error:", err));
     }
 
     res.status(201).json({
@@ -269,7 +270,7 @@ export const submission = async (req, res) => {
       submission,
     });
   } catch (err) {
-    console.error(err);
+    console.error(err); 
     res.status(500).json({
       message: "Error submitting assessment",
       error: err.message,

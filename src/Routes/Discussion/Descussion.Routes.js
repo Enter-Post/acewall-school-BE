@@ -7,9 +7,13 @@ import {
   getDiscussionbyId,
   getDiscussionsOfTeacher,
   lessonDiscussions,
+  setDueDateForStudentsDiscussion,
+  toggleAllowResubmission,
 } from "../../Contollers/Discussion/discussion.controller.js";
 import { upload } from "../../lib/multer.config.js";
 import { isUser } from "../../middlewares/Auth.Middleware.js";
+import { resolveEnrollmentFromChapter, resolveEnrollmentFromDiscussion } from "../../middlewares/enrollment-resolver.js";
+import { isEnrolledMiddleware } from "../../middlewares/isEnrolled.middleware.js";
 
 const router = express.Router();
 
@@ -136,6 +140,7 @@ router.get("/studentDiscussion", isUser, discussionforStudent);
  *         description: Unauthorized
  */
 router.get("/chapter/:chapterId", isUser, chapterDiscussions);
+router.get("/v2/chapter/:chapterId", isUser, resolveEnrollmentFromChapter, isEnrolledMiddleware, chapterDiscussions);
 
 /**
  * @swagger
@@ -172,6 +177,7 @@ router.get("/chapter/:chapterId", isUser, chapterDiscussions);
  *         description: Unauthorized
  */
 router.get("/lesson/:lessonId", isUser, lessonDiscussions);
+router.get("/v2/lesson/:lessonId", isUser, isEnrolledMiddleware, lessonDiscussions);
 
 /**
  * @swagger
@@ -269,5 +275,9 @@ router.get("/all", isUser, getDiscussionsOfTeacher);
  *         description: Unauthorized
  */
 router.get("/:id", isUser, getDiscussionbyId);
+router.get("/v2/:id", isUser, resolveEnrollmentFromDiscussion, isEnrolledMiddleware, getDiscussionbyId);
+router.put("/setDueDateForStudent/:discussionId", isUser, setDueDateForStudentsDiscussion);
+router.put("/toggleAllowResubmission/:discussionId", isUser, toggleAllowResubmission);
+
 
 export default router;

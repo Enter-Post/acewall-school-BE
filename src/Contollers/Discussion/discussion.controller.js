@@ -207,3 +207,137 @@ export const courseDiscussions = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 } 
+
+
+export const setDueDateForStudentsDiscussion = async (req, res) => {
+  try {
+    const { discussionId } = req.params;
+    const { studentIds, newDueDate } = req.body;
+
+    // 1. Basic Validation
+    if (!Array.isArray(studentIds) || studentIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide an array of student IDs",
+        errorCode: "VAL_001"
+      });
+    }
+
+    if (!newDueDate || !newDueDate.date) {
+      return res.status(400).json({
+        success: false,
+        message: "Due date is required",
+        errorCode: "VAL_002"
+      });
+    }
+
+    // 2. Parse and Validate the Date
+    const parsedDate = new Date(newDueDate.date);
+    if (isNaN(parsedDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date format provided",
+        errorCode: "VAL_003"
+      });
+    }
+
+    // 3. Find the Discussion
+    const discussion = await Discussion.findById(discussionId);
+    if (!discussion) {
+      return res.status(404).json({
+        success: false,
+        message: "Discussion not found",
+        errorCode: "DIS_016"
+      });
+    }
+
+    // Define the common override object
+    const dueDateObj = {
+      date: parsedDate,
+      time: newDueDate.time || "00:00" // Default if time is missing
+    };
+
+    // 4. Sanitize student IDs and filter out invalid ObjectIds
+    const validStudentIds = studentIds.filter(id => mongoose.Types.ObjectId.isValid(id));
+
+    // 5. Loop through valid students
+    for (const studentId of validStudentIds) {
+      // Check if the student is actually in the course associated with this discussion
+      const enrollment = await Enrollment.findOne({
+        course: discussion.course,
+        student: studentId
+      });
+
+      // Skip students not enrolled in this specific course
+      if (!enrollment) continue;
+
+      // Check if an override already exists for this student
+      const studentOverrideIndex = discussion.studentDueDateOverrides.findIndex(
+        (override) => override.student.toString() === studentId.toString()
+      );
+
+      if (studentOverrideIndex !== -1) {
+        // Update existing override
+        discussion.studentDueDateOverrides[studentOverrideIndex].newDueDate = dueDateObj;
+      } else {
+        // Add new override record
+        discussion.studentDueDateOverrides.push({
+          student: new mongoose.Types.ObjectId(studentId),
+          newDueDate: dueDateObj
+        });
+      }
+    }
+
+    // 6. Explicitly mark as modified (required for mixed arrays in Mongoose)
+    discussion.markModified('studentDueDateOverrides');
+
+    await discussion.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Due dates updated successfully for ${validStudentIds.length} students.`
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal Server Error"
+    });
+  }
+};
+
+export const toggleAllowResubmission = async (req, res) => {
+  try {
+    const { discussionId } = req.params;
+    const { allowResubmission } = req.body;
+
+    // Validate and convert the allowResubmission parameter
+    const allowResubmissionValue = Boolean(allowResubmission);
+
+    // Find the discussion
+    const discussion = await Discussion.findById(discussionId);
+    if (!discussion) {
+      return res.status(404).json({
+        success: false,
+        message: "Discussion not found",
+        errorCode: "DISC_018"
+      });
+    }
+
+    // Update the allowResubmission field
+    discussion.allowResubmission = allowResubmissionValue;
+    await discussion.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Allow resubmission ${allowResubmissionValue ? 'enabled' : 'disabled'} successfully`,
+      allowResubmission: discussion.allowResubmission
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal Server Error"
+    });
+  }
+};
