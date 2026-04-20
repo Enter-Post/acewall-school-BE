@@ -1,6 +1,7 @@
 import User from "../Models/user.model.js";
 import CourseSch from "../Models/courses.model.sch.js";
 import { generateToken } from "../Utiles/jwtToken.js";
+import { OAuth2Client } from "google-auth-library";
 import bcrypt from "bcrypt";
 import { uploadToCloudinary } from "../lib/cloudinary-course.config.js";
 import nodemailer from "nodemailer";
@@ -105,7 +106,7 @@ export const initiateSignup = async (req, res) => {
   } = req.body;
 
   try {
-    if (!firstName || !lastName || !email || !password || !role || !phone) {
+    if (!firstName || !lastName || !email || !password || !role) {
       return res
         .status(400)
         .json({ message: "All required fields must be filled." });
@@ -132,7 +133,7 @@ export const initiateSignup = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 11);
     const otp = generateOTP();
     const hashedOTP = await bcrypt.hash(otp, 10);
-    const phoneNumUpdated = `+${phone.replace(/\D+/g, "")}`;
+    const phoneNumUpdated = phone ? `+${phone.replace(/\D+/g, "")}` : null;
 
     await OTP.findOneAndUpdate(
       { email },
@@ -376,11 +377,34 @@ export const verifyEmailOtp = async (req, res) => {
       return res.status(400).json({ message: "Invalid or expired OTP." });
     }
 
-    // ✅ mark email as verified in OTP entry
+    // mark email as verified in OTP entry
     otpEntry.isVerified = true;
     await otpEntry.save();
 
-    // 📲 Generate phone OTP manually
+    const userData = otpEntry.userData;
+
+    // If no phone number, skip phone verification and create user directly
+    if (!userData.phone) {
+      // Create user directly
+      const newUser = new User({ ...userData });
+      await newUser.save();
+
+      // Delete OTP entry since it's used
+      await OTP.deleteOne({ email });
+
+      return res.json({
+        message: "Email verified. Account created successfully.",
+        user: {
+          _id: newUser._id,
+          firstName: newUser.firstName,
+          lastName: newUser.lastName,
+          email: newUser.email,
+          role: newUser.role,
+        },
+      });
+    }
+
+    // Generate phone OTP manually (only if phone exists)
     function generateOTP(length = 6) {
       const digits = "0123456789";
       let otp = "";
@@ -402,9 +426,7 @@ export const verifyEmailOtp = async (req, res) => {
     otpEntry.expiresAt = Date.now() + 10 * 60 * 1000;
     await otpEntry.save();
 
-    const userData = otpEntry.userData;
-
-    // 🚀 Send SMS using purchased number
+    // Send SMS using purchased number
 
     try {
       await twilioClient.messages.create({
@@ -2330,5 +2352,121 @@ export const getChildrenData = async (req, res) => {
   } catch (error) {
     console.error("Error fetching children data:", error);
     res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+/**
+ * Google Sign-In V2 - Verify ID Token and authenticate user
+ * Uses Google Identity Services (popup flow)
+ */
+export const googleAuthV2 = async (req, res) => {
+  try {
+    const { token, role } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ message: "Google ID token is required." });
+    }
+
+    // Verify Google ID Token
+    const client = new OAuth2Client(process.env.GOOGLE_CSS_CLIENT_ID);
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CSS_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    if (!payload || !payload.email) {
+      return res.status(400).json({ message: "Invalid Google token." });
+    }
+
+    const { email, name, picture, sub: googleId } = payload;
+    const [firstName, ...lastNameParts] = (name || "").split(" ");
+    const lastName = lastNameParts.join(" ") || "User";
+
+    // Check if user already exists
+    let user = await User.findOne({ email });
+
+    if (user) {
+      // Existing user - log them in (ignore role from request)
+      // Update googleId if not present
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.authProvider = user.authProvider === "local" ? "google" : user.authProvider;
+        await user.save();
+      }
+
+      generateToken(user, user.role, req, res);
+
+      return res.status(200).json({
+        message: "Login successful via Google.",
+        token: req.token, // JWT token set by generateToken
+        user: {
+          _id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          role: user.role,
+          profilePic: user.profilePic || picture,
+          authProvider: user.authProvider,
+        },
+      });
+    }
+
+    // New user - role is REQUIRED
+    if (!role) {
+      return res.status(400).json({
+        message: "Role is required for new users",
+        requiresRole: true,
+        email,
+        name,
+        picture,
+        googleId,
+      });
+    }
+
+    // Validate role
+    const validRoles = ["student", "teacher"];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({
+        message: "Invalid role. Must be 'student' or 'teacher'.",
+      });
+    }
+
+    // Create new user
+    const newUser = new User({
+      firstName: firstName || "Google",
+      lastName: lastName || "User",
+      email,
+      password: null, // Google users don't need password
+      role,
+      profilePic: picture,
+      googleId,
+      authProvider: "google",
+    });
+
+    await newUser.save();
+
+    generateToken(newUser, newUser.role, req, res);
+
+    return res.status(201).json({
+      message: "Account created successfully via Google.",
+      token: req.token,
+      user: {
+        _id: newUser._id,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        email: newUser.email,
+        role: newUser.role,
+        profilePic: newUser.profilePic,
+        authProvider: newUser.authProvider,
+      },
+    });
+  } catch (error) {
+    console.error("Google Auth V2 Error:", error);
+    return res.status(500).json({
+      message: "Internal server error during Google authentication.",
+      error: error.message,
+    });
   }
 };
