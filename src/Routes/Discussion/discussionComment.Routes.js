@@ -7,6 +7,8 @@ import {
   isCommentedInDiscussion,
   sendDiscussionComment,
 } from "../../Contollers/Discussion/discussionComment.controller.js";
+import { resolveEnrollmentFromDiscussion } from "../../middlewares/enrollment-resolver.js";
+import { isEnrolledMiddleware } from "../../middlewares/isEnrolled.middleware.js";
 
 const router = express.Router();
 
@@ -139,6 +141,7 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
+router.get("/v2/get/:id", isUser, resolveEnrollmentFromDiscussion, isEnrolledMiddleware, getDiscussionComments);
 router.get("/get/:id", isUser, getDiscussionComments);
 
 /**
