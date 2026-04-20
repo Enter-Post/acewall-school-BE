@@ -9,7 +9,8 @@ import Submission from "../Models/submission.model.js";
 import StandardGrading from "../Models/StandardGrading.model.js";
 import GradingScale from "../Models/grading-scale.model.js";
 import GPA from "../Models/GPA.model.js";
-
+import CourseSch from "../Models/courses.model.sch.js";
+ 
 /**
  * FAST UPDATE — Only updates the specific assessment/discussion that changed,
  * then recalculates ONLY its quarter + semester + final grade.

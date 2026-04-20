@@ -276,6 +276,7 @@ router.get("/all", isUser, getDiscussionsOfTeacher);
  */
 router.get("/:id", isUser, getDiscussionbyId);
 router.get("/v2/:id", isUser, resolveEnrollmentFromDiscussion, isEnrolledMiddleware, getDiscussionbyId);
+
 router.put("/setDueDateForStudent/:discussionId", isUser, setDueDateForStudentsDiscussion);
 router.put("/toggleAllowResubmission/:discussionId", isUser, toggleAllowResubmission);
 
