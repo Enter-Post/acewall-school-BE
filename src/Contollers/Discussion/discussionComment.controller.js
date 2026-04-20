@@ -159,10 +159,12 @@ export const gradeDiscussionofStd = async (req, res) => {
       isGraded: true,
     });
 
-    if (alreadyGraded) {
-      return res.status(400).json({
-        message: "This student has already been graded for this discussion.",
-      });
+    if (!discussion.allowResubmission) {
+      if (alreadyGraded) {
+        return res.status(400).json({
+          message: "This student has already been graded for this discussion.",
+        });
+      }
     }
 
     // Grade the comment
@@ -172,7 +174,6 @@ export const gradeDiscussionofStd = async (req, res) => {
 
     await discussionComment.save();
 
-    // ⭐ IMPORTANT: UPDATE GRADEBOOK NOW!
     await updateGradebookOnSubmission(
       studentId,
       discussion.course,     // courseId
@@ -188,7 +189,7 @@ export const gradeDiscussionofStd = async (req, res) => {
 };
 
 export const isCommentedInDiscussion = async (req, res) => {
- const user = req.user;
+  const user = req.user;
   const { id } = req.params;
 
   const existingComments = await DiscussionComment.find({
