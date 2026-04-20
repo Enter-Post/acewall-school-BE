@@ -21,8 +21,6 @@ export const createDiscussion = async (req, res) => {
   const files = req.files;
   const createdby = req.user._id;
 
-  console.log(req.body, "req.body");
-
   let uploadedFiles = [];
 
   if (files && files.length > 0) {
@@ -104,9 +102,22 @@ export const getDiscussionbyId = async (req, res) => {
       .populate("chapter", "title")
       .populate("lesson", "title")
       .populate("createdby", "firstName middleName lastName profileImg")
+      .populate("studentDueDateOverrides.student", "firstName middleName lastName profileImg email")
 
     if (!discussion) {
       return res.status(404).json({ message: "Discussion not found" });
+    }
+
+    const override = discussion.studentDueDateOverrides?.find(
+      (item) => item.student._id.toString() === userId.toString()
+    );
+
+    const tempDiscussion = { ...discussion.toObject() }
+
+    if (override) {
+      console.log("ma chal gaya")
+      tempDiscussion.isExtended = true;
+      tempDiscussion.extendedDueDate = override.newDueDate;
     }
 
     const exists = await Enrollment.findOne({
@@ -122,7 +133,7 @@ export const getDiscussionbyId = async (req, res) => {
 
     res
       .status(200)
-      .json({ message: "Discussion fetched successfully", discussion });
+      .json({ message: "Discussion fetched successfully", discussion: tempDiscussion });
   } catch (error) {
     console.log("error in getting discussion by ID", error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -206,7 +217,7 @@ export const courseDiscussions = async (req, res) => {
     console.log("error in fetching chapter discussions", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-} 
+}
 
 
 export const setDueDateForStudentsDiscussion = async (req, res) => {

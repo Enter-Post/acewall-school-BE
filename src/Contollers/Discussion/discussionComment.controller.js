@@ -37,7 +37,6 @@ export const getDiscussionComments = async (req, res) => {
         createdby: user,
       };
     });
-
     res.status(200).json({
       message: "Comments fetched successfully",
       discussionComments: sanitizedComments,
@@ -56,23 +55,56 @@ export const sendDiscussionComment = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const isCommented = await DiscussionComment.findOne({
+    const existingComments = await DiscussionComment.find({
       createdby: user._id,
       discussion: id,
     });
 
-    if (user.role !== "teacher" && isCommented) {
-      return res
-        .status(400)
-        .json({ message: "You have already commented on this discussion" });
+    const discussion = await Discussion.findById(id).populate('createdby', 'firstName lastName role');
+
+
+    if (user.role !== "teacher") {
+      if (!discussion.allowResubmission && existingComments.length >= 1) {
+        return res.status(409).json({ message: "You have already commented on this discussion" });
+      }
+      // If resubmission is allowed, student can comment unlimited times
+    }
+
+    const dueDate = new Date(discussion.dueDate.date)
+      .toISOString()
+      .split("T")[0];
+    const dueTime = discussion.dueDate.time;
+    const dueDateTime = new Date(`${dueDate}T${dueTime}`);
+    const now = new Date();
+
+    const override = discussion.studentDueDateOverrides.find(
+      o => o.student.toString() === user._id
+    );
+
+    let finalDueDate = dueDateTime;
+
+    if (override) {
+      if (override.newDueDate) {
+        const overDate = new Date(override.newDueDate.date).toISOString().split("T")[0];
+        const overTime = override.newDueDate.time;
+        finalDueDate = new Date(`${overDate}T${overTime}`);
+      }
+    }
+
+    let status = "before due date";
+    if (now > finalDueDate) {
+      status = "after due date";
     }
 
     const newDiscussionComment = new DiscussionComment({
       text,
       role: user.role,
       createdby: user._id,
+      status,
       discussion: id,
+      allowResubmission: discussion.allowResubmission,
     });
+
     await newDiscussionComment.save();
     res.status(200).json({
       message: "Comment sent successfully",
@@ -127,10 +159,12 @@ export const gradeDiscussionofStd = async (req, res) => {
       isGraded: true,
     });
 
-    if (alreadyGraded) {
-      return res.status(400).json({
-        message: "This student has already been graded for this discussion.",
-      });
+    if (!discussion.allowResubmission) {
+      if (alreadyGraded) {
+        return res.status(400).json({
+          message: "This student has already been graded for this discussion.",
+        });
+      }
     }
 
     // Grade the comment
@@ -140,7 +174,6 @@ export const gradeDiscussionofStd = async (req, res) => {
 
     await discussionComment.save();
 
-    // ⭐ IMPORTANT: UPDATE GRADEBOOK NOW!
     await updateGradebookOnSubmission(
       studentId,
       discussion.course,     // courseId
@@ -159,17 +192,36 @@ export const isCommentedInDiscussion = async (req, res) => {
   const user = req.user;
   const { id } = req.params;
 
-  try {
-    const isCommented = await DiscussionComment.findOne({
-      createdby: user._id,
-      discussion: id,
-    });
+  const existingComments = await DiscussionComment.find({
+    createdby: user._id,
+    discussion: id,
+  });
 
-    if (user.role !== "teacher" && isCommented) {
-      return res.status(200).json({ commented: true });
-    }
-  } catch (error) {
-    console.log("error in the discussion comment", error);
-    res.status(500).json({ message: "Internal Server Error" });
+  const discussion = await Discussion.findById(id);
+
+  // For teachers, always return false (they can always comment)
+  if (user.role === "teacher") {
+    return res.status(200).json({
+      commented: false,
+      canComment: true,
+      message: "Teacher can always comment"
+    });
   }
+
+  // For students, check comment limits based on resubmission setting
+  if (!discussion.allowResubmission && existingComments.length >= 1) {
+    return res.status(200).json({
+      commented: true,
+      canComment: false,
+      message: "Student has already commented and resubmission is not allowed"
+    });
+  }
+
+  // If resubmission is allowed, student can comment unlimited times
+  // Student can still comment
+  return res.status(200).json({
+    commented: existingComments.length > 0,
+    canComment: true,
+    message: existingComments.length > 0 ? "Student can still comment (resubmission allowed)" : "Student has not commented yet"
+  });
 };

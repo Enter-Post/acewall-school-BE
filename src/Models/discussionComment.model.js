@@ -18,13 +18,14 @@ const DiscussionCommentSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    // ✅ New fields for grading
+    status: { type: String, enum: ["after due date", "before due date"] },
     gradedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User", // Teacher who graded
     },
     marksObtained: { type: Number, default: 0 },
     isGraded: { type: Boolean, default: false },
+    allowResubmission: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
