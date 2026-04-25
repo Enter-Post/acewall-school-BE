@@ -31,6 +31,7 @@ const UserSchema = new mongoose.Schema(
         "teacherAsStudent",
         "parent",
         "instructor",
+        "district_admin",
       ],
       required: true,
     },
@@ -44,8 +45,27 @@ const UserSchema = new mongoose.Schema(
     schoolIds: [{ type: String }],
     authProvider: {
       type: String,
-      enum: ["local", "google", "clever"],
+      enum: ["local", "google", "clever", "saml", "oneroster"],
       default: "local",
+    },
+    samlId: { type: String, unique: true, sparse: true },
+    externalId: { type: String, unique: true, sparse: true },
+    lastSamlLogin: { type: Date },
+    metadata: {
+      grades: [{ type: String }],
+      phone: { type: String },
+      source: { type: String },
+      lastRosterSync: { type: Date },
+    },
+    googleTokens: {
+      accessToken: { type: String },
+      refreshToken: { type: String },
+      expiryDate: { type: Number }
+    },
+    microsoftTokens: {
+      accessToken: { type: String },
+      refreshToken: { type: String },
+      expiresAt: { type: Date }
     },
     guardianEmails: [{ type: String }],
     guardianEmailPreferences: {
