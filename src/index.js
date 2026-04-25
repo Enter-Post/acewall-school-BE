@@ -63,8 +63,6 @@ import { startZoomMeetingMonitor } from "./cronJobs/zoomMeetingMonitor.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
-dotenv.config();
-
 const PORT = process.env.PORT || 5051;
 
 const __filename = fileURLToPath(import.meta.url);

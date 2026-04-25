@@ -10,7 +10,7 @@ import {
   updateSamlConfig,
   samlLogout
 } from './saml.controller.js';
-import { isAuthenticated } from '../../middlewares/auth.js';
+import { isUser } from '../../middlewares/Auth.Middleware.js';
 
 const router = express.Router();
 
@@ -18,11 +18,11 @@ const router = express.Router();
 router.get('/login', samlLogin);
 router.post('/callback', samlCallback);
 router.get('/metadata', getMetadata);
-router.get('/status', isAuthenticated, getSsoStatus);
-router.post('/link', isAuthenticated, linkSamlAccount);
-router.post('/unlink', isAuthenticated, unlinkSamlAccount);
-router.get('/config', isAuthenticated, getSamlConfig);
-router.put('/config', isAuthenticated, updateSamlConfig);
-router.post('/logout', isAuthenticated, samlLogout);
+router.get('/status', isUser, getSsoStatus);
+router.post('/link', isUser, linkSamlAccount);
+router.post('/unlink', isUser, unlinkSamlAccount);
+router.get('/config', isUser, getSamlConfig);
+router.put('/config', isUser, updateSamlConfig);
+router.post('/logout', isUser, samlLogout);
 
 export default router;

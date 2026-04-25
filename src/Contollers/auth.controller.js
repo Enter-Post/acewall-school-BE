@@ -15,7 +15,6 @@ import jwt from "jsonwebtoken";
 
 import multer from "multer";
 import xlsx from "xlsx";
-import OPT from "../Models/opt.model.js";
 import GuardianAcc from "../Models/guardianAcc.model.js";
 import LoginActivity from "../Models/userActivity.model.js";
 
@@ -164,7 +163,7 @@ export const initiateSignup = async (req, res) => {
       secure: true, // true for 465, false for 587
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: process.env.SMTP_PASSWORD,
       },
     });
     await transporter.sendMail({
@@ -302,7 +301,7 @@ export const resendOTP = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: process.env.SMTP_PASSWORD,
       },
     });
 
@@ -485,7 +484,7 @@ export const verifyPhoneOtp = async (req, res) => {
         secure: true,
         auth: {
           user: "support@acewallscholars.org",
-          pass: "dackrjjdvfezbule",
+          pass: process.env.SMTP_PASSWORD,
         },
       });
 
@@ -778,7 +777,7 @@ export const createGuardianAcc = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: process.env.SMTP_PASSWORD,
       },
     });
 
@@ -867,7 +866,7 @@ export const loginGuardianAcc = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: process.env.SMTP_PASSWORD,
       },
     });
 
@@ -931,7 +930,7 @@ export const verifyPasswordlessLogin = async (req, res) => {
   try {
     const { token } = req.body;
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRAT);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     if (decoded.purpose !== "passwordless") {
       return res.status(401).json({ message: "Invalid token type" });
@@ -1005,7 +1004,7 @@ export const forgetPassword = async (req, res) => {
       secure: true, // true for 465, false for 587
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: process.env.SMTP_PASSWORD,
       },
     });
 
@@ -1689,7 +1688,7 @@ export const updatePasswordOTP = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: process.env.SMTP_PASSWORD,
       },
     });
 
@@ -1829,7 +1828,7 @@ export const updateEmailOTP = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: process.env.SMTP_PASSWORD,
       },
     });
 
@@ -1964,7 +1963,7 @@ export const updateEmailOTPById = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: process.env.SMTP_PASSWORD,
       },
     });
 
@@ -2117,7 +2116,7 @@ export const updatePasswordOTPById = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: process.env.SMTP_PASSWORD,
       },
     });
 

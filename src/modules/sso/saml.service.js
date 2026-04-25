@@ -91,7 +91,7 @@ export const handleSamlCallback = async (req, res, next) => {
       }
       
       // Generate JWT token
-      generateToken(user, 200, res);
+      generateToken(user, user.role, req, res);
       
       // Redirect based on role
       const redirectMap = {
