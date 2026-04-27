@@ -16,13 +16,15 @@ export const createDiscussion = async (req, res) => {
     lesson,
     category,
     semester,
-    quarter
+    quarter,
+    googleDriveFiles
   } = req.body;
   const files = req.files;
   const createdby = req.user._id;
 
   let uploadedFiles = [];
 
+  // Handle local files
   if (files && files.length > 0) {
     for (const file of files) {
       const result = await uploadToCloudinary(file.buffer, "discussion_files");
@@ -32,7 +34,29 @@ export const createDiscussion = async (req, res) => {
         publicId: result.public_id,
         type: file.mimetype,
         filename: file.originalname,
+        source: 'local'
       });
+    }
+  }
+
+  // Handle Google Drive files
+  if (googleDriveFiles) {
+    try {
+      const driveFiles = JSON.parse(googleDriveFiles);
+      if (Array.isArray(driveFiles)) {
+        driveFiles.forEach(file => {
+          uploadedFiles.push({
+            url: file.url,
+            publicId: file.publicId,
+            type: file.type || 'application/octet-stream',
+            filename: file.filename,
+            size: file.size || 0,
+            source: 'google_drive'
+          });
+        });
+      }
+    } catch (err) {
+      console.error("Error parsing Google Drive files:", err);
     }
   }
 
