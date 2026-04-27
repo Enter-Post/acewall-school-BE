@@ -29,6 +29,7 @@ const SchCourseSchema = new mongoose.Schema(
       url: { type: String, default: "" },
       filename: { type: String, default: "" },
       uploadedAt: { type: Date, default: Date.now },
+      source: { type: String, default: "local" },
     },
     teachingPoints: [{ type: String, maxlength: 120, minlength: 1 }],
     requirements: [{ type: String, maxlength: 120, minlength: 1 }],

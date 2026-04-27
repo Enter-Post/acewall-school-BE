@@ -191,6 +191,7 @@ export const createCourseSch = async (req, res) => {
     published,
     semester,
     quarter,
+    googleDriveSyllabus,
   } = req.body;
 
   const files = req.files;
@@ -202,7 +203,7 @@ export const createCourseSch = async (req, res) => {
     );
 
     let thumbnail = { url: "", altText: "" };
-    let syllabusFile = { url: "", filename: "" };
+    let syllabusFile = { url: "", filename: "", source: "local" };
 
     // Upload thumbnail
     if (files?.thumbnail?.[0]) {
@@ -215,7 +216,7 @@ export const createCourseSch = async (req, res) => {
       thumbnail.altText = thumb.originalname;
     }
 
-    // Upload syllabus
+    // Handle syllabus - local file or Google Drive
     if (files?.syllabus?.[0]) {
       const syllabus = files.syllabus[0];
       const result = await uploadToCloudinary(
@@ -224,6 +225,19 @@ export const createCourseSch = async (req, res) => {
       );
       syllabusFile.url = result.secure_url;
       syllabusFile.filename = syllabus.originalname;
+      syllabusFile.source = "local";
+    } else if (googleDriveSyllabus) {
+      // Handle Google Drive syllabus
+      try {
+        const driveSyllabus = JSON.parse(googleDriveSyllabus);
+        syllabusFile = {
+          url: driveSyllabus.url,
+          filename: driveSyllabus.filename,
+          source: "google_drive",
+        };
+      } catch (err) {
+        console.error("Error parsing Google Drive syllabus:", err);
+      }
     }
 
     // Parse JSON fields
