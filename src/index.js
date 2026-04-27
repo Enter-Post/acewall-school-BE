@@ -1,5 +1,4 @@
 import dotenv from "dotenv";
-dotenv.config();
 import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -47,12 +46,14 @@ import parentRoutes from "./Routes/Parent.Routes.js";
 import attendanceRoutes from "./Routes/Attendance.routes.js";
 import loginActivityRoutes from "./Routes/LoginActivity.Routes.js";
 import zoomRoutes from "./Routes/Zoom.Routes.js";
+import ltiRoutes from "./Routes/lti.Routes.js";
 import notificationRoutes from "./Routes/notification.Routes.js";
 import "./cronJobs/assessmentReminder.js";
 import { startZoomMeetingMonitor } from "./cronJobs/zoomMeetingMonitor.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
+import { createKeys, buildJWKS } from "./lib/createJWKS.js";
 
 dotenv.config();
 
@@ -60,6 +61,18 @@ const PORT = process.env.PORT || 5051;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+let keys;
+
+(async () => {
+  keys = await createKeys();
+})();
+
+app.get("/jwks.json", async (req, res) => {
+  const jwks = await buildJWKS(keys.publicKey);
+
+  res.setHeader("Content-Type", "application/json");
+  res.json(jwks);
+});
 
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use(express.json());
@@ -119,6 +132,7 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api/loginactivity", loginActivityRoutes);
 app.use("/api/zoom", zoomRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/lti", ltiRoutes)
 
 // Swagger API Documentation
 app.use('/api/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
