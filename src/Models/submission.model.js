@@ -8,6 +8,8 @@ const studentAnswerSchema = new mongoose.Schema({
       url: { type: String, required: true },
       filename: { type: String },
       publicId: { type: String },
+      type: { type: String },
+      source: { type: String, enum: ['local', 'google_drive'], default: 'local' },
     },
   ],
   isCorrect: { type: Boolean }, // Only for MCQ / TrueFalse

@@ -66,7 +66,28 @@ export const submission = async (req, res) => {
         url: result.secure_url,
         filename: file.originalname,
         public_id: result.public_id,
+        source: 'local',
       });
+    }
+
+    // ✅ Handle Google Drive files
+    const { googleDriveFiles } = req.body;
+    if (googleDriveFiles) {
+      try {
+        const driveFiles = JSON.parse(googleDriveFiles);
+        if (Array.isArray(driveFiles)) {
+          driveFiles.forEach(file => {
+            answerFiles.push({
+              url: file.url,
+              filename: file.filename,
+              type: file.type || 'application/pdf',
+              source: 'google_drive',
+            });
+          });
+        }
+      } catch (err) {
+        console.error("Error parsing Google Drive files:", err);
+      }
     }
 
     // Prepare final answers
