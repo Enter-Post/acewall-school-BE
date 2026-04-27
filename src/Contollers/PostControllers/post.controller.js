@@ -3,7 +3,7 @@ import Enrollment from "../../Models/Enrollement.model.js";
 import CourseSch from "../../Models/courses.model.sch.js";
 export const createPost = async (req, res) => {
     try {
-        const { text, color, postType, courseId } = req.body;
+        const { text, color, postType, courseId, googleDriveAsset } = req.body;
         const assets = req.files || [];
         const author = req.user._id;
 
@@ -18,6 +18,22 @@ export const createPost = async (req, res) => {
                 type: asset.mimetype
             };
         });
+
+        // Handle Google Drive asset if present
+        if (googleDriveAsset) {
+            try {
+                const driveFile = JSON.parse(googleDriveAsset);
+                uploadedFiles.push({
+                    url: driveFile.url,
+                    fileName: driveFile.filename || driveFile.publicId,
+                    type: driveFile.type || `${driveFile.resourceType}/${driveFile.format}`,
+                    source: 'google_drive',
+                    publicId: driveFile.publicId
+                });
+            } catch (err) {
+                console.error("Error parsing Google Drive asset:", err);
+            }
+        }
 
         const postData = {
             text,

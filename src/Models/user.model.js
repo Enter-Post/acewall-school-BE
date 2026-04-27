@@ -54,6 +54,13 @@ const UserSchema = new mongoose.Schema(
       announcement: { type: Boolean, default: true },
       assessments: { type: Boolean, default: true },
     },
+    googleDrive: {
+      connected: { type: Boolean, default: false },
+      accessToken: { type: String, default: null },
+      refreshToken: { type: String, default: null },
+      expiryDate: { type: Date, default: null },
+      scope: { type: String, default: null },
+    },
   },
   { timestamps: true },
 );

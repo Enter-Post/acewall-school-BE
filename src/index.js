@@ -48,8 +48,10 @@ import attendanceRoutes from "./Routes/Attendance.routes.js";
 import loginActivityRoutes from "./Routes/LoginActivity.Routes.js";
 import zoomRoutes from "./Routes/Zoom.Routes.js";
 import notificationRoutes from "./Routes/notification.Routes.js";
+import googleDriveRoutes from "./Routes/GoogleDrive.Routes.js";
 import "./cronJobs/assessmentReminder.js";
 import { startZoomMeetingMonitor } from "./cronJobs/zoomMeetingMonitor.js";
+import { errorHandler } from "./middlewares/errorHandler.middleware.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -119,6 +121,7 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api/loginactivity", loginActivityRoutes);
 app.use("/api/zoom", zoomRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/drive", googleDriveRoutes);
 
 // Swagger API Documentation
 app.use('/api/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
@@ -126,6 +129,9 @@ app.use('/api/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: "AceWall Scholars API Documentation"
 }));
+
+// Global error handler
+app.use(errorHandler);
 
 server.listen(PORT, () => {
   connectDB();
