@@ -26,12 +26,14 @@ const PagesSchema = new mongoose.Schema(
         type: { type: String },
         filename: { type: String },
         publicId: { type: String },
+        source: { type: String, default: 'local' },
       },
     ],
     image: {
       url: { type: String },
       filename: { type: String, maxlength: 100 },
       publicId: { type: String },
+      source: { type: String, default: 'local' },
     },
   },
   { timestamps: true }
