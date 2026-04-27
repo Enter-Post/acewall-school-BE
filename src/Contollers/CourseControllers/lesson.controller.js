@@ -4,12 +4,13 @@ import { v2 as cloudinary } from "cloudinary";
 
 export const createLesson = async (req, res) => {
   const createdby = req.user._id;
-  const { title, description, youtubeLinks, otherLink, chapter } = req.body;
+  const { title, description, youtubeLinks, otherLink, chapter, googleDriveFiles } = req.body;
   const pdfFiles = req.files;
 
   try {
     let uploadedFiles = [];
 
+    // Handle local PDF files
     if (pdfFiles && pdfFiles.length > 0) {
       for (const file of pdfFiles) {
         const result = await uploadToCloudinary(file.buffer, "lesson_pdfs");
@@ -18,7 +19,28 @@ export const createLesson = async (req, res) => {
           url: result.secure_url,
           public_id: result.public_id,
           filename: file.originalname,
+          type: file.mimetype,
+          source: 'local',
         });
+      }
+    }
+
+    // Handle Google Drive files
+    if (googleDriveFiles) {
+      try {
+        const driveFiles = JSON.parse(googleDriveFiles);
+        if (Array.isArray(driveFiles)) {
+          driveFiles.forEach(file => {
+            uploadedFiles.push({
+              url: file.url,
+              filename: file.filename,
+              type: file.type || 'application/pdf',
+              source: 'google_drive',
+            });
+          });
+        }
+      } catch (err) {
+        console.error("Error parsing Google Drive files:", err);
       }
     }
 
