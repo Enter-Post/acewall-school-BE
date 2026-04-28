@@ -50,10 +50,10 @@ import ltiRoutes from "./Routes/lti.Routes.js";
 import notificationRoutes from "./Routes/notification.Routes.js";
 import "./cronJobs/assessmentReminder.js";
 import { startZoomMeetingMonitor } from "./cronJobs/zoomMeetingMonitor.js";
-
 import path from "path";
 import { fileURLToPath } from "url";
 import { createKeys, buildJWKS } from "./lib/createJWKS.js";
+import session from "express-session";
 
 dotenv.config();
 
@@ -91,6 +91,12 @@ app.use(
     credentials: true,
   }),
 );
+
+app.use(session({
+  secret: "lti-secret",
+  resave: false,
+  saveUninitialized: true,
+}));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/category", categoryRoutes);
