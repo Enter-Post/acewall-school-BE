@@ -1,0 +1,19 @@
+{
+  "name": "lti-platform-simulator",
+  "version": "1.0.0",
+  "description": "Fake LTI 1.3 Platform Simulator for Testing",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test-launch.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "jose": "^5.2.0",
+    "axios": "^1.6.0"
+  },
+  "keywords": ["lti", "lti1.3", "oauth2", "openid-connect", "testing"],
+  "author": "LTI Platform Simulator",
+  "license": "MIT"
+}
