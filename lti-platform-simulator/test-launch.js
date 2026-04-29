@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 
-const PLATFORM_URL = 'http://localhost:4000';
+const PLATFORM_URL = 'https://frequency-subtext-malformed.ngrok-free.dev';
 const LMS_URL = 'https://professor-gallon-dropout.ngrok-free.dev';
 
 async function testLaunch() {

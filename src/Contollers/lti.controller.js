@@ -82,6 +82,8 @@ export const ltiLaunch = async (req, res) => {
       return res.status(400).send("Unknown platform");
     }
 
+    console.log(platform, "platform in the launch")
+
     // 🔐 Verify JWT using platform JWKS
     const JWKS = createRemoteJWKSet(new URL(platform.jwks_url));
 
@@ -131,17 +133,17 @@ export const ltiLaunch = async (req, res) => {
 
 export const createPlatform = async (req, res) => {
   try {
-    // const { issuer, client_id, jwks_url, active } = req.body;
+    const { platform_name, issuer, client_id, jwks_url, active, redirect_uri, deployment_id, authorization_endpoint, token_endpoint } = req.body;
     const platform = new LTIPlatform({
-      platform_name: "Test Platform",
-      issuer: "http://localhost:4000",
-      client_id: "lti-tool-client-id",
-      jwks_url: "http://localhost:4000/.well-known/jwks.json",
-      active: true,
-      redirect_uri: "http://localhost:5050/api/lti/launch",
-      deployment_id: "test-deployment-1",
-      authorization_endpoint: "http://localhost:4000/authorize",
-      token_endpoint: "http://localhost:4000/token"
+      platform_name,
+      issuer,
+      client_id,
+      jwks_url,
+      active,
+      redirect_uri,
+      deployment_id,
+      authorization_endpoint,
+      token_endpoint
     });
     await platform.save();
     res.status(201).json({ platform, message: "Platform created successfully" });

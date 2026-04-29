@@ -17,11 +17,11 @@ const loginUrl = 'https://professor-gallon-dropout.ngrok-free.dev/api/lti/login'
 
 // LTI Platform Configuration
 const PLATFORM_CONFIG = {
-  issuer: 'http://localhost:4000',
+  issuer: 'https://frequency-subtext-malformed.ngrok-free.dev',
   client_id: 'lti-tool-client-id',
-  authorization_endpoint: 'http://localhost:4000/authorize',
-  token_endpoint: 'http://localhost:4000/token',
-  jwks_url: 'http://localhost:4000/.well-known/jwks.json',
+  authorization_endpoint: 'https://frequency-subtext-malformed.ngrok-free.dev/authorize',
+  token_endpoint: 'https://frequency-subtext-malformed.ngrok-free.dev/token',
+  jwks_url: 'https://frequency-subtext-malformed.ngrok-free.dev/.well-known/jwks.json',
   redirect_uri: 'https://professor-gallon-dropout.ngrok-free.dev/api/lti/launch',
   deployment_id: 'test-deployment-1'
 };
