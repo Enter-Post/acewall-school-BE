@@ -275,15 +275,8 @@ export const samlCallback = async (req, res) => {
     }
 
     // Generate JWT token
-    const tokenPayload = {
-      id: user._id,
-      email: user.email,
-      role: user.role,
-      authProvider: user.authProvider,
-    };
-
-    const token = generateToken(tokenPayload, tokenPayload.role, req, res);
-
+     const token = generateToken(user, user.role, req, res);
+     
     console.log("tokennnnnnnnnnnnnnnnnn", token)
 
     // const token = jwt.sign(tokenPayload, JWT_SECRET, {

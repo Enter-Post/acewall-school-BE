@@ -1152,11 +1152,11 @@ export const logout = async (req, res) => {
     const portal = host && host.startsWith("admin.") ? "admin" : "client";
     const cookieName = portal === "admin" ? "admin_jwt" : "client_jwt";
 
-    // Clear the cookie
+    // Clear the cookie - MUST match the attributes used when setting the cookie
     res.clearCookie(cookieName, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: true, // Must match cookie setting (always true in jwtToken.js)
+      sameSite: "none", // Must match cookie setting (always "none" in jwtToken.js)
       path: "/", // Must match original cookie path
     });
 

@@ -137,7 +137,7 @@ app.use(
       maxAge: 10 * 60 * 1000, // 10 minutes for SSO flow
       sameSite: "none", // REQUIRED for cross-domain redirect (prod domain -> ngrok)
     },
-    name: "client_jwt",
+    name: "saml_session",
     store: memoryStore, // Shared across all requests
   })
 );
