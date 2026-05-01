@@ -33,7 +33,17 @@ export const isUser = async (req, res, next) => {
     const portal = getPortalFromReq(req);
     const cookieName = portal === "admin" ? "admin_jwt" : "client_jwt";
 
-    const token = req.cookies?.[cookieName];
+    // Try cookie first (production), then Authorization header (SAML dev)
+    let token = req.cookies?.[cookieName];
+    
+    // Check Authorization header for Bearer token (SAML dev environment)
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        token = authHeader.substring(7);
+      }
+    }
+    
     if (!token) {
       return res.status(401).json({
         error: true,

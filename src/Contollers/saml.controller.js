@@ -3,8 +3,9 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import User from "../Models/user.model.js";
 import { getSamlProviderConfig, extractSamlProfile } from "../config/saml.config.js";
+import { generateToken } from "../Utiles/jwtToken.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+const JWT_SECRET = process.env.JWT_SECRAT || process.env.JWT_SECRET || "your-secret-key";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const BASE_URL = process.env.BACKEND_BASE_URL || "http://localhost:5050";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
@@ -230,6 +231,8 @@ export const samlCallback = async (req, res) => {
       email: { $regex: new RegExp(`^${samlProfile.email}$`, 'i') } 
     });
 
+    console.log("user: in callabck😷🤡🥶😡😇😇🥳 ", user)
+
     if (user) {
       // ========================================================================
       // EXISTING USER - CRITICAL: DO NOT UPDATE ROLE (Security Requirement)
@@ -279,9 +282,13 @@ export const samlCallback = async (req, res) => {
       authProvider: user.authProvider,
     };
 
-    const token = jwt.sign(tokenPayload, JWT_SECRET, {
-      expiresIn: JWT_EXPIRES_IN,
-    });
+    const token = generateToken(tokenPayload, tokenPayload.role, req, res);
+
+    console.log("tokennnnnnnnnnnnnnnnnn", token)
+
+    // const token = jwt.sign(tokenPayload, JWT_SECRET, {
+    //   expiresIn: JWT_EXPIRES_IN,
+    // });
 
     // ========================================================================
     // SESSION SECURITY: Clear session data to prevent replay attacks
@@ -324,28 +331,28 @@ export const samlCallback = async (req, res) => {
       dashboardPath = "/student/dashboard";
     }
 
-    // Set HTTP-only cookie with token  
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      path: "/",
-    });
-
-    // Also set a non-httpOnly cookie for frontend to detect login (optional)
-    res.cookie("logged_in", "true", {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: "/",
-    });
-
     console.log(`✅ SAML login complete: ${user.email}, redirecting to ${FRONTEND_URL}${dashboardPath}`);
 
+    // For dev environments with cross-domain (ngrok -> localhost), pass token in URL
+    // Production uses HTTP-only cookies for security
+    const isDev = process.env.NODE_ENV !== "production";
+    const redirectUrl = isDev 
+      ? `${FRONTEND_URL}${dashboardPath}?auth_token=${token}`
+      : `${FRONTEND_URL}${dashboardPath}`;
+
+    if (!isDev) {
+      // Set HTTP-only cookie with token (production only)
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: "/",
+      });
+    }
+
     // Redirect to frontend dashboard
-    return res.redirect(`${FRONTEND_URL}${dashboardPath}`);
+    return res.redirect(redirectUrl);
   } catch (error) {
     console.error("❌ SAML Callback Error:", error);
     return res.redirect(`${FRONTEND_URL}/login?error=saml_callback_failed`);
