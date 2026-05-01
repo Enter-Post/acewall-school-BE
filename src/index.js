@@ -1,15 +1,33 @@
-import dotenv from "dotenv";
-dotenv.config();
+// Load env vars FIRST before any other imports
+import 'dotenv/config';
+
+// Console log all environment variables
+console.log('=== Environment Variables ===');
+console.log('SAML_OKTA_IDP_ISSUER:', process.env.SAML_OKTA_IDP_ISSUER);
+console.log('SAML_OKTA_ENTRY_POINT:', process.env.SAML_OKTA_ENTRY_POINT);
+console.log('SAML_OKTA_CERT:', process.env.SAML_OKTA_CERT);
+console.log('==============================');
+
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import session from "express-session";
+import passport from "passport";
 import swaggerUi from 'swagger-ui-express';
 import { specs } from './config/swagger.js';
 import { connectDB } from "./lib/connectDB.js";
 import { app, server, io } from "./lib/socket.io.js";
+import { initializeSamlStrategy } from "./config/saml.config.js";
 
 /// Routes
 import authRoutes from "./Routes/Auth.Routes.js";
+import samlRoutes from "./Routes/Saml.Routes.js";
 import categoryRoutes from "./Routes/Category.Routes.js";
 import coursesRoutes from "./Routes/CourseRoutes/Courses.Routes.js";
 import chapterRouter from "./Routes/CourseRoutes/Chapter.Routes.js";
@@ -53,19 +71,35 @@ import "./cronJobs/assessmentReminder.js";
 import { startZoomMeetingMonitor } from "./cronJobs/zoomMeetingMonitor.js";
 import { errorHandler } from "./middlewares/errorHandler.middleware.js";
 
-import path from "path";
-import { fileURLToPath } from "url";
+const PORT = process.env.PORT || 5050;
 
-dotenv.config();
+// Trust proxy (required for secure cookies behind ngrok)
+app.set("trust proxy", 1);
 
-const PORT = process.env.PORT || 5051;
+// Debug logging for all requests
+app.use((req, res, next) => {
+  if (req.path.includes("/saml/")) {
+    console.log(`\n[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    console.log(`  Cookies: ${req.headers.cookie || "none"}`);
+    console.log(`  SessionID: ${req.sessionID || "none"}`);
+    console.log(`  Origin: ${req.headers.origin || "none"}`);
+    console.log(`  Protocol: ${req.protocol}, Secure: ${req.secure}`);
+    console.log(`  X-Forwarded-Proto: ${req.headers["x-forwarded-proto"] || "none"}`);
+    console.log(`  X-Forwarded-For: ${req.headers["x-forwarded-for"] || "none"}`);
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+    // Hook into response to log Set-Cookie
+    const originalSetHeader = res.setHeader.bind(res);
+    res.setHeader = (name, value) => {
+      if (name.toLowerCase() === "set-cookie") {
+        console.log(`  Set-Cookie: ${value}`);
+      }
+      return originalSetHeader(name, value);
+    };
+  }
+  next();
+});
 
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
-app.use(express.json());
-app.use(cookieParser());
+// CORS must be before session to handle preflight
 app.use(
   cors({
     origin: [
@@ -75,13 +109,57 @@ app.use(
       "https://admin.acewallscholarslearningonline.com",
       "http://localhost:5173",
       "http://localhost:5174",
+      process.env.FRONTEND_URL || "http://localhost:5173",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     credentials: true,
   }),
 );
 
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // Required for SAML POST data
+app.use(cookieParser());
+
+// Shared session store - CRITICAL: must be shared across all requests
+const memoryStore = new session.MemoryStore();
+
+// Session middleware for SAML - FORCES cross-origin cookie settings
+// Requires HTTPS connection (via ngrok) for cookies to work properly
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "your_session_secret_change_in_production",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: true, // Required for SameSite=None, ngrok provides HTTPS
+      httpOnly: true,
+      maxAge: 10 * 60 * 1000, // 10 minutes for SSO flow
+      sameSite: "none", // REQUIRED for cross-domain redirect (prod domain -> ngrok)
+    },
+    name: "saml.sid",
+    store: memoryStore, // Shared across all requests
+  })
+);
+
+// Post-session debug logging
+app.use((req, res, next) => {
+  if (req.path.includes("/saml/")) {
+    console.log(`  [After Session] sessionID=${req.sessionID}`);
+    console.log(`  [After Session] session.selectedRole=${req.session?.selectedRole || "NOT SET"}`);
+  }
+  next();
+});
+
+// Initialize Passport for SAML
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Initialize SAML strategies
+initializeSamlStrategy();
+
 app.use("/api/auth", authRoutes);
+app.use("/api/auth/saml", samlRoutes);
 app.use("/api/category", categoryRoutes);
 app.use("/api/subcategory", subCategoryRoutes);
 app.use("/api/course", coursesRoutes);

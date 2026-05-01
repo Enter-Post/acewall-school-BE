@@ -44,8 +44,18 @@ const UserSchema = new mongoose.Schema(
     schoolIds: [{ type: String }],
     authProvider: {
       type: String,
-      enum: ["local", "google", "clever"],
+      enum: ["local", "google", "clever", "saml"],
       default: "local",
+    },
+    samlId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    samlProvider: {
+      type: String,
+      enum: ["okta", "azure", null],
+      default: null,
     },
     guardianEmails: [{ type: String }],
     guardianEmailPreferences: {
