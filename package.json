@@ -46,6 +46,7 @@
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "twilio": "^5.8.2",
+    "ua-parser-js": "^2.0.9",
     "xlsx": "^0.18.5"
   }
 }

@@ -70,6 +70,8 @@ import googleDriveRoutes from "./Routes/GoogleDrive.Routes.js";
 import "./cronJobs/assessmentReminder.js";
 import { startZoomMeetingMonitor } from "./cronJobs/zoomMeetingMonitor.js";
 import { errorHandler } from "./middlewares/errorHandler.middleware.js";
+import { requestLogger, errorLogger } from "./middlewares/activityLog.middleware.js";
+import activityLogRoutes from "./Routes/activityLog.Routes.js";
 
 const PORT = process.env.PORT || 5050;
 
@@ -120,6 +122,9 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Required for SAML POST data
 app.use(cookieParser());
+
+// Activity Logging Middleware - Logs all API requests
+app.use(requestLogger);
 
 // Shared session store - CRITICAL: must be shared across all requests
 const memoryStore = new session.MemoryStore();
@@ -200,6 +205,7 @@ app.use("/api/loginactivity", loginActivityRoutes);
 app.use("/api/zoom", zoomRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/drive", googleDriveRoutes);
+app.use("/api/logs", activityLogRoutes);
 
 // Swagger API Documentation
 app.use('/api/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
@@ -207,6 +213,9 @@ app.use('/api/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: "AceWall Scholars API Documentation"
 }));
+
+// Activity Logging Error Logger - Captures errors before the global handler
+app.use(errorLogger);
 
 // Global error handler
 app.use(errorHandler);

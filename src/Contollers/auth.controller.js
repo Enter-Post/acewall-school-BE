@@ -18,6 +18,7 @@ import xlsx from "xlsx";
 import OPT from "../Models/opt.model.js";
 import GuardianAcc from "../Models/guardianAcc.model.js";
 import LoginActivity from "../Models/userActivity.model.js";
+import { trackLogin, trackLogout } from "../Utiles/businessLogger.js";
 
 export const bulkSignup = async (req, res) => {
   try {
@@ -726,6 +727,9 @@ export const login = async (req, res) => {
       });
     }
 
+    // Track login activity
+    trackLogin(user._id, req);
+
     // ✅ Pass both req and res here
     const token = generateToken(user, user.role, req, res);
 
@@ -1151,6 +1155,14 @@ export const logout = async (req, res) => {
 
     const portal = host && host.startsWith("admin.") ? "admin" : "client";
     const cookieName = portal === "admin" ? "admin_jwt" : "client_jwt";
+
+    // Get user ID from request before clearing cookie
+    const userId = req.user?._id || req.user?.id;
+
+    // Track logout activity (before clearing cookie)
+    if (userId) {
+      trackLogout(userId, req);
+    }
 
     // Clear the cookie - MUST match the attributes used when setting the cookie
     res.clearCookie(cookieName, {

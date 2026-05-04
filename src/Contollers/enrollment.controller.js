@@ -6,6 +6,7 @@ import User from "../Models/user.model.js";
 import Submission from "../Models/submission.model.js";
 import Assessment from "../Models/Assessment.model.js";
 import Lesson from "../Models/lesson.model.sch.js";
+import { trackEnrollment } from "../Utiles/businessLogger.js";
 
 // In your Course or Enrollment Controller
 export const getMyEnrolledCourses = async (req, res) => {
@@ -58,6 +59,12 @@ export const enrollment = async (req, res) => {
       student: userId,
       course: courseId,
     });
+
+    // Track enrollment activity
+    trackEnrollment(userId, courseId, course.courseTitle, req, {
+      enrollmentId: enrollment._id,
+    });
+
     res.status(201).json({ message: "Enrollment successful", enrollment });
   } catch (err) {
     res.status(500).json({ error: err.message });
