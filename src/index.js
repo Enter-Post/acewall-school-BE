@@ -1,19 +1,10 @@
 // Load env vars FIRST before any other imports
 import 'dotenv/config';
-
-// Console log all environment variables
-console.log('=== Environment Variables ===');
-console.log('SAML_OKTA_IDP_ISSUER:', process.env.SAML_OKTA_IDP_ISSUER);
-console.log('SAML_OKTA_ENTRY_POINT:', process.env.SAML_OKTA_ENTRY_POINT);
-console.log('SAML_OKTA_CERT:', process.env.SAML_OKTA_CERT);
-console.log('==============================');
-
 import path from "path";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -65,6 +56,7 @@ import parentRoutes from "./Routes/Parent.Routes.js";
 import attendanceRoutes from "./Routes/Attendance.routes.js";
 import loginActivityRoutes from "./Routes/LoginActivity.Routes.js";
 import zoomRoutes from "./Routes/Zoom.Routes.js";
+import ltiRoutes from "./Routes/lti.Routes.js";
 import notificationRoutes from "./Routes/notification.Routes.js";
 import googleDriveRoutes from "./Routes/GoogleDrive.Routes.js";
 import "./cronJobs/assessmentReminder.js";
@@ -72,8 +64,11 @@ import { startZoomMeetingMonitor } from "./cronJobs/zoomMeetingMonitor.js";
 import { errorHandler } from "./middlewares/errorHandler.middleware.js";
 import { requestLogger, errorLogger } from "./middlewares/activityLog.middleware.js";
 import activityLogRoutes from "./Routes/activityLog.Routes.js";
-
 const PORT = process.env.PORT || 5050;
+import path from "path";
+import { fileURLToPath } from "url";
+import { createKeys, buildJWKS } from "./lib/createJWKS.js";
+import session from "express-session";
 
 // Trust proxy (required for secure cookies behind ngrok)
 app.set("trust proxy", 1);
@@ -102,6 +97,25 @@ app.use((req, res, next) => {
 });
 
 // CORS must be before session to handle preflight
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+let keys;
+
+(async () => {
+  keys = await createKeys();
+})();
+
+app.get("/jwks.json", async (req, res) => {
+  const jwks = await buildJWKS(keys.publicKey);
+
+  res.setHeader("Content-Type", "application/json");
+  res.json(jwks);
+});
+
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use(
   cors({
     origin: [
@@ -112,6 +126,7 @@ app.use(
       "http://localhost:5173",
       "http://localhost:5174",
       process.env.FRONTEND_URL || "http://localhost:5173",
+      "http://localhost:4000",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     credentials: true,
@@ -162,6 +177,22 @@ app.use(passport.session());
 
 // Initialize SAML strategies
 initializeSamlStrategy();
+app.use(session({
+  secret: "lti-secret",
+  resave: false,
+  saveUninitialized: true,
+  cookie: {
+    secure: true,       // Set to false for ngrok testing
+    sameSite: "none",     // Changed from "none" to "lax"
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+app.use((req, res, next) => {
+  res.setHeader("Content-Security-Policy", "frame-ancestors *");
+  next();
+})
 
 app.use("/api/auth", authRoutes);
 app.use("/api/auth/saml", samlRoutes);
@@ -206,6 +237,8 @@ app.use("/api/zoom", zoomRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/drive", googleDriveRoutes);
 app.use("/api/logs", activityLogRoutes);
+app.use("/api/lti", ltiRoutes)
+
 
 // Swagger API Documentation
 app.use('/api/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {

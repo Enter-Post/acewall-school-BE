@@ -45,19 +45,19 @@ export const generateToken = (
   );
 
   // ----------------- Set cookie ONLY if allowed -----------------
+
   if (options.setCookie) {
     if (!res || !res.cookie) {
       throw new Error("❌ Express `res` object missing");
     }
 
-    res.cookie(cookieName, token, {
+    const cookieResult = res.cookie(cookieName, token, {
       maxAge: 7 * 24 * 60 * 60 * 1000,
       httpOnly: true,
       sameSite: "none",
       secure: true,
       path: "/",
     });
-
     console.log(`✅ Cookie [${cookieName}] set for ${portal}`);
   }
 

@@ -70,6 +70,10 @@ const UserSchema = new mongoose.Schema(
       refreshToken: { type: String, default: null },
       expiryDate: { type: Date, default: null },
       scope: { type: String, default: null },
+    ltiUser: {
+      status: { type: Boolean, default: false },
+      platformId: { type: String },
+      LTI_id: { type: String },
     },
   },
   { timestamps: true },
