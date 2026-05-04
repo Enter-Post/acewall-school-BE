@@ -65,10 +65,7 @@ import { errorHandler } from "./middlewares/errorHandler.middleware.js";
 import { requestLogger, errorLogger } from "./middlewares/activityLog.middleware.js";
 import activityLogRoutes from "./Routes/activityLog.Routes.js";
 const PORT = process.env.PORT || 5050;
-import path from "path";
-import { fileURLToPath } from "url";
 import { createKeys, buildJWKS } from "./lib/createJWKS.js";
-import session from "express-session";
 
 // Trust proxy (required for secure cookies behind ngrok)
 app.set("trust proxy", 1);
@@ -96,9 +93,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// CORS must be before session to handle preflight
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 let keys;
 
 (async () => {

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Enrollment from "../Models/Enrollement.model.js";
 import Assessment from "./Assessment.model.js";
+
 const UserSchema = new mongoose.Schema(
   {
     profileImg: {
@@ -70,13 +71,15 @@ const UserSchema = new mongoose.Schema(
       refreshToken: { type: String, default: null },
       expiryDate: { type: Date, default: null },
       scope: { type: String, default: null },
+    },
     ltiUser: {
       status: { type: Boolean, default: false },
       platformId: { type: String },
       LTI_id: { type: String },
     },
   },
-  { timestamps: true },
+  { timestamps: true }
+
 );
 
 // 🔹 Pre-remove hook to delete all enrollments when a user is deleted
