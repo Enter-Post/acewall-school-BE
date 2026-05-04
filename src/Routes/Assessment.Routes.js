@@ -181,7 +181,7 @@ router.get("/stats/:assessmentId", isUser, getAssessmentStats);
  *       401:
  *         description: Unauthorized
  */
-router.post("/create", upload.array("files"), isUser, createAssessment);
+router.post("/create", upload.any(), isUser, createAssessment);
 
 /**
  * @swagger

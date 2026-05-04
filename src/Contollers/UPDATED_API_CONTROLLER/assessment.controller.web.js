@@ -37,12 +37,25 @@ export const createAssessment_updated = async (req, res) => {
       if (q.files && Array.isArray(q.files) && q.files.length > 0) {
         const uploaded = [];
         for (const file of q.files) {
-          const result = await uploadToCloudinary(file.buffer, "assessment_files");
-          uploaded.push({
-            url: result.secure_url,
-            publicId: result.public_id,
-            filename: file.originalname,
-          });
+          // Skip upload for Google Drive files (already have URLs)
+          if (file.source === 'google_drive' && file.url) {
+            uploaded.push({
+              url: file.url,
+              filename: file.filename,
+              type: file.type,
+              source: 'google_drive',
+            });
+          } else if (file.buffer) {
+            // Only upload local files (they have buffer from multer)
+            const result = await uploadToCloudinary(file.buffer, "assessment_files");
+            uploaded.push({
+              url: result.secure_url,
+              publicId: result.public_id,
+              filename: file.originalname,
+              type: file.mimetype,
+              source: 'local',
+            });
+          }
         }
         q.files = uploaded;
       }

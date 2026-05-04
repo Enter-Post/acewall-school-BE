@@ -7,7 +7,9 @@ const PostSchema = new mongoose.Schema({
     assets: [{ 
         url: { type: String }, 
         fileName: { type: String }, 
-        type: { type: String } 
+        type: { type: String },
+        source: { type: String, default: 'local' },
+        publicId: { type: String }
     }],
     author: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     color: { type: String },

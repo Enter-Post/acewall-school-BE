@@ -14,6 +14,8 @@ const questionSchema = new Schema({
       url: { type: String },
       filename: { type: String },
       publicId: { type: String },
+      type: { type: String },
+      source: { type: String, default: 'local' },
     },
   ],
   question: { type: String, required: true },

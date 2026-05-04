@@ -15,6 +15,8 @@ const discussionSchema = new mongoose.Schema(
         type: { type: String },
         filename: { type: String },
         publicId: { type: String },
+        source: { type: String, default: 'local' },
+        size: { type: Number, default: 0 },
       },
     ],
     dueDate: {

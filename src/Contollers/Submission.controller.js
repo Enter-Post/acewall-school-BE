@@ -11,6 +11,7 @@ import Lesson from "../Models/lesson.model.sch.js";
 import Chapter from "../Models/chapter.model.sch.js";
 import { updateGradebookOnSubmission } from "../Utiles/updateGradebookOnSubmission.js";
 import generateAssessmentSummary from "../../utils/generateAssessmentSummary.js";
+import { trackAssignmentSubmission, trackQuizSubmission } from "../Utiles/businessLogger.js";
 
 dotenv.config();
 
@@ -66,7 +67,28 @@ export const submission = async (req, res) => {
         url: result.secure_url,
         filename: file.originalname,
         public_id: result.public_id,
+        source: 'local',
       });
+    }
+
+    // ✅ Handle Google Drive files
+    const { googleDriveFiles } = req.body;
+    if (googleDriveFiles) {
+      try {
+        const driveFiles = JSON.parse(googleDriveFiles);
+        if (Array.isArray(driveFiles)) {
+          driveFiles.forEach(file => {
+            answerFiles.push({
+              url: file.url,
+              filename: file.filename,
+              type: file.type || 'application/pdf',
+              source: 'google_drive',
+            });
+          });
+        }
+      } catch (err) {
+        console.error("Error parsing Google Drive files:", err);
+      }
     }
 
     // Prepare final answers
@@ -192,6 +214,39 @@ export const submission = async (req, res) => {
       resubmitted: { status: resubmission, count: submissionCount },
     });
     await submission.save();
+
+    // Track assignment/quiz submission
+    if (assessment.assessmentType === "quiz") {
+      trackQuizSubmission(
+        studentId,
+        assessmentId,
+        assessment.course,
+        totalScore,
+        maxScore,
+        req,
+        {
+          submissionId: submission._id,
+          graded,
+          status,
+          fileCount: answerFiles.length,
+        }
+      );
+    } else {
+      trackAssignmentSubmission(
+        studentId,
+        assessmentId,
+        assessment.course,
+        req,
+        {
+          submissionId: submission._id,
+          assessmentType: assessment.assessmentType,
+          graded,
+          status,
+          fileCount: answerFiles.length,
+          totalScore: assessment.assessmentType === "file" ? null : totalScore,
+        }
+      );
+    }
 
     await updateGradebookOnSubmission(
       submission.studentId,

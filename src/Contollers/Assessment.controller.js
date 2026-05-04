@@ -180,6 +180,7 @@ export const createAssessment = async (req, res) => {
     quarter,
     dueDate,
     category,
+    googleDriveFiles,
   } = req.body;
 
   const files = req.files;
@@ -187,10 +188,30 @@ export const createAssessment = async (req, res) => {
 
   try {
     const parsedQuestions = JSON.parse(questions || "[]");
+    
+    // Parse Google Drive files if provided
+    let driveFiles = [];
+    if (googleDriveFiles) {
+      try {
+        driveFiles = JSON.parse(googleDriveFiles);
+      } catch (err) {
+        console.error("Error parsing Google Drive files:", err);
+      }
+    }
 
-    if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+    // Process file type questions - attach files to each question
+    if (Array.isArray(parsedQuestions)) {
       for (const [index, q] of parsedQuestions.entries()) {
-        if (!q.type || !["mcq", "truefalse", "qa"].includes(q.type)) {
+        if (q.type === "file") {
+          // Preserve existing Google Drive files from question data
+          // (sent from frontend in processedQuestions)
+          const existingFiles = Array.isArray(q.files) ? q.files : [];
+          
+          // Initialize files array with existing Google Drive files
+          q.files = existingFiles.filter(f => f.source === 'google_drive');
+        }
+        
+        if (!q.type || !["mcq", "truefalse", "qa", "file"].includes(q.type)) {
           throw new Error(`Invalid question type at index ${index}`);
         }
 
@@ -223,19 +244,37 @@ export const createAssessment = async (req, res) => {
       }
     }
 
-    // ✅ Upload files (PDFs etc.)
+    // Upload local files (PDFs etc.) - handle question-specific files
     let uploadedFiles = [];
-    if (files && files.length > 0) {
+    if (files && Array.isArray(files) && files.length > 0) {
+      // Handle question-specific files (pattern: question_${index}_file_${fileIndex})
       for (const file of files) {
-        const result = await uploadToCloudinary(file.buffer, "lesson_pdfs");
-        uploadedFiles.push({
-          url: result.secure_url,
-          filename: file.originalname,
-        });
+        const match = file.fieldname.match(/question_(\d+)_file_(\d+)/);
+        if (match) {
+          const questionIndex = parseInt(match[1]);
+          if (parsedQuestions[questionIndex] && parsedQuestions[questionIndex].type === 'file') {
+            const result = await uploadToCloudinary(file.buffer, "assessment_files");
+            parsedQuestions[questionIndex].files = parsedQuestions[questionIndex].files || [];
+            parsedQuestions[questionIndex].files.push({
+              url: result.secure_url,
+              filename: file.originalname,
+              type: file.mimetype,
+              source: 'local',
+            });
+          }
+        } else {
+          // Handle legacy file uploads (not question-specific)
+          const result = await uploadToCloudinary(file.buffer, "lesson_pdfs");
+          uploadedFiles.push({
+            url: result.secure_url,
+            filename: file.originalname,
+            source: 'local',
+          });
+        }
       }
     }
 
-    // ✅ Infer course/chapter if not explicitly given
+    // Infer course/chapter if not explicitly given
     let finalCourse = course;
     let finalChapter = chapter;
 

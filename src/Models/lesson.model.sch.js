@@ -9,6 +9,8 @@ const LessonSchema = new mongoose.Schema(
         url: { type: String},
         public_id: { type: String },
         filename: { type: String },
+        type: { type: String },
+        source: { type: String, enum: ['local', 'google_drive'], default: 'local' },
         uploadedAt: { type: Date, default: Date.now },
       },
     ],

@@ -4,7 +4,7 @@ import CourseSch from "../Models/courses.model.sch.js";
 import Enrollment from "../Models/Enrollement.model.js";
 
 export const createpage = async (req, res) => {
-    const { title, description } = req.body;
+    const { title, description, googleDriveImage, googleDrivePdf } = req.body;
     const { courseId, type, typeId } = req.params;
 
     if (!courseId) {
@@ -15,6 +15,7 @@ export const createpage = async (req, res) => {
     const files = req.files?.files || [];
 
     try {
+        // Handle local PDF files
         const uploadedFiles = await Promise.all(
             files.map(async (file) => {
                 const result = await uploadToCloudinary(file.buffer, "discussion_files");
@@ -23,18 +24,53 @@ export const createpage = async (req, res) => {
                     publicId: result.public_id,
                     type: file.mimetype,
                     filename: file.originalname,
+                    source: 'local'
                 };
             })
         );
 
+        // Handle Google Drive PDF if present
+        if (googleDrivePdf) {
+            try {
+                const drivePdf = JSON.parse(googleDrivePdf);
+                uploadedFiles.push({
+                    url: drivePdf.url,
+                    publicId: drivePdf.publicId,
+                    type: drivePdf.type || 'application/pdf',
+                    filename: drivePdf.filename,
+                    source: 'google_drive'
+                });
+            } catch (err) {
+                console.error("Error parsing Google Drive PDF:", err);
+            }
+        }
+
         let imageData = null;
+        
+        // Handle local image
         if (image) {
             const result = await uploadToCloudinary(image.buffer, "page_images");
             imageData = {
                 url: result.secure_url,
                 publicId: result.public_id,
                 filename: image.originalname,
+                source: 'local'
             };
+        }
+        
+        // Handle Google Drive image if present
+        if (googleDriveImage) {
+            try {
+                const driveImage = JSON.parse(googleDriveImage);
+                imageData = {
+                    url: driveImage.url,
+                    publicId: driveImage.publicId,
+                    filename: driveImage.filename,
+                    source: 'google_drive'
+                };
+            } catch (err) {
+                console.error("Error parsing Google Drive image:", err);
+            }
         }
 
         let newPage;
