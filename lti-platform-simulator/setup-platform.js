@@ -10,7 +10,7 @@ const platformConfig = {
   authorization_endpoint: "http://localhost:4000/authorize",
   token_endpoint: "http://localhost:4000/token",
   jwks_url: "http://localhost:4000/.well-known/jwks.json",
-  redirect_uri: `${LMS_URL}/api/lti/launch`,
+  redirect_uri: `http://localhost:5050/api/lti/launch`,
   active: true
 };
 

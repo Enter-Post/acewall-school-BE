@@ -1,7 +1,9 @@
 import crypto from "crypto";
-import { jwtVerify, createRemoteJWKSet } from "jose";
+import { jwtVerify, createRemoteJWKSet, importSPKI } from "jose";
 import LTIPlatform from "../Models/LTIPlatfrom.model.js";
-import mongoose from "mongoose";
+import LTIState from "../Models/LTIState.model.js";
+import { generateToken } from "../Utiles/jwtToken.js";
+import User from "../Models/user.model.js";
 
 export const ltiLogin = async (req, res) => {
   try {
@@ -10,15 +12,22 @@ export const ltiLogin = async (req, res) => {
       login_hint,
       target_link_uri,
       lti_message_hint,
-    } = req.query;
+      lti_deployment_id,
+    } = req.body;
+
+    // console.log("req.body: ", req.body);
+    console.log("Login hitted")
 
     if (!iss || !login_hint || !target_link_uri) {
       return res.status(400).send("Missing required params");
     }
 
-    const specificPlatform = await LTIPlatform.findOne({ issuer: iss, active: true });
+    const platform = await LTIPlatform.findOne({
+      issuer: iss,
+      active: true,
+    });
 
-    if (!specificPlatform) {
+    if (!platform) {
       return res.status(400).send("Platform not registered");
     }
 
@@ -26,32 +35,43 @@ export const ltiLogin = async (req, res) => {
     const state = crypto.randomBytes(16).toString("hex");
     const nonce = crypto.randomBytes(16).toString("hex");
 
-    req.session.ltiState = state;
-    req.session.ltiNonce = nonce;
+    // 💾 STORE IN DB instead of session
+    await LTIState.create({
+      state,
+      nonce,
+    });
 
-    console.log("req.session.ltiState in login:", req.session.ltiState)
-    console.log("req.session.ltiNonce in login:", req.session.ltiNonce)
+    console.log("Stored state in DB:", state);
+    console.log("Stored nonce in DB:", nonce);
 
-    // 🔁 Redirect to platform authorization endpoint
-    const redirectUrl = new URL(specificPlatform.authorization_endpoint);
+    // 🔁 Build redirect URL
+    const redirectUrl = new URL(platform.authorization_endpoint);
 
     redirectUrl.searchParams.set("response_type", "id_token");
-    redirectUrl.searchParams.set("client_id", specificPlatform.client_id);
-    redirectUrl.searchParams.set("redirect_uri", specificPlatform.redirect_uri);
+    redirectUrl.searchParams.set("client_id", platform.client_id);
+
+    redirectUrl.searchParams.set(
+      "redirect_uri",
+      platform.redirect_uris?.[0]
+    );
+
     redirectUrl.searchParams.set("scope", "openid");
     redirectUrl.searchParams.set("state", state);
-    redirectUrl.searchParams.set("response_mode", "form_post");
     redirectUrl.searchParams.set("nonce", nonce);
+    redirectUrl.searchParams.set("response_mode", "form_post");
+
     redirectUrl.searchParams.set("login_hint", login_hint);
+    redirectUrl.searchParams.set("target_link_uri", target_link_uri);
+
+    redirectUrl.searchParams.set("prompt", "none");
 
     if (lti_message_hint) {
       redirectUrl.searchParams.set("lti_message_hint", lti_message_hint);
     }
 
-    // console.log("redirectUrl:", redirectUrl)
+    console.log("redirectUrl:", redirectUrl.toString());
 
     return res.redirect(redirectUrl.toString());
-
   } catch (err) {
     console.error("LTI Login Error:", err);
     res.status(500).send("Login failed");
@@ -62,69 +82,131 @@ export const ltiLaunch = async (req, res) => {
   try {
     const { id_token, state } = req.body;
 
-    // console.log("id_token in launch:", id_token)
-    // console.log("state in launch:", state)
+    console.log("id_token: ", id_token)
+    console.log("state: ", state)
 
     if (!id_token) {
       return res.status(400).send("Missing id_token");
     }
 
-    // 🧠 Decode WITHOUT verifying (to get issuer)
+    // 🔐 Decode safely (base64url fix)
     const decoded = JSON.parse(
-      Buffer.from(id_token.split(".")[1], "base64").toString()
+      Buffer.from(id_token.split(".")[1], "base64url").toString()
     );
 
     const iss = decoded.iss;
 
-    // 🔍 Find platform
-    const platform = await LTIPlatform.findOne({ issuer: iss, active: true });
+    const platform = await LTIPlatform.findOne({
+      issuer: iss,
+      active: true,
+    });
+
     if (!platform) {
       return res.status(400).send("Unknown platform");
     }
 
-    console.log(platform, "platform in the launch")
+    const publicKey = await importSPKI(platform.public_key, "RS256");
 
-    // 🔐 Verify JWT using platform JWKS
+    // 🔑 JWKS verification
     const JWKS = createRemoteJWKSet(new URL(platform.jwks_url));
 
-    const { payload } = await jwtVerify(id_token, JWKS, {
+    const { payload } = await jwtVerify(id_token, publicKey, {
       issuer: platform.issuer,
       audience: platform.client_id,
     });
 
-    console.log("req.session.ltiState in launch: ", req.session.ltiState)
-    console.log("req.session.ltiNonce in launch: ", req.session.ltiNonce)
+    const stored = await LTIState.findOne({ state });
 
-    // ✅ Validate state & nonce
-    if (state !== req.session.ltiState) {
-      return res.status(400).send("Invalid state");
+    if (!stored) {
+      return res.status(400).send("Invalid or expired state");
     }
 
-    if (payload.nonce !== req.session.ltiNonce) {
+    if (payload.nonce !== stored.nonce) {
       return res.status(400).send("Invalid nonce");
     }
 
-    // 👤 Extract user info
-    const user = {
-      id: payload.sub,
-      name: payload.name,
-      email: payload.email,
-    };
+    // 🔒 Deployment validation (IMPORTANT)
+    const deploymentId =
+      payload[
+      "https://purl.imsglobal.org/spec/lti/claim/deployment_id"
+      ];
 
-    // 📚 Extract course/context
-    const context = payload["https://purl.imsglobal.org/spec/lti/claim/context"];
+    if (
+      platform.deployments.length &&
+      !platform.deployments.includes(deploymentId)
+    ) {
+      return res.status(400).send("Invalid deployment");
+    }
+
+    // 📦 Message type check
+    const messageType =
+      payload[
+      "https://purl.imsglobal.org/spec/lti/claim/message_type"
+      ];
+
+    if (messageType !== "LtiResourceLinkRequest") {
+      return res.status(400).send("Invalid message type");
+    }
+
+    // 👤 User info
+    // const user = {
+    //   id: payload.sub,
+    //   name: payload.name,
+    //   email: payload.email,
+    // };
 
     // 🎭 Roles
-    const roles = payload["https://purl.imsglobal.org/spec/lti/claim/roles"];
+    const roles =
+      payload[
+      "https://purl.imsglobal.org/spec/lti/claim/roles"
+      ] || [];
 
-    // 👉 Create session (your LMS login)
-    req.session.user = user;
+    const isInstructor = roles.includes(
+      "http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor"
+    );
 
-    console.log("LTI Launch Success:", { user, context, roles });
+    console.log("payload.sub in launch:", payload.sub);
 
-    // 🚀 Redirect to your LMS dashboard/course
-    return res.redirect("/dashboard");
+    let user;
 
+    const isUserExists = await User.findOne({ ltiUser: { LTI_id: payload.sub } });
+
+    if (!isUserExists) {
+      // Create user
+      user = new User({
+        firstName: payload.name,
+        email: payload.email,
+        ltiUser: {
+          LTI_id: payload.sub,
+        },
+        role: isInstructor ? "teacher" : "student",
+      });
+      await user.save();
+    } else {
+      user = isUserExists;
+    }
+
+    // 🔐 your app token
+    const token = generateToken(
+      user,
+      isInstructor ? "teacher" : "student",
+      req,
+      res
+    );
+
+    // 🚀 redirect to frontend
+    const FRONTEND_URL =
+      process.env.FRONTEND_URL || "http://localhost:5173";
+
+    return res.send(`
+      <html>
+        <body>
+          <script>
+            window.top.location.href = "${FRONTEND_URL}?token=${token}";
+          </script>
+        </body>
+      </html>
+    `);
   } catch (err) {
     console.error("LTI Launch Error:", err);
     res.status(500).send("Launch failed");

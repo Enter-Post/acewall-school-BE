@@ -41,7 +41,7 @@ async function testLaunch() {
     
     // Check if LMS responded correctly (you might need to adjust this based on your LMS response)
     try {
-      const dashboardResponse = await axios.get(`${LMS_URL}/dashboard`, {
+      const dashboardResponse = await axios.get(`${LMS_URL}`, {
         validateStatus: (status) => status < 500
       });
       

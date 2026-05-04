@@ -6,7 +6,6 @@ const LTIPlatformSchema = new mongoose.Schema({
     required: true,
   },
 
-  // REQUIRED for JWT validation
   issuer: {
     type: String,
     required: true,
@@ -17,12 +16,11 @@ const LTIPlatformSchema = new mongoose.Schema({
     required: true,
   },
 
-  deployment_id: {
-    type: String,
-    required: true,
+  deployments: {
+    type: [String],
+    default: [],
   },
 
-  // OIDC endpoints (used in login flow)
   authorization_endpoint: {
     type: String,
     required: true,
@@ -38,16 +36,21 @@ const LTIPlatformSchema = new mongoose.Schema({
     required: true,
   },
 
-  // where platform sends launch request
-  redirect_uri: {
-    type: String,
+  redirect_uris: {
+    type: [String],
     required: true,
   },
 
-  // optional but useful
+  initiate_login_url: String,
+  launch_url: String,
+
   active: {
     type: Boolean,
     default: true,
+  },
+
+  public_key: {
+    type: String,
   },
 
 }, { timestamps: true });

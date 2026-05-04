@@ -39,11 +39,13 @@ export const isUser = async (req, res, next) => {
         error: true,
         message: `No auth token provided for ${portal} portal`,
       });
-    } 
+    }
 
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRAT);
+
+      console.log("decoded in isUser: ", decoded);
     } catch (err) {
       return res.status(401).json({
         error: true,

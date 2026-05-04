@@ -99,10 +99,17 @@ app.use(session({
   resave: false,
   saveUninitialized: true,
   cookie: {
-    secure: true,       // true in HTTPS
-    sameSite: "none",    // 🔥 REQUIRED for LTI
-  },
+    secure: true,       // Set to false for ngrok testing
+    sameSite: "none",     // Changed from "none" to "lax"
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
 }));
+
+app.use((req, res, next) => {
+  res.setHeader("Content-Security-Policy", "frame-ancestors *");
+  next();
+})
 
 app.use("/api/auth", authRoutes);
 app.use("/api/category", categoryRoutes);

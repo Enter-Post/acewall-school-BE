@@ -54,6 +54,11 @@ const UserSchema = new mongoose.Schema(
       announcement: { type: Boolean, default: true },
       assessments: { type: Boolean, default: true },
     },
+    ltiUser: {
+      status: { type: Boolean, default: false },
+      platformId: { type: String },
+      LTI_id: { type: String },
+    },
   },
   { timestamps: true },
 );

@@ -5,7 +5,7 @@ import LTIPlatform from "../Models/LTIPlatfrom.model.js"
 
 const router = express.Router()
 
-router.get("/login", ltiLogin)
+router.post("/login", ltiLogin)
 router.post("/launch", ltiLaunch)
 router.post("/create-platform", createPlatform)
 router.get("/list-platforms", async (req, res) => {
