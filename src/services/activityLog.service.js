@@ -1,5 +1,6 @@
 import ActivityLog from "../Models/activityLog.model.js";
 import { UAParser } from "ua-parser-js";
+import mongoose from "mongoose";
 
 /**
  * Activity Logging Service
@@ -507,6 +508,191 @@ export const flushLogQueue = async () => {
 // Optional: Set up interval for batch processing
 // setInterval(flushLogQueue, BATCH_INTERVAL);
 
+/**
+ * Delete logs older than specified days
+ * @param {number} days - Number of days (default: 60)
+ * @returns {Promise<Object>} - Deletion result
+ */
+export const deleteOldLogs = async (days = 60) => {
+  try {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    const result = await ActivityLog.deleteMany({
+      timestamp: { $lt: cutoffDate },
+    });
+
+    console.log(`[ActivityLogService] Deleted ${result.deletedCount} old logs (older than ${days} days)`);
+    return {
+      success: true,
+      deletedCount: result.deletedCount,
+      cutoffDate,
+    };
+  } catch (error) {
+    console.error("[ActivityLogService] Error deleting old logs:", error);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+};
+
+/**
+ * Get users by role with last activity info
+ * @param {string} role - User role (student, teacher)
+ * @returns {Promise<Array>} - Users with last activity
+ */
+export const getUsersByRoleWithActivity = async (role) => {
+  try {
+    // Import User model dynamically to avoid circular dependency
+    const { default: User } = await import("../Models/user.model.js");
+
+    const users = await User.find({ role })
+      .select("firstName lastName email role createdAt")
+      .lean();
+
+    // Get last activity for each user
+    const usersWithActivity = await Promise.all(
+      users.map(async (user) => {
+        const userId = user._id.toString();
+        // Support both ObjectId and string userId formats in logs
+        const lastLog = await ActivityLog.findOne({
+          $or: [
+            { userId: userId },
+            { userId: new mongoose.Types.ObjectId(userId) },
+          ],
+        })
+          .sort({ timestamp: -1 })
+          .select("timestamp type event")
+          .lean();
+
+        return {
+          ...user,
+          lastActivity: lastLog?.timestamp || null,
+          lastActivityType: lastLog?.type || null,
+          lastActivityEvent: lastLog?.event || null,
+        };
+      })
+    );
+
+    return usersWithActivity;
+  } catch (error) {
+    console.error("[ActivityLogService] Error fetching users by role:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get logs by user with search support
+ * @param {Object} params
+ * @param {string} params.userId - User ID
+ * @param {string} params.type - Log type filter
+ * @param {Date} params.startDate - Start date
+ * @param {Date} params.endDate - End date
+ * @param {string} params.search - Search text for event
+ * @param {number} params.page - Page number
+ * @param {number} params.limit - Items per page
+ */
+export const getLogsByUser = async ({
+  userId,
+  type,
+  startDate,
+  endDate,
+  search,
+  page = 1,
+  limit = 20,
+}) => {
+  try {
+    // Support both ObjectId and string userId formats
+    const query = {
+      $or: [
+        { userId: userId },
+        { userId: new mongoose.Types.ObjectId(userId) },
+      ],
+    };
+
+    if (type) query.type = type;
+    if (startDate || endDate) {
+      query.timestamp = {};
+      if (startDate) query.timestamp.$gte = new Date(startDate);
+      if (endDate) query.timestamp.$lte = new Date(endDate);
+    }
+    if (search) {
+      query.event = { $regex: search, $options: "i" };
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [logs, total] = await Promise.all([
+      ActivityLog.find(query)
+        .sort({ timestamp: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      ActivityLog.countDocuments(query),
+    ]);
+
+    return {
+      logs,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      hasNext: page * limit < total,
+      hasPrev: page > 1,
+    };
+  } catch (error) {
+    console.error("[ActivityLogService] Error fetching user logs:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get user activity stats
+ * @param {string} userId - User ID
+ * @param {number} days - Number of days to look back
+ */
+export const getUserStats = async (userId, days = 30) => {
+  try {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    // Support both ObjectId and string userId formats
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    const stats = await ActivityLog.aggregate([
+      {
+        $match: {
+          $or: [
+            { userId: userId },
+            { userId: userObjectId },
+          ],
+          timestamp: { $gte: startDate },
+        },
+      },
+      {
+        $group: {
+          _id: "$type",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const totalActions = stats.reduce((sum, s) => sum + s.count, 0);
+    const logins = stats.find((s) => s._id === "login")?.count || 0;
+    const pageViews = stats.find((s) => s._id === "page_view")?.count || 0;
+
+    return {
+      totalActions,
+      logins,
+      pageViews,
+      breakdown: stats,
+    };
+  } catch (error) {
+    console.error("[ActivityLogService] Error fetching user stats:", error);
+    throw error;
+  }
+};
+
 export default {
   createLog,
   logApiCall,
@@ -523,4 +709,8 @@ export default {
   logError,
   getLogs,
   getLogStats,
+  deleteOldLogs,
+  getUsersByRoleWithActivity,
+  getLogsByUser,
+  getUserStats,
 };

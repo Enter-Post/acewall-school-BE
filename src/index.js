@@ -61,6 +61,7 @@ import notificationRoutes from "./Routes/notification.Routes.js";
 import googleDriveRoutes from "./Routes/GoogleDrive.Routes.js";
 import "./cronJobs/assessmentReminder.js";
 import { startZoomMeetingMonitor } from "./cronJobs/zoomMeetingMonitor.js";
+import { startLogCleanupJob } from "./cronJobs/logCleanup.js";
 import { errorHandler } from "./middlewares/errorHandler.middleware.js";
 import { requestLogger, errorLogger } from "./middlewares/activityLog.middleware.js";
 import activityLogRoutes from "./Routes/activityLog.Routes.js";

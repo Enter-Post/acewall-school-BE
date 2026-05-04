@@ -25,6 +25,13 @@ import {
   getPacingChartByCourse,
   updatePacingChart,
 } from "../Contollers/PacingChart.controller.js";
+import {
+  getUsersByRole,
+  getUserLogs,
+  getUserActivityStats,
+  triggerLogCleanup,
+  exportUserLogs,
+} from "../Contollers/adminLogs.controller.js";
 // import { checkRole, isAllowed } from "../Middlewares/admins.Middleware.js";
 const router = express.Router();
 
@@ -770,5 +777,12 @@ router.put("/courses/:courseId/pacing-chart", isUser, updatePacingChart);
  *         description: Unauthorized
  */
 router.delete("/courses/:courseId/pacing-chart", isUser, deletePacingChart);
+
+// Admin Logs Routes
+router.get("/users", isUser, getUsersByRole);
+router.get("/logs/:userId", isUser, getUserLogs);
+router.get("/logs/:userId/stats", isUser, getUserActivityStats);
+router.get("/logs/:userId/export", isUser, exportUserLogs);
+router.delete("/logs/cleanup", isUser, triggerLogCleanup);
 
 export default router;
