@@ -48,6 +48,15 @@ import attendanceRoutes from "./Routes/Attendance.routes.js";
 import loginActivityRoutes from "./Routes/LoginActivity.Routes.js";
 import zoomRoutes from "./Routes/Zoom.Routes.js";
 import notificationRoutes from "./Routes/notification.Routes.js";
+
+// BCPS RFI Integration Routes
+import samlRoutes from "./modules/sso/saml.routes.js";
+import onerosterRoutes from "./modules/rostering/oneroster.routes.js";
+import analyticsRoutes from "./modules/analytics/district-analytics.routes.js";
+import pdRoutes from "./modules/professional-development/pd.routes.js";
+import googleWorkspaceRoutes from "./modules/integrations/google-workspace.routes.js";
+import microsoft365Routes from "./modules/integrations/microsoft-365.routes.js";
+
 import "./cronJobs/assessmentReminder.js";
 import { startZoomMeetingMonitor } from "./cronJobs/zoomMeetingMonitor.js";
 
@@ -121,6 +130,14 @@ app.use("/api/zoom", zoomRoutes);
 app.use("/api/notifications", notificationRoutes);
 
 // Swagger API Documentation
+// BCPS RFI Routes
+app.use("/api/auth/saml", samlRoutes);
+app.use("/api/rostering/oneroster", onerosterRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/professional-development", pdRoutes);
+app.use("/api/integrations/google", googleWorkspaceRoutes);
+app.use("/api/integrations/microsoft", microsoft365Routes);
+
 app.use('/api/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
   explorer: true,
   customCss: '.swagger-ui .topbar { display: none }',

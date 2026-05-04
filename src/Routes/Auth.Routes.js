@@ -40,6 +40,7 @@ import {
   createGuardianAcc,
   verifyPasswordlessLogin,
   loginGuardianAcc,
+  googleAuthV2,
 } from "../Contollers/auth.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { upload } from "../lib/multer.config.js";
@@ -48,6 +49,40 @@ import cleverRoutes from "../modules/clever/clever.routes.js";
 const router = express.Router();
 
 router.use("/clever", cleverRoutes);
+
+/**
+ * @swagger
+ * /api/auth/google:
+ *   post:
+ *     summary: Google Sign-In V2 (Google Identity Services)
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Google ID token from Google Identity Services
+ *               role:
+ *                 type: string
+ *                 enum: [student, teacher]
+ *                 description: Required only for new users
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       201:
+ *         description: Account created successfully
+ *       400:
+ *         description: Invalid token or missing role for new user
+ *       500:
+ *         description: Server error
+ */
+router.post("/google", googleAuthV2);
 
 /**
  * @swagger
