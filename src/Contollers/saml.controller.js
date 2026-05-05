@@ -4,6 +4,7 @@ import crypto from "crypto";
 import User from "../Models/user.model.js";
 import { getSamlProviderConfig, extractSamlProfile } from "../config/saml.config.js";
 import { generateToken } from "../Utiles/jwtToken.js";
+import { trackLogin } from "../Utiles/businessLogger.js";
 
 const JWT_SECRET = process.env.JWT_SECRAT || process.env.JWT_SECRET || "your-secret-key";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
@@ -247,6 +248,9 @@ export const samlCallback = async (req, res) => {
         await user.save();
         console.log(`🔗 Linked SAML to existing user: ${user.email}`);
       }
+
+      // Track login for existing user
+      trackLogin(user._id, req, { loginMethod: "saml", provider });
     } else {
       // ========================================================================
       // NEW USER - Create with role FROM SESSION ONLY (NEVER from SAML)
@@ -272,6 +276,9 @@ export const samlCallback = async (req, res) => {
 
       await user.save();
       console.log(`✅ New user created: ${user.email} with role: ${selectedRole}`);
+
+      // Track login for new user
+      trackLogin(user._id, req, { loginMethod: "saml", provider, isNewUser: true });
     }
 
     // Generate JWT token

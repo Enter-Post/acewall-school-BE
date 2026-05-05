@@ -390,9 +390,15 @@ export const getLogs = async ({
     const query = {};
 
     if (userId) query.userId = userId;
-    if (type) query.type = type;
+    
+    // Handle special case: "error" type filter should show all logs with level=error
+    if (type === "error") {
+      query.level = "error";
+    } else if (type) {
+      query.type = type;
+    }
     if (event) query.event = event;
-    if (level) query.level = level;
+    if (level && type !== "error") query.level = level;
 
     if (startDate || endDate) {
       query.timestamp = {};
@@ -596,6 +602,7 @@ export const getUsersByRoleWithActivity = async (role) => {
 export const getLogsByUser = async ({
   userId,
   type,
+  level,
   startDate,
   endDate,
   search,
@@ -611,7 +618,15 @@ export const getLogsByUser = async ({
       ],
     };
 
-    if (type) query.type = type;
+    // Handle special case: "error" type filter should show all logs with level=error
+    if (type === "error") {
+      query.level = "error";
+    } else if (type) {
+      query.type = type;
+    }
+    if (level && type !== "error") {
+      query.level = level;
+    }
     if (startDate || endDate) {
       query.timestamp = {};
       if (startDate) query.timestamp.$gte = new Date(startDate);
@@ -659,33 +674,59 @@ export const getUserStats = async (userId, days = 30) => {
     // Support both ObjectId and string userId formats
     const userObjectId = new mongoose.Types.ObjectId(userId);
 
-    const stats = await ActivityLog.aggregate([
-      {
-        $match: {
-          $or: [
-            { userId: userId },
-            { userId: userObjectId },
-          ],
-          timestamp: { $gte: startDate },
+    const [typeStats, levelStats] = await Promise.all([
+      // Stats by type
+      ActivityLog.aggregate([
+        {
+          $match: {
+            $or: [
+              { userId: userId },
+              { userId: userObjectId },
+            ],
+            timestamp: { $gte: startDate },
+          },
         },
-      },
-      {
-        $group: {
-          _id: "$type",
-          count: { $sum: 1 },
+        {
+          $group: {
+            _id: "$type",
+            count: { $sum: 1 },
+          },
         },
-      },
+      ]),
+      // Stats by level (for error counting)
+      ActivityLog.aggregate([
+        {
+          $match: {
+            $or: [
+              { userId: userId },
+              { userId: userObjectId },
+            ],
+            timestamp: { $gte: startDate },
+          },
+        },
+        {
+          $group: {
+            _id: "$level",
+            count: { $sum: 1 },
+          },
+        },
+      ]),
     ]);
 
-    const totalActions = stats.reduce((sum, s) => sum + s.count, 0);
-    const logins = stats.find((s) => s._id === "login")?.count || 0;
-    const pageViews = stats.find((s) => s._id === "page_view")?.count || 0;
+    const totalActions = typeStats.reduce((sum, s) => sum + s.count, 0);
+    const logins = typeStats.find((s) => s._id === "login")?.count || 0;
+    const pageViews = typeStats.find((s) => s._id === "page_view")?.count || 0;
+    const clicks = typeStats.find((s) => s._id === "click")?.count || 0;
+    // Count errors by level (not by type) - this includes api_calls with error level
+    const errors = levelStats.find((s) => s._id === "error")?.count || 0;
 
     return {
       totalActions,
       logins,
       pageViews,
-      breakdown: stats,
+      clicks,
+      errors,
+      breakdown: typeStats,
     };
   } catch (error) {
     console.error("[ActivityLogService] Error fetching user stats:", error);

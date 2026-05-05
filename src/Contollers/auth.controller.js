@@ -2408,6 +2408,9 @@ export const googleAuthV2 = async (req, res) => {
         await user.save();
       }
 
+      // Track login activity
+      trackLogin(user._id, req, { loginMethod: "google" });
+
       generateToken(user, user.role, req, res);
 
       return res.status(200).json({
@@ -2458,6 +2461,9 @@ export const googleAuthV2 = async (req, res) => {
     });
 
     await newUser.save();
+
+    // Track login activity for new user
+    trackLogin(newUser._id, req, { loginMethod: "google", isNewUser: true });
 
     generateToken(newUser, newUser.role, req, res);
 

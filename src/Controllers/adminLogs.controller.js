@@ -52,6 +52,7 @@ export const getUserLogs = async (req, res) => {
       page = 1,
       limit = 20,
       type,
+      level,
       startDate,
       endDate,
       search,
@@ -67,6 +68,7 @@ export const getUserLogs = async (req, res) => {
     const result = await getLogsByUser({
       userId,
       type,
+      level,
       startDate,
       endDate,
       search,

@@ -80,7 +80,7 @@ const getClientIp = (req) => {
  * Log user login
  * Call this in your login controller after successful authentication
  */
-export const trackLogin = (userId, req) => {
+export const trackLogin = (userId, req, extraMetadata = {}) => {
   const { ipAddress, userAgent } = getRequestMeta(req);
 
   logLogin({
@@ -90,6 +90,7 @@ export const trackLogin = (userId, req) => {
     metadata: {
       loginMethod: req.body?.loginMethod || "email",
       portal: req.hostname?.startsWith("admin.") ? "admin" : "client",
+      ...extraMetadata,
     },
   });
 };
