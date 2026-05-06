@@ -32,6 +32,10 @@ import {
   triggerLogCleanup,
   exportUserLogs,
 } from "../Contollers/adminLogs.controller.js";
+import {
+  resolveIds,
+  getResolverStats,
+} from "../Controllers/idResolver.controller.js";
 // import { checkRole, isAllowed } from "../Middlewares/admins.Middleware.js";
 const router = express.Router();
 
@@ -784,5 +788,9 @@ router.get("/logs/:userId", isUser, getUserLogs);
 router.get("/logs/:userId/stats", isUser, getUserActivityStats);
 router.get("/logs/:userId/export", isUser, exportUserLogs);
 router.delete("/logs/cleanup", isUser, triggerLogCleanup);
+
+// ID Resolver Routes
+router.post("/resolve-ids", isUser, resolveIds);
+router.get("/resolve-ids/stats", isUser, getResolverStats);
 
 export default router;

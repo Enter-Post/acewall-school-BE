@@ -42,6 +42,10 @@ const ActivityLogSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
+    entitySnapshot: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
     ipAddress: {
       type: String,
       required: false,

@@ -322,13 +322,13 @@ export const samlCallback = async (req, res) => {
     // ========================================================================
     let dashboardPath;
     if (user.role === "teacher") {
-      dashboardPath = "/teacher/dashboard";
+      dashboardPath = "/teacher/";
     } else if (user.role === "student") {
-      dashboardPath = "/student/dashboard";
+      dashboardPath = "/student/";
     } else {
       // Fallback for unexpected roles
       console.warn(`⚠️ Unknown role '${user.role}', defaulting to student dashboard`);
-      dashboardPath = "/student/dashboard";
+      dashboardPath = "/student/";
     }
 
     console.log(`✅ SAML login complete: ${user.email}, redirecting to ${FRONTEND_URL}${dashboardPath}`);
