@@ -6,12 +6,88 @@ import {
   getChapterofCourse,
   getChapterOfQuarter,
   getChapterwithLessons,
+  getDeletedChapters,
+  restoreChapter,
 } from "../../Contollers/CourseControllers/chapter.controller.js";
 import { isUser } from "../../middlewares/Auth.Middleware.js";
 import { isEnrolledMiddleware } from "../../middlewares/isEnrolled.middleware.js";
 import { loginRateLimiter } from "../../middlewares/rateLimiter.middleware.js";
 
 const router = express.Router();
+
+/**
+ * @swagger
+ * /api/chapter/deleted/:courseId:
+ *   get:
+ *     summary: Get deleted chapters for a course (teacher/admin only)
+ *     tags: [Chapters]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Course ID
+ *     responses:
+ *       200:
+ *         description: List of deleted chapters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 count:
+ *                   type: number
+ *                 deletedChapters:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Chapter'
+ *       403:
+ *         description: Unauthorized
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/deleted/:courseId", isUser, getDeletedChapters);
+
+/**
+ * @swagger
+ * /api/chapter/restore/:chapterId:
+ *   patch:
+ *     summary: Restore a soft-deleted chapter (teacher/admin only)
+ *     tags: [Chapters]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: chapterId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Chapter ID to restore
+ *     responses:
+ *       200:
+ *         description: Chapter restored successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 chapter:
+ *                   $ref: '#/components/schemas/Chapter'
+ *       403:
+ *         description: Unauthorized
+ *       404:
+ *         description: Chapter not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.patch("/restore/:chapterId", isUser, restoreChapter);
 
 /**
  * @swagger

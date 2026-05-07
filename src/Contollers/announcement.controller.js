@@ -332,3 +332,79 @@ export const getAnnouncementsForParent = async (req, res) => {
     });
   }
 };
+
+export const getDeletedAnnouncements = async (req, res) => {
+  const { courseId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can view deleted announcements
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const CourseSch = await import("../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: courseId, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only view deleted announcements of your own courses" });
+      }
+    }
+
+    const deletedAnnouncements = await Announcement.find({ course: courseId, isDeleted: true })
+      .sort({ deletedAt: -1 })
+      .populate("teacher", "firstName lastName email");
+
+    res.status(200).json({
+      message: "Deleted announcements fetched successfully",
+      count: deletedAnnouncements.length,
+      deletedAnnouncements,
+    });
+  } catch (error) {
+    console.error("Error fetching deleted announcements:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const restoreAnnouncement = async (req, res) => {
+  const { announcementId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can restore announcements
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const announcement = await Announcement.findById(announcementId);
+    if (!announcement) {
+      return res.status(404).json({ message: "Announcement not found" });
+    }
+
+    if (!announcement.isDeleted) {
+      return res.status(400).json({ message: "Announcement is not deleted" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const CourseSch = await import("../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: announcement.course, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only restore announcements of your own courses" });
+      }
+    }
+
+    // Restore the announcement
+    announcement.isDeleted = false;
+    announcement.deletedAt = null;
+    await announcement.save();
+
+    res.status(200).json({ message: "Announcement restored successfully", announcement });
+  } catch (error) {
+    console.error("Error restoring announcement:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};

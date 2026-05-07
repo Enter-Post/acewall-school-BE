@@ -97,6 +97,7 @@ const assessmentSchema = new Schema(
       deductionValue: { type: Number, default: 0 } // e.g., 2 for 2 points or 2%
     },
     isDeleted: { type: Boolean, default: false },
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

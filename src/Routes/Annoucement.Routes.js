@@ -5,6 +5,8 @@ import {
   getAnnouncementsByTeacher,
   deleteAnnouncement,
   getAnnouncementsForStudent,
+  getDeletedAnnouncements,
+  restoreAnnouncement,
 } from "../Contollers/announcement.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { upload } from "../lib/multer.config.js";
@@ -284,5 +286,79 @@ router.get("/getbyteacher/:teacherId", isUser, getAnnouncementsByTeacher);
  *         description: Unauthorized
  */
 router.delete("/:id", isUser, deleteAnnouncement);
+
+/**
+ * @swagger
+ * /api/announcement/deleted/:courseId:
+ *   get:
+ *     summary: Get deleted announcements for a course (teacher/admin only)
+ *     tags: [Announcements]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Course ID
+ *     responses:
+ *       200:
+ *         description: List of deleted announcements
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 count:
+ *                   type: number
+ *                 deletedAnnouncements:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Announcement'
+ *       403:
+ *         description: Unauthorized
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/deleted/:courseId", isUser, getDeletedAnnouncements);
+
+/**
+ * @swagger
+ * /api/announcement/restore/:announcementId:
+ *   patch:
+ *     summary: Restore a soft-deleted announcement (teacher/admin only)
+ *     tags: [Announcements]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: announcementId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Announcement ID to restore
+ *     responses:
+ *       200:
+ *         description: Announcement restored successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 announcement:
+ *                   $ref: '#/components/schemas/Announcement'
+ *       403:
+ *         description: Unauthorized
+ *       404:
+ *         description: Announcement not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.patch("/restore/:announcementId", isUser, restoreAnnouncement);
 
 export default router;

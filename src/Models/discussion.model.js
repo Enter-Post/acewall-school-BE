@@ -72,6 +72,7 @@ const discussionSchema = new mongoose.Schema(
     },
     allowResubmission: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

@@ -1337,10 +1337,91 @@ export const updateLatePolicy = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Late penalty policy updated successfully",
-      assessment,
     });
   } catch (err) {
     console.error("Error updating late policy:", err);
     res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+export const getDeletedAssessments = async (req, res) => {
+  const { courseId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can view deleted assessments
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const CourseSch = await import("../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: courseId, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only view deleted assessments of your own courses" });
+      }
+    }
+
+    const deletedAssessments = await Assessment.find({ course: courseId, isDeleted: true })
+      .sort({ deletedAt: -1 })
+      .populate("category", "name")
+      .populate("chapter", "title")
+      .populate("lesson", "title")
+      .populate("createdby", "firstName lastName email");
+
+    res.status(200).json({
+      message: "Deleted assessments fetched successfully",
+      count: deletedAssessments.length,
+      deletedAssessments,
+    });
+  } catch (error) {
+    console.error("Error fetching deleted assessments:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const restoreAssessment = async (req, res) => {
+  const { assessmentId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can restore assessments
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const assessment = await Assessment.findById(assessmentId);
+    if (!assessment) {
+      return res.status(404).json({ message: "Assessment not found" });
+    }
+
+    if (!assessment.isDeleted) {
+      return res.status(400).json({ message: "Assessment is not deleted" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const CourseSch = await import("../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: assessment.course, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only restore assessments of your own courses" });
+      }
+    }
+
+    // Restore the assessment
+    assessment.isDeleted = false;
+    assessment.deletedAt = null;
+    await assessment.save();
+
+    // Restore related submissions
+    await Submission.updateMany({ assessment: assessmentId }, { isDeleted: false });
+
+    res.status(200).json({ message: "Assessment restored successfully", assessment });
+  } catch (error) {
+    console.error("Error restoring assessment:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };

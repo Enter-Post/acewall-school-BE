@@ -56,6 +56,7 @@ const SchCourseSchema = new mongoose.Schema(
     commentsEnabled: { type: Boolean, default: true },
     gradingSystem: { type: String, enum: ["normalGrading", "StandardGrading"], default: "normalGrading" },
     isDeleted: { type: Boolean, default: false },
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

@@ -393,3 +393,80 @@ export const editChapter = async (req, res) => {
     res.status(500).json({ message: "Something went wrong" });
   }
 };
+
+export const getDeletedChapters = async (req, res) => {
+  const { courseId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can view deleted chapters
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const CourseSch = await import("../../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: courseId, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only view deleted chapters of your own courses" });
+      }
+    }
+
+    const deletedChapters = await Chapter.find({ course: courseId, isDeleted: true })
+      .sort({ deletedAt: -1 })
+      .populate("quarter", "name startDate endDate")
+      .populate("createdby", "firstName lastName");
+
+    res.status(200).json({
+      message: "Deleted chapters fetched successfully",
+      count: deletedChapters.length,
+      deletedChapters,
+    });
+  } catch (error) {
+    console.error("Error fetching deleted chapters:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const restoreChapter = async (req, res) => {
+  const { chapterId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can restore chapters
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const chapter = await Chapter.findById(chapterId);
+    if (!chapter) {
+      return res.status(404).json({ message: "Chapter not found" });
+    }
+
+    if (!chapter.isDeleted) {
+      return res.status(400).json({ message: "Chapter is not deleted" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const CourseSch = await import("../../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: chapter.course, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only restore chapters of your own courses" });
+      }
+    }
+
+    // Restore the chapter
+    chapter.isDeleted = false;
+    chapter.deletedAt = null;
+    await chapter.save();
+
+    res.status(200).json({ message: "Chapter restored successfully", chapter });
+  } catch (error) {
+    console.error("Error restoring chapter:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};

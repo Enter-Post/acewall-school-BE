@@ -1750,3 +1750,85 @@ export const getStudentofCourse = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+export const getDeletedCourses = async (req, res) => {
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can view deleted courses
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    let query = { isDeleted: true };
+
+    // If teacher, only show their own deleted courses
+    if (userRole === "teacher") {
+      query.createdby = userId;
+    }
+
+    const deletedCourses = await CourseSch.find(query)
+      .sort({ deletedAt: -1 })
+      .populate("category", "title")
+      .populate("subcategory", "title")
+      .populate("semester", "name")
+      .populate("quarter", "name")
+      .populate("createdby", "firstName lastName email");
+
+    res.status(200).json({
+      message: "Deleted courses fetched successfully",
+      count: deletedCourses.length,
+      deletedCourses,
+    });
+  } catch (error) {
+    console.error("Error fetching deleted courses:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const restoreCourse = async (req, res) => {
+  const { courseId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can restore courses
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const course = await CourseSch.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    if (!course.isDeleted) {
+      return res.status(400).json({ message: "Course is not deleted" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher" && course.createdby.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "You can only restore your own courses" });
+    }
+
+    // Restore the course
+    course.isDeleted = false;
+    course.deletedAt = null;
+    await course.save();
+
+    // Restore related chapters, lessons, assessments, discussions, announcements
+    await Chapter.updateMany({ course: courseId }, { isDeleted: false });
+    await Lesson.updateMany({ course: courseId }, { isDeleted: false });
+    await Assessment.updateMany({ course: courseId }, { isDeleted: false });
+    await Discussion.updateMany({ course: courseId }, { isDeleted: false });
+    await Announcement.updateMany({ course: courseId }, { isDeleted: false });
+    await Comment.updateMany({ course: courseId }, { isDeleted: false });
+    await Enrollment.updateMany({ course: courseId }, { isDeleted: false });
+
+    res.status(200).json({ message: "Course and all related data restored successfully", course });
+  } catch (error) {
+    console.error("Error restoring course:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};

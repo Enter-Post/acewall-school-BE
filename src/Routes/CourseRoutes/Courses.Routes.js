@@ -28,6 +28,8 @@ import {
   getFullCourseData,
   getCoursesWithMeetings,
   getStudentofCourse,
+  getDeletedCourses,
+  restoreCourse,
 } from "../../Contollers/CourseControllers/courses.controller.sch.js";
 
 import { getPacingChartByCourse } from "../../Contollers/PacingChart.controller.js";
@@ -655,5 +657,72 @@ router.get("/stats/:courseId", getCourseEnrollmentStats);
 
 router.get("/:courseId/pacing-chart", isUser, getPacingChartByCourse);
 router.get("/getStudentofCourse/:courseId", isUser, getStudentofCourse)
+
+/**
+ * @swagger
+ * /api/course/deleted:
+ *   get:
+ *     summary: Get deleted courses (teacher/admin only)
+ *     tags: [Courses]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of deleted courses
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 count:
+ *                   type: number
+ *                 deletedCourses:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Course'
+ *       403:
+ *         description: Unauthorized
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/deleted", isUser, getDeletedCourses);
+
+/**
+ * @swagger
+ * /api/course/restore/:courseId:
+ *   patch:
+ *     summary: Restore a soft-deleted course (teacher/admin only)
+ *     tags: [Courses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Course ID to restore
+ *     responses:
+ *       200:
+ *         description: Course and all related data restored successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 course:
+ *                   $ref: '#/components/schemas/Course'
+ *       403:
+ *         description: Unauthorized
+ *       404:
+ *         description: Course not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.patch("/restore/:courseId", isUser, restoreCourse);
 
 export default router;
