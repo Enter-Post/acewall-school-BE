@@ -4,6 +4,7 @@ const RatingSchema = new mongoose.Schema({
   star: { type: Number, required: true },
   course: { type: mongoose.Schema.Types.ObjectId, required: true },
   createdby: { type: mongoose.Schema.Types.ObjectId, required: true },
+  isDeleted: { type: Boolean, default: false },
 });
 const Rating = mongoose.model("Rating", RatingSchema);
 

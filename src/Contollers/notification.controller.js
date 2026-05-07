@@ -3,7 +3,7 @@ import { Notification } from "../Models/Notification.model.js";
 // Get all notifications for the logged-in user
 export const getUserNotifications = async (req, res) => {
   try {
-    const notifications = await Notification.find({ recipient: req.user._id })
+    const notifications = await Notification.find({ recipient: req.user._id, isDeleted: false })
       .sort({ createdAt: -1 })
       .limit(20);
     res.status(200).json(notifications);

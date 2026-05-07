@@ -376,11 +376,11 @@ export const deleteAssessment = async (req, res) => {
       }
     }
 
-    // Delete associated submissions (cascade delete)
-    await Submission.deleteMany({ assessment: id });
+    // Soft delete associated submissions
+    await Submission.updateMany({ assessment: id }, { isDeleted: true });
 
-    // Now delete the assessment from database
-    await Assessment.findByIdAndDelete(id);
+    // Soft delete the assessment
+    await Assessment.findByIdAndUpdate(id, { isDeleted: true });
 
     res.status(200).json({ message: "Assessment deleted successfully" });
   } catch (error) {
@@ -454,7 +454,7 @@ export const getAssesmentbyID = async (req, res) => {
       select: "name",
     }).populate("studentDueDateOverrides.student", "firstName middleName lastName email");
 
-    if (!assessment) {
+    if (!assessment || assessment.isDeleted) {
       return res.status(404).json({ message: "Assessment not found" });
     }
 
@@ -468,6 +468,7 @@ export const getAssesmentbyID = async (req, res) => {
       const isEnrollment = await Enrollment.findOne({
         student: userIdObj,
         course: courseIdObj,
+        isDeleted: false,
       });
 
       if (!isEnrollment) {
@@ -496,7 +497,7 @@ export const allAssessmentByTeacher = async (req, res) => {
       return res.status(401).json({ error: "Unauthorized. User ID missing." });
     }
 
-    const assessments = await Assessment.find({ createdby })
+    const assessments = await Assessment.find({ createdby, isDeleted: false })
       .select(
         "dueDate title description course chapter lesson createdAt category type"
       )
@@ -525,6 +526,7 @@ export const getAllassessmentforStudent = async (req, res, next) => {
     const allEnrollmentofStudent = await Enrollment.find({
       student: studentId,
       status: { $ne: "CANCELLED" },
+      isDeleted: false,
     });
 
     const courseIds = allEnrollmentofStudent.map(
@@ -596,7 +598,7 @@ export const getAllassessmentforStudent = async (req, res, next) => {
 
     // 2. Fetch assessments
     const assessments = await Assessment.aggregate([
-      { $match: { course: { $in: courseIds } } },
+      { $match: { course: { $in: courseIds }, isDeleted: false } },
       ...commonLookups,
       {
         $lookup: {
@@ -676,7 +678,7 @@ export const getAllassessmentforStudent = async (req, res, next) => {
 
     // 3. Fetch discussions
     const discussions = await Discussion.aggregate([
-      { $match: { course: { $in: courseIds } } },
+      { $match: { course: { $in: courseIds }, isDeleted: false } },
       ...commonLookups,
       {
         $lookup: {
@@ -854,7 +856,7 @@ export const getAssessmentsByCourseForAdmin = async (req, res) => {
   try {
     const assessments = await Assessment.aggregate([
       // Match assessments for the given course
-      { $match: { course: new mongoose.Types.ObjectId(courseId) } },
+      { $match: { course: new mongoose.Types.ObjectId(courseId), isDeleted: false } },
 
       // Lookup category
       {

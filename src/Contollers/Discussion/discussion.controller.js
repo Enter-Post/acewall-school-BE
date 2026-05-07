@@ -103,6 +103,7 @@ export const getDiscussionsOfTeacher = async (req, res) => {
   try {
     const discussion = await Discussion.find({
       createdby: teacherId,
+      isDeleted: false,
     }).populate({
       path: "course",
       select: "courseTitle thumbnail",
@@ -127,6 +128,10 @@ export const getDiscussionbyId = async (req, res) => {
       .populate("lesson", "title")
       .populate("createdby", "firstName middleName lastName profileImg")
       .populate("studentDueDateOverrides.student", "firstName middleName lastName profileImg email")
+
+    if (!discussion || discussion.isDeleted) {
+      return res.status(404).json({ message: "Discussion not found" });
+    }
 
     if (!discussion) {
       return res.status(404).json({ message: "Discussion not found" });
@@ -173,13 +178,14 @@ export const discussionforStudent = async (req, res) => {
 
     userId = new mongoose.Types.ObjectId(userId);
 
-    const studentEnrollment = await Enrollment.find({ student: userId });
+    const studentEnrollment = await Enrollment.find({ student: userId, isDeleted: false });
     const allEnrolledCourseIds = studentEnrollment.map((enr) => enr.course);
 
     const discussions = await Discussion.find({
       $or: [
         { course: { $in: allEnrolledCourseIds } },
-      ]
+      ],
+      isDeleted: false,
     })
       .populate("course", "courseTitle thumbnail")
       .populate("category", "title")
@@ -204,7 +210,7 @@ export const discussionforStudent = async (req, res) => {
 export const chapterDiscussions = async (req, res) => {
   const { chapterId } = req.params
   try {
-    const discussion = await Discussion.find({ chapter: chapterId }).populate("course", "courseTitle thumbnail")
+    const discussion = await Discussion.find({ chapter: chapterId, isDeleted: false }).populate("course", "courseTitle thumbnail")
     if (!discussion || discussion.length === 0) {
       return res.status(404).json({ message: "No discussions found for this chapter" });
     }
@@ -218,7 +224,7 @@ export const chapterDiscussions = async (req, res) => {
 export const lessonDiscussions = async (req, res) => {
   const { lessonId } = req.params
   try {
-    const discussion = await Discussion.find({ lesson: lessonId }).populate("course", "courseTitle thumbnail")
+    const discussion = await Discussion.find({ lesson: lessonId, isDeleted: false }).populate("course", "courseTitle thumbnail")
     if (!discussion || discussion.length === 0) {
       return res.status(404).json({ message: "No discussions found for this lesson" });
     }
@@ -227,22 +233,21 @@ export const lessonDiscussions = async (req, res) => {
     console.log("error in fetching chapter discussions", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-}
+};
 
 export const courseDiscussions = async (req, res) => {
   const { courseId } = req.params
   try {
-    const discussion = await Discussion.find({ course: courseId }).populate("course", "courseTitle thumbnail")
+    const discussion = await Discussion.find({ course: courseId, isDeleted: false }).populate("course", "courseTitle thumbnail")
     if (!discussion || discussion.length === 0) {
-      return res.status(404).json({ message: "No discussions found for this lesson" });
+      return res.status(404).json({ message: "No discussions found for this course" });
     }
     res.status(200).json({ message: "Discussions fetched successfully", discussion })
   } catch (error) {
-    console.log("error in fetching chapter discussions", error);
+    console.log("error in fetching course discussions", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-}
-
+};
 
 export const setDueDateForStudentsDiscussion = async (req, res) => {
   try {

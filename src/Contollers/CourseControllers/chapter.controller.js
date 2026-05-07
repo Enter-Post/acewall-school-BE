@@ -28,7 +28,7 @@ export const createChapter = async (req, res) => {
 export const getChapterofCourse = async (req, res) => {
   const { quarterId } = req.params;
   try {
-    const chapters = await Chapter.find({ quarter: quarterId });
+    const chapters = await Chapter.find({ quarter: quarterId, isDeleted: false });
     if (!chapters)
       return res
         .status(404)
@@ -79,12 +79,12 @@ export const deleteChapter = async (req, res) => {
           }
         }
       }
-      // Delete all lessons from database
-      await Lesson.deleteMany({ chapter: chapterId });
+      // Soft delete all lessons from database
+      await Lesson.updateMany({ chapter: chapterId }, { isDeleted: true });
     }
 
-    // Now delete the chapter from database
-    const deletedChapter = await Chapter.findByIdAndDelete(chapterId);
+    // Soft delete the chapter
+    const deletedChapter = await Chapter.findByIdAndUpdate(chapterId, { isDeleted: true });
 
     res.status(200).json({
       message: "Chapter deleted successfully",
@@ -111,6 +111,7 @@ export const getChapterOfQuarter = async (req, res) => {
         $match: {
           quarter: new mongoose.Types.ObjectId(quarterId),
           course: new mongoose.Types.ObjectId(courseId),
+          isDeleted: false,
         },
       },
 
@@ -246,6 +247,7 @@ export const getChapterwithLessons = async (req, res) => {
       {
         $match: {
           _id: new mongoose.Types.ObjectId(chapterId),
+          isDeleted: false,
         },
       },
 
@@ -376,10 +378,11 @@ export const editChapter = async (req, res) => {
   const { title, description } = req.body;
   try {
     const chapter = await Chapter.findById(chapterId);
-    if (!chapter) {
+    if (!chapter || chapter.isDeleted) {
       return res.status(404).json({ message: "Chapter not found" });
     }
 
+    const lessons = await Lesson.find({ chapter: chapterId, isDeleted: false });
     chapter.title = title;
     chapter.description = description;
     chapter.save();
@@ -387,6 +390,6 @@ export const editChapter = async (req, res) => {
     res.status(200).json({ message: "Chapter updated successfully" });
   } catch (error) {
     console.log("Error in the Edit Chapter", error);
-    res.status(500).json({ message: "Somehthing went wrong" });
+    res.status(500).json({ message: "Something went wrong" });
   }
 };

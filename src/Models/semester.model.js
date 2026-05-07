@@ -6,6 +6,7 @@ const SemesterSchema = new mongoose.Schema(
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
     isArchived: { type: Boolean, default: false }, // to mark if the semester is archived
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

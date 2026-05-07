@@ -27,6 +27,7 @@ const LessonSchema = new mongoose.Schema(
       required: true,
     },
     published: { type: Boolean, default: true },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

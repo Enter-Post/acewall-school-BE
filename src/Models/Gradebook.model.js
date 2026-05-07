@@ -68,7 +68,8 @@ const GradebookSchema = new mongoose.Schema({
 
     totalAssessments: Number,
 
-    lastUpdated: { type: Date, default: Date.now }
+    lastUpdated: { type: Date, default: Date.now },
+    isDeleted: { type: Boolean, default: false }
 });
 
 const Gradebook = mongoose.model("Gradebook", GradebookSchema);

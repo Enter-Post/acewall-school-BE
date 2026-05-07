@@ -68,7 +68,7 @@ export const deleteLesson = async (req, res) => {
   try {
     // Find lesson first (don't delete yet)
     const lesson = await Lesson.findById(lessonId);
-    if (!lesson)
+    if (!lesson || lesson.isDeleted)
       return res
         .status(404)
         .json({ message: "No lesson found for this course" });
@@ -90,8 +90,8 @@ export const deleteLesson = async (req, res) => {
       }
     }
 
-    // Now delete the lesson from database
-    await Lesson.findByIdAndDelete(lessonId);
+    // Soft delete the lesson
+    await Lesson.findByIdAndUpdate(lessonId, { isDeleted: true });
 
     res.status(200).json({ message: "Lesson deleted successfully" });
   } catch (error) {
@@ -103,7 +103,7 @@ export const deleteLesson = async (req, res) => {
 export const getLessons = async (req, res) => {
   const { chapterId } = req.params;
   try {
-    const lessons = await Lesson.find({ chapter: chapterId });
+    const lessons = await Lesson.find({ chapter: chapterId, isDeleted: false });
     if (!lessons)
       return res
         .status(404)
@@ -151,7 +151,7 @@ export const deleteFile = async (req, res) => {
 
   try {
     const lesson = await Lesson.findById(lessonId);
-    if (!lesson) {
+    if (!lesson || lesson.isDeleted) {
       return res.status(404).json({ message: "Lesson not found" });
     }
 
@@ -185,7 +185,7 @@ export const getallFilesofLesson = async (req, res) => {
   try {
     const lesson = await Lesson.findById(lessonId);
 
-    if (!lesson) {
+    if (!lesson || lesson.isDeleted) {
       return res.status(404).json({ message: "Lesson not found" });
     }
 
@@ -227,7 +227,7 @@ export const addMoreFiles = async (req, res) => {
 
   try {
     const lesson = await Lesson.findById(lessonId);
-    if (!lesson) {
+    if (!lesson || lesson.isDeleted) {
       return res.status(404).json({ message: "Lesson not found" });
     }
 

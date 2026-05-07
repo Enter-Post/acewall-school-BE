@@ -54,7 +54,8 @@ const SchCourseSchema = new mongoose.Schema(
     archivedDate: { type: Date },
     courseCode: { type: String, unique: true },
     commentsEnabled: { type: Boolean, default: true },
-    gradingSystem: { type: String, enum: ["normalGrading", "StandardGrading"], default: "normalGrading" }
+    gradingSystem: { type: String, enum: ["normalGrading", "StandardGrading"], default: "normalGrading" },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

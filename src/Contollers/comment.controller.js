@@ -6,7 +6,7 @@ export const getCourseComments = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const comments = await Comment.find({ course: id }).populate(
+    const comments = await Comment.find({ course: id, isDeleted: false }).populate(
       "createdby",
       "firstName lastName profileImg role"
     );
@@ -86,7 +86,8 @@ export const allCommentsofTeacher = async (req, res) => {
 
     const comments = await Comment.find({ 
       course: { $in: courseIds },
-      createdby: { $ne: teacherId }
+      createdby: { $ne: teacherId },
+      isDeleted: false
     })
     .sort({ createdAt: -1 })
     .populate("createdby", "firstName middleName lastName profileImg");
@@ -125,8 +126,8 @@ export const deleteComment = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized to delete this comment" });
     }
 
-    // Remove the comment
-    await Comment.findByIdAndDelete(commentId);
+    // Soft delete the comment
+    await Comment.findByIdAndUpdate(commentId, { isDeleted: true });
 
     // Optionally, remove comment reference from the course
     await CourseSch.findByIdAndUpdate(courseId, {

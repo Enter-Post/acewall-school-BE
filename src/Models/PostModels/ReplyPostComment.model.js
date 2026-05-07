@@ -4,6 +4,7 @@ const ReplyPostComment = mongoose.Schema({
     text: { type: String, required: true },
     comment: { type: mongoose.Schema.Types.ObjectId, ref: "PostComment" },
     author: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    isDeleted: { type: Boolean, default: false }
 })
 
 const ReplyPostComments = mongoose.model("ReplyPostComment", ReplyPostComment)

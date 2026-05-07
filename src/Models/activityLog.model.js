@@ -93,6 +93,7 @@ const ActivityLogSchema = new mongoose.Schema(
       default: Date.now,
       index: true,
     },
+    isDeleted: { type: Boolean, default: false },
   },
   {
     timestamps: true,

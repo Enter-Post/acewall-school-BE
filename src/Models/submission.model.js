@@ -50,6 +50,7 @@ const submissionSchema = new mongoose.Schema(
     feedback: { type: String },
     allowResubmission: { type: Boolean, default: false },
     resubmitted: { status: { type: Boolean, default: false }, count: { type: Number, default: 0 } },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

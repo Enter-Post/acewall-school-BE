@@ -22,7 +22,8 @@ const PostSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId, 
         ref: "CourseSch",
         required: function() { return this.postType === "course"; } 
-    }
+    },
+    isDeleted: { type: Boolean, default: false }
 }, { timestamps: true });
 
 const Posts = mongoose.model("SocialPost", PostSchema);

@@ -105,6 +105,7 @@ export const getPosts = async (req, res) => {
         }
 
         // 3️⃣ Execute Query
+        query.isDeleted = false;
         const totalPosts = await Posts.countDocuments(query);
         const posts = await Posts.find(query)
             .populate('author', '_id firstName middleName lastName profileImg')
@@ -139,9 +140,9 @@ export const specificUserPosts = async (req, res) => {
 
         const skip = (page - 1) * limit;
 
-        const totalPosts = await Posts.countDocuments({ author: userId });
+        const totalPosts = await Posts.countDocuments({ author: userId, isDeleted: false });
 
-        const posts = await Posts.find({ author: userId })
+        const posts = await Posts.find({ author: userId, isDeleted: false })
             .populate('author', '_id firstName middleName lastName profileImg')
             .sort({ createdAt: -1 }) // newest first
             .skip(skip)
@@ -210,8 +211,8 @@ export const deletePost = async (req, res) => {
       }
     }
 
-    // Now delete the post from database
-    await Posts.findByIdAndDelete(postId);
+    // Soft delete the post
+    await Posts.findByIdAndUpdate(postId, { isDeleted: true });
 
     res.status(200).json({ message: "Post deleted successfully" });
   } catch (error) {

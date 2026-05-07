@@ -119,10 +119,10 @@ export const getAllPages = async (req, res) => {
         let pages;
 
         if (type === "lesson") {
-            pages = await Pages.find({ lesson: typeId })
+            pages = await Pages.find({ lesson: typeId, isDeleted: false })
         }
         if (type === "chapter") {
-            pages = await Pages.find({ chapter: typeId })
+            pages = await Pages.find({ chapter: typeId, isDeleted: false })
         }
         if (!pages) {
             return res.status(404).json({
@@ -148,7 +148,7 @@ export const deletePage = async (req, res) => {
     const { pageId } = req.params;
 
     try {
-        const deletedPage = await Pages.findByIdAndDelete(pageId);
+        const deletedPage = await Pages.findByIdAndUpdate(pageId, { isDeleted: true });
 
         if (!deletedPage) {
             return res.status(404).json({ message: "Page not found" });
@@ -195,7 +195,7 @@ export const getStudentPages = async (req, res) => {
         }
 
         // Step 3: Fetch pages
-        const pages = await Pages.find(courseFilter)
+        const pages = await Pages.find({ ...courseFilter, isDeleted: false })
             .sort({ createdAt: -1 })
             .populate("course", "courseTitle");
 
@@ -209,7 +209,7 @@ export const getStudentPages = async (req, res) => {
 export const ChapterPagesforStudent = async (req, res) => {
     const { chapterId } = req.params
     try {
-        const pages = await Pages.find({ chapter: chapterId })
+        const pages = await Pages.find({ chapter: chapterId, isDeleted: false })
 
         if (!pages) {
             res.status(404).json({
@@ -232,7 +232,7 @@ export const ChapterPagesforStudent = async (req, res) => {
 export const lessonPagesforStudent = async (req, res) => {
     const { lessonId } = req.params
     try {
-        const pages = await Pages.find({ lesson: lessonId })
+        const pages = await Pages.find({ lesson: lessonId, isDeleted: false })
 
         if (!pages) {
             res.status(404).json({

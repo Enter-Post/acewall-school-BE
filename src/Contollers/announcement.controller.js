@@ -170,7 +170,7 @@ export const createAnnouncement = async (req, res) => {
 export const getAnnouncementsForCourse = async (req, res) => {
   const { courseId } = req.params;
   try {
-    const announcements = await Announcement.find({ course: courseId })
+    const announcements = await Announcement.find({ course: courseId, isDeleted: false })
       .populate("teacher", "firstName lastName email")
       .sort({ createdAt: -1 });
 
@@ -188,7 +188,7 @@ export const getAnnouncementsByTeacher = async (req, res) => {
 
   try {
     // Build a filter object
-    const filter = { teacher: teacherId };
+    const filter = { teacher: teacherId, isDeleted: false };
     if (course) filter.course = course; // add course filter if provided
 
     console.log(filter, "filter")
@@ -210,7 +210,7 @@ export const deleteAnnouncement = async (req, res) => {
   try {
     // Find announcement first (don't delete yet)
     const announcement = await Announcement.findById(id);
-    if (!announcement) {
+    if (!announcement || announcement.isDeleted) {
       return res.status(404).json({ error: "Announcement not found" });
     }
 
@@ -230,8 +230,8 @@ export const deleteAnnouncement = async (req, res) => {
       }
     }
 
-    // Now delete the announcement from database
-    await Announcement.findByIdAndDelete(id);
+    // Soft delete the announcement
+    await Announcement.findByIdAndUpdate(id, { isDeleted: true });
 
     res.status(200).json({ message: "Announcement deleted successfully" });
   } catch (err) {
@@ -257,6 +257,7 @@ export const getAnnouncementsForStudent = async (req, res) => {
     // Fetch announcements with ALL fields
     const announcements = await Announcement.find({
       course: { $in: courseIds },
+      isDeleted: false,
     })
       .populate("course", "courseTitle _id thumbnail ")    // More fields if needed
       .populate("teacher", "firstName lastName email role _id")  // full teacher info
@@ -310,6 +311,7 @@ export const getAnnouncementsForParent = async (req, res) => {
     // 3. FETCH ANNOUNCEMENTS (with full data for parent visibility)
     const announcements = await Announcement.find({
       course: { $in: courseIds },
+      isDeleted: false,
     })
       .populate("course", "courseTitle _id thumbnail") 
       .populate("teacher", "firstName lastName email profileImg _id") // Included profileImg for a better UI

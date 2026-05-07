@@ -135,8 +135,8 @@ export const deleteComment = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized to delete this comment" });
     }
 
-    // Delete the comment
-    await DiscussionComment.findByIdAndDelete(id);
+    // Soft delete the comment
+    await DiscussionComment.findByIdAndUpdate(id, { isDeleted: true });
 
     res.status(200).json({ message: "Comment deleted successfully" });
   } catch (error) {

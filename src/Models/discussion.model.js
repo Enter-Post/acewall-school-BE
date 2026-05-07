@@ -71,6 +71,7 @@ const discussionSchema = new mongoose.Schema(
       required: true,
     },
     allowResubmission: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

@@ -77,6 +77,7 @@ const UserSchema = new mongoose.Schema(
       platformId: { type: String },
       LTI_id: { type: String },
     },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 
