@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import Chapter from "../../Models/chapter.model.sch.js";
 import Quarter from "../../Models/quarter.model.js";
+import Lesson from "../../Models/lesson.model.sch.js";
+import { v2 as cloudinary } from "cloudinary";
 
 export const createChapter = async (req, res) => {
   const quarter = req.params.quarterId;
@@ -47,15 +49,46 @@ export const deleteChapter = async (req, res) => {
   const { chapterId } = req.params;
   console.log(chapterId, "chapterId");
   try {
-    const chapters = await Chapter.findOneAndDelete({ _id: chapterId });
-    if (!chapters)
+    // Find chapter first (don't delete yet)
+    const chapter = await Chapter.findById(chapterId);
+    if (!chapter)
       return res
         .status(404)
         .json({ message: "No chapters found for this course" });
 
+    // Find all lessons associated with this chapter
+    const lessons = await Lesson.find({ chapter: chapterId });
+
+    // Delete all lessons and their Cloudinary files
+    if (lessons && lessons.length > 0) {
+      for (const lesson of lessons) {
+        // Delete Cloudinary files for each lesson
+        if (lesson.pdfFiles && lesson.pdfFiles.length > 0) {
+          for (const file of lesson.pdfFiles) {
+            // Only delete files from Cloudinary (skip Google Drive files)
+            if (file.source === 'local' && file.public_id) {
+              try {
+                await cloudinary.uploader.destroy(file.public_id, {
+                  resource_type: "raw",
+                });
+              } catch (cloudinaryError) {
+                console.error(`Failed to delete Cloudinary file ${file.public_id}:`, cloudinaryError);
+                // Continue with deletion even if Cloudinary cleanup fails
+              }
+            }
+          }
+        }
+      }
+      // Delete all lessons from database
+      await Lesson.deleteMany({ chapter: chapterId });
+    }
+
+    // Now delete the chapter from database
+    const deletedChapter = await Chapter.findByIdAndDelete(chapterId);
+
     res.status(200).json({
       message: "Chapter deleted successfully",
-      chapters,
+      chapter: deletedChapter,
     });
   } catch (error) {
     console.log("error in getting chapters", error);

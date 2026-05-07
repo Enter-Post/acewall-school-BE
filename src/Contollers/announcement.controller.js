@@ -5,6 +5,7 @@ import Enrollment from "../Models/Enrollement.model.js";
 import User from "../Models/user.model.js";
 import nodemailer from "nodemailer";
 import { uploadToCloudinary } from "../lib/cloudinary-course.config.js";
+import { v2 as cloudinary } from "cloudinary";
 
 import path from "path";
 import fs from "fs";
@@ -207,10 +208,30 @@ export const deleteAnnouncement = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const deleted = await Announcement.findByIdAndDelete(id);
-    if (!deleted) {
+    // Find announcement first (don't delete yet)
+    const announcement = await Announcement.findById(id);
+    if (!announcement) {
       return res.status(404).json({ error: "Announcement not found" });
     }
+
+    // Delete all attachments from Cloudinary
+    if (announcement.attachments && announcement.attachments.length > 0) {
+      for (const attachment of announcement.attachments) {
+        if (attachment.publicId) {
+          try {
+            await cloudinary.uploader.destroy(attachment.publicId, {
+              resource_type: "auto",
+            });
+          } catch (cloudinaryError) {
+            console.error(`Failed to delete Cloudinary file ${attachment.publicId}:`, cloudinaryError);
+            // Continue with deletion even if Cloudinary cleanup fails
+          }
+        }
+      }
+    }
+
+    // Now delete the announcement from database
+    await Announcement.findByIdAndDelete(id);
 
     res.status(200).json({ message: "Announcement deleted successfully" });
   } catch (err) {

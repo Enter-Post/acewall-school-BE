@@ -66,11 +66,32 @@ export const createLesson = async (req, res) => {
 export const deleteLesson = async (req, res) => {
   const { lessonId } = req.params;
   try {
-    const lesson = await Lesson.findOneAndDelete({ _id: lessonId });
+    // Find lesson first (don't delete yet)
+    const lesson = await Lesson.findById(lessonId);
     if (!lesson)
       return res
         .status(404)
         .json({ message: "No lesson found for this course" });
+
+    // Delete all PDF files from Cloudinary
+    if (lesson.pdfFiles && lesson.pdfFiles.length > 0) {
+      for (const file of lesson.pdfFiles) {
+        // Only delete files from Cloudinary (skip Google Drive files)
+        if (file.source === 'local' && file.public_id) {
+          try {
+            await cloudinary.uploader.destroy(file.public_id, {
+              resource_type: "raw",
+            });
+          } catch (cloudinaryError) {
+            console.error(`Failed to delete Cloudinary file ${file.public_id}:`, cloudinaryError);
+            // Continue with deletion even if Cloudinary cleanup fails
+          }
+        }
+      }
+    }
+
+    // Now delete the lesson from database
+    await Lesson.findByIdAndDelete(lessonId);
 
     res.status(200).json({ message: "Lesson deleted successfully" });
   } catch (error) {

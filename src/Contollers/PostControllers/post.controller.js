@@ -1,6 +1,9 @@
 import Posts from "../../Models/PostModels/post.model.js";
 import Enrollment from "../../Models/Enrollement.model.js";
 import CourseSch from "../../Models/courses.model.sch.js";
+import { v2 as cloudinary } from "cloudinary";
+import fs from "fs";
+import path from "path";
 export const createPost = async (req, res) => {
     try {
         const { text, color, postType, courseId, googleDriveAsset } = req.body;
@@ -161,14 +164,54 @@ export const specificUserPosts = async (req, res) => {
 
 
 export const deletePost = async (req, res) => {
-  const { postId } = req.params; // ✅ get from params
+  const { postId } = req.params;
 
   try {
-    const post = await Posts.findByIdAndDelete(postId);
+    // Find post first (don't delete yet)
+    const post = await Posts.findById(postId);
 
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
+
+    // Authorization check: only post author can delete
+    if (post.author.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Unauthorized to delete this post" });
+    }
+
+    // Delete assets from Cloudinary (Google Drive files) and local filesystem
+    if (post.assets && post.assets.length > 0) {
+      for (const asset of post.assets) {
+        // Delete Google Drive files from Cloudinary
+        if (asset.source === 'google_drive' && asset.publicId) {
+          try {
+            await cloudinary.uploader.destroy(asset.publicId, {
+              resource_type: "auto",
+            });
+          } catch (cloudinaryError) {
+            console.error(`Failed to delete Cloudinary file ${asset.publicId}:`, cloudinaryError);
+            // Continue with deletion even if Cloudinary cleanup fails
+          }
+        }
+
+        // Delete local files from filesystem
+        if (asset.source === 'local' && asset.url) {
+          try {
+            const filePath = asset.url.replace(process.env.ASSET_URL, '');
+            const fullPath = path.join(process.cwd(), 'public', filePath);
+            if (fs.existsSync(fullPath)) {
+              fs.unlinkSync(fullPath);
+            }
+          } catch (fsError) {
+            console.error(`Failed to delete local file ${asset.url}:`, fsError);
+            // Continue with deletion even if file deletion fails
+          }
+        }
+      }
+    }
+
+    // Now delete the post from database
+    await Posts.findByIdAndDelete(postId);
 
     res.status(200).json({ message: "Post deleted successfully" });
   } catch (error) {

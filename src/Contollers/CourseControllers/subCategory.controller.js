@@ -59,11 +59,13 @@ export const deleteSubcategory = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const deletedSub = await Subcategory.findByIdAndDelete(id);
-
-    if (!deletedSub) {
+    // Check if subcategory exists
+    const subcategory = await Subcategory.findById(id);
+    if (!subcategory) {
       return res.status(404).json({ message: "Subcategory not found" });
     }
+
+    // Check if subcategory has courses BEFORE deletion
     const courseCount = await CourseSch.countDocuments({ subcategory: id });
 
     if (courseCount > 0) {
@@ -73,6 +75,8 @@ export const deleteSubcategory = async (req, res) => {
       });
     }
 
+    // Safe to delete now
+    const deletedSub = await Subcategory.findByIdAndDelete(id);
 
     res.status(200).json({
       success: true,

@@ -119,11 +119,25 @@ export const sendDiscussionComment = async (req, res) => {
 export const deleteComment = async (req, res) => {
   const { id } = req.params;
   try {
-    const Comment = await DiscussionComment.findByIdAndDelete(id);
+    // Find comment first (don't delete yet)
+    const comment = await DiscussionComment.findById(id);
 
-    if (!Comment) {
+    if (!comment) {
       return res.status(404).json({ message: "Comment not found" });
     }
+
+    // Authorization check: only comment author, teacher, or admin can delete
+    const userRole = req.user.role;
+    const isAuthor = comment.createdby.toString() === req.user._id.toString();
+    const isTeacherOrAdmin = userRole === "teacher" || userRole === "admin";
+
+    if (!isAuthor && !isTeacherOrAdmin) {
+      return res.status(403).json({ message: "Unauthorized to delete this comment" });
+    }
+
+    // Delete the comment
+    await DiscussionComment.findByIdAndDelete(id);
+
     res.status(200).json({ message: "Comment deleted successfully" });
   } catch (error) {
     console.log("error in deleting comment", error);

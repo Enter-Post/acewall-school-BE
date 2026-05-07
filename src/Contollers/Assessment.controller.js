@@ -10,6 +10,7 @@ import Submission from "../Models/submission.model.js";
 import Discussion from "../Models/discussion.model.js";
 import nodemailer from "nodemailer";
 import User from "../Models/user.model.js";
+import { v2 as cloudinary } from "cloudinary";
 
 export const sendAssessmentReminder = async (req, res) => {
   try {
@@ -348,10 +349,39 @@ export const createAssessment = async (req, res) => {
 export const deleteAssessment = async (req, res) => {
   const { id } = req.params;
   try {
-    const deletedAssessment = await Assessment.findByIdAndDelete(id);
-    if (!deletedAssessment) {
+    // Find assessment first (don't delete yet)
+    const assessment = await Assessment.findById(id);
+    if (!assessment) {
       return res.status(404).json({ message: "Assessment not found" });
     }
+
+    // Delete all files from Cloudinary
+    if (assessment.questions && assessment.questions.length > 0) {
+      for (const question of assessment.questions) {
+        if (question.files && question.files.length > 0) {
+          for (const file of question.files) {
+            // Only delete files from Cloudinary (skip Google Drive files)
+            if (file.source === 'local' && file.publicId) {
+              try {
+                await cloudinary.uploader.destroy(file.publicId, {
+                  resource_type: "raw",
+                });
+              } catch (cloudinaryError) {
+                console.error(`Failed to delete Cloudinary file ${file.publicId}:`, cloudinaryError);
+                // Continue with deletion even if Cloudinary cleanup fails
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Delete associated submissions (cascade delete)
+    await Submission.deleteMany({ assessment: id });
+
+    // Now delete the assessment from database
+    await Assessment.findByIdAndDelete(id);
+
     res.status(200).json({ message: "Assessment deleted successfully" });
   } catch (error) {
     console.error("Error deleting assessment:", error.message);
