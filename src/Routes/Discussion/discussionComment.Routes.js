@@ -9,6 +9,7 @@ import {
 } from "../../Contollers/Discussion/discussionComment.controller.js";
 import { resolveEnrollmentFromDiscussion } from "../../middlewares/enrollment-resolver.js";
 import { isEnrolledMiddleware } from "../../middlewares/isEnrolled.middleware.js";
+import { loginRateLimiter } from "../../middlewares/rateLimiter.middleware.js";
 
 const router = express.Router();
 
@@ -235,7 +236,7 @@ router.get("/get/:id", isUser, getDiscussionComments);
  *       401:
  *         description: Unauthorized
  */
-router.post("/sendComment/:id", isUser, sendDiscussionComment);
+router.post("/sendComment/:id", isUser, loginRateLimiter, sendDiscussionComment);
 
 /**
  * @swagger

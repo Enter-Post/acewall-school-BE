@@ -5,6 +5,7 @@ import {
   getSingleCourseRating,
   isRatedbyUser,
 } from "../Contollers/rating.controller.js";
+import { loginRateLimiter } from "../middlewares/rateLimiter.middleware.js";
 
 const router = express.Router();
 
@@ -109,7 +110,7 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
-router.post("/create/:id", isUser, createRating);
+router.post("/create/:id", isUser, loginRateLimiter, createRating);
 
 /**
  * @swagger
