@@ -9,6 +9,7 @@ import {
 } from "../../Contollers/CourseControllers/chapter.controller.js";
 import { isUser } from "../../middlewares/Auth.Middleware.js";
 import { isEnrolledMiddleware } from "../../middlewares/isEnrolled.middleware.js";
+import { loginRateLimiter } from "../../middlewares/rateLimiter.middleware.js";
 
 const router = express.Router();
 
@@ -197,7 +198,7 @@ router.get("/chapter/chapter&lessons/:chapterId", isUser, getChapterwithLessons)
  *       401:
  *         description: Unauthorized
  */
-router.post("/create/:courseId/:quarterId", isUser, createChapter);
+router.post("/create/:courseId/:quarterId", isUser, loginRateLimiter, createChapter);
 
 /**
  * @swagger

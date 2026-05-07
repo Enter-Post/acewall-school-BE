@@ -19,6 +19,7 @@ import {
 import { upload } from "../lib/multer.config.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { getResultsMiddleware } from "../middlewares/isSubmitted.middleware.js";
+import { loginRateLimiter } from "../middlewares/rateLimiter.middleware.js";
 import { createAssessment_updated } from "../Contollers/UPDATED_API_CONTROLLER/assessment.controller.web.js";
 import { isEnrolledMiddleware } from "../middlewares/isEnrolled.middleware.js";
 
@@ -181,7 +182,7 @@ router.get("/stats/:assessmentId", isUser, getAssessmentStats);
  *       401:
  *         description: Unauthorized
  */
-router.post("/create", upload.any(), isUser, createAssessment);
+router.post("/create", upload.any(), isUser, loginRateLimiter, createAssessment);
 
 /**
  * @swagger
@@ -536,7 +537,7 @@ router.get("/assessmentforTeacher/:assessmentId", isUser, getAssesmentbyID);
  *       401:
  *         description: Unauthorized
  */
-router.post("/createAssessment/updated", upload.any(), isUser, createAssessment_updated);
+router.post("/createAssessment/updated", upload.any(), isUser, loginRateLimiter, createAssessment_updated);
 router.put(`/setDueDateForStudent/:assessmentId`, isUser, setDueDateForStudent);
 router.put("/setAllowResubmission/:assessmentId", isUser, settingAllowResubmission);
 router.put("/updateLatePolicy/:assessmentId", isUser, updateLatePolicy);

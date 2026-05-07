@@ -10,6 +10,7 @@ import {
 } from "../../Contollers/CourseControllers/lesson.controller.js";
 import { isUser } from "../../middlewares/Auth.Middleware.js";
 import { upload } from "../../lib/multer.config.js";
+import { loginRateLimiter } from "../../middlewares/rateLimiter.middleware.js";
 
 const router = express.Router();
 
@@ -75,7 +76,7 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
-router.post("/create", isUser, upload.array("pdfFiles"), createLesson);
+router.post("/create", isUser, loginRateLimiter, upload.array("pdfFiles"), createLesson);
 
 /**
  * @swagger

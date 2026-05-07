@@ -1,6 +1,7 @@
 import express from "express";
 import { isUser } from "../../middlewares/Auth.Middleware.js";
 import { upload } from "../../lib/multer.config.js";
+import { loginRateLimiter } from "../../middlewares/rateLimiter.middleware.js";
 import {
   createCourseSch,
   deleteCourseSch,
@@ -494,6 +495,7 @@ router.get("/basicCoursesByTeacher", isUser, getBasicCoursesByTeacherId); // ✅
 router.post(
   "/create",
   isUser,
+  loginRateLimiter,
   upload.fields([
     { name: "thumbnail", maxCount: 1 },
     { name: "syllabus", maxCount: 1 },

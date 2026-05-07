@@ -12,6 +12,7 @@ import {
 } from "../../Contollers/Discussion/discussion.controller.js";
 import { upload } from "../../lib/multer.config.js";
 import { isUser } from "../../middlewares/Auth.Middleware.js";
+import { loginRateLimiter } from "../../middlewares/rateLimiter.middleware.js";
 import { resolveEnrollmentFromChapter, resolveEnrollmentFromDiscussion } from "../../middlewares/enrollment-resolver.js";
 import { isEnrolledMiddleware } from "../../middlewares/isEnrolled.middleware.js";
 
@@ -76,7 +77,7 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
-router.post("/create", isUser, upload.array("files"), createDiscussion);
+router.post("/create", isUser, loginRateLimiter, upload.array("files"), createDiscussion);
 
 /**
  * @swagger
