@@ -1,5 +1,5 @@
 import express from "express"
-import { createPlatform, ltiLaunch, ltiLogin } from "../Contollers/lti.controller.js"
+import { createPlatform, deeplinking, deeplinkingSubmit, ltiLaunch, ltiLogin } from "../Contollers/lti.controller.js"
 import { isUser } from "../middlewares/Auth.Middleware.js"
 import LTIPlatform from "../Models/LTIPlatfrom.model.js"
 
@@ -17,4 +17,7 @@ router.get("/list-platforms", async (req, res) => {
     res.status(500).json({ error: "Failed to list platforms" });
   }
 });
+router.post("/deeplinking", deeplinking)
+router.post("/deep-linking/submit", deeplinkingSubmit)
+
 export default router

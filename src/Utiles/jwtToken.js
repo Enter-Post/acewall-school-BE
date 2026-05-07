@@ -5,8 +5,11 @@ export const generateToken = (
   role,
   req,
   res,
+  deepLinkSupport = false,
   options = { setCookie: true, expiresIn: "1d", purpose: "auth" }
 ) => {
+
+  console.log("deepLinkSupport: ", deepLinkSupport)
 
   // ----------------- Detect portal -----------------
   let host = "";
@@ -31,12 +34,14 @@ export const generateToken = (
     role: role || user.role,
     name: user.name,
     profileImg: user.profileImg,
+    deepLinkSupport: deepLinkSupport || false,
   };
 
   // ----------------- Sign JWT -----------------
   const token = jwt.sign(
     {
       user: safeUser,
+      deepLinkSupport,
       aud: portal,
       purpose: options.purpose, // 🔑 important
     },

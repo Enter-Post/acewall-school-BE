@@ -64,8 +64,10 @@ import { startZoomMeetingMonitor } from "./cronJobs/zoomMeetingMonitor.js";
 import { errorHandler } from "./middlewares/errorHandler.middleware.js";
 import { requestLogger, errorLogger } from "./middlewares/activityLog.middleware.js";
 import activityLogRoutes from "./Routes/activityLog.Routes.js";
+import { importSPKI, exportJWK } from "jose";
+import fs from "fs";
+
 const PORT = process.env.PORT || 5050;
-import { createKeys, buildJWKS } from "./lib/createJWKS.js";
 
 // Trust proxy (required for secure cookies behind ngrok)
 app.set("trust proxy", 1);
@@ -93,17 +95,28 @@ app.use((req, res, next) => {
   next();
 });
 
-let keys;
-
-(async () => {
-  keys = await createKeys();
-})();
-
 app.get("/jwks.json", async (req, res) => {
-  const jwks = await buildJWKS(keys.publicKey);
+  try {
+    const publicKeyPem = fs.readFileSync("./keys/public.key", "utf8");
 
-  res.setHeader("Content-Type", "application/json");
-  res.json(jwks);
+    // 🔥 Convert PEM → CryptoKey
+    const publicKey = await importSPKI(publicKeyPem, "RS256");
+
+    // Now export to JWK
+    const jwk = await exportJWK(publicKey);
+
+    jwk.use = "sig";
+    jwk.alg = "RS256";
+    jwk.kid = "key-1";
+
+    res.json({
+      keys: [jwk]
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("JWKS generation failed");
+  }
 });
 
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
