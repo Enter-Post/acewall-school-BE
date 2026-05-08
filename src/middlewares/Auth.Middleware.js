@@ -54,8 +54,6 @@ export const isUser = async (req, res, next) => {
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRAT);
-
-      console.log("decoded in isUser: ", decoded);
     } catch (err) {
       return res.status(401).json({
         error: true,
@@ -71,6 +69,7 @@ export const isUser = async (req, res, next) => {
     }
 
     req.user = decoded.user;
+    req.deepLinkSupport = decoded.deepLinkSupport;
 
     next();
   } catch (error) {

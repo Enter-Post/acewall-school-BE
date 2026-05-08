@@ -7,7 +7,7 @@ const OTPSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: false },
   userData: { type: Object, required: true },
   phoneOtp: { type: String },
-
+  isDeleted: { type: Boolean, default: false }
 });
 
 const OPT = mongoose.model("OTP", OTPSchema);

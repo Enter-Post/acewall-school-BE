@@ -5,6 +5,7 @@ import Enrollment from "../Models/Enrollement.model.js";
 import User from "../Models/user.model.js";
 import nodemailer from "nodemailer";
 import { uploadToCloudinary } from "../lib/cloudinary-course.config.js";
+import { v2 as cloudinary } from "cloudinary";
 
 import path from "path";
 import fs from "fs";
@@ -169,7 +170,7 @@ export const createAnnouncement = async (req, res) => {
 export const getAnnouncementsForCourse = async (req, res) => {
   const { courseId } = req.params;
   try {
-    const announcements = await Announcement.find({ course: courseId })
+    const announcements = await Announcement.find({ course: courseId, isDeleted: false })
       .populate("teacher", "firstName lastName email")
       .sort({ createdAt: -1 });
 
@@ -187,7 +188,7 @@ export const getAnnouncementsByTeacher = async (req, res) => {
 
   try {
     // Build a filter object
-    const filter = { teacher: teacherId };
+    const filter = { teacher: teacherId, isDeleted: false };
     if (course) filter.course = course; // add course filter if provided
 
     console.log(filter, "filter")
@@ -207,10 +208,30 @@ export const deleteAnnouncement = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const deleted = await Announcement.findByIdAndDelete(id);
-    if (!deleted) {
+    // Find announcement first (don't delete yet)
+    const announcement = await Announcement.findById(id);
+    if (!announcement || announcement.isDeleted) {
       return res.status(404).json({ error: "Announcement not found" });
     }
+
+    // Delete all attachments from Cloudinary
+    if (announcement.attachments && announcement.attachments.length > 0) {
+      for (const attachment of announcement.attachments) {
+        if (attachment.publicId) {
+          try {
+            await cloudinary.uploader.destroy(attachment.publicId, {
+              resource_type: "auto",
+            });
+          } catch (cloudinaryError) {
+            console.error(`Failed to delete Cloudinary file ${attachment.publicId}:`, cloudinaryError);
+            // Continue with deletion even if Cloudinary cleanup fails
+          }
+        }
+      }
+    }
+
+    // Soft delete the announcement
+    await Announcement.findByIdAndUpdate(id, { isDeleted: true });
 
     res.status(200).json({ message: "Announcement deleted successfully" });
   } catch (err) {
@@ -236,6 +257,7 @@ export const getAnnouncementsForStudent = async (req, res) => {
     // Fetch announcements with ALL fields
     const announcements = await Announcement.find({
       course: { $in: courseIds },
+      isDeleted: false,
     })
       .populate("course", "courseTitle _id thumbnail ")    // More fields if needed
       .populate("teacher", "firstName lastName email role _id")  // full teacher info
@@ -289,6 +311,7 @@ export const getAnnouncementsForParent = async (req, res) => {
     // 3. FETCH ANNOUNCEMENTS (with full data for parent visibility)
     const announcements = await Announcement.find({
       course: { $in: courseIds },
+      isDeleted: false,
     })
       .populate("course", "courseTitle _id thumbnail") 
       .populate("teacher", "firstName lastName email profileImg _id") // Included profileImg for a better UI
@@ -307,5 +330,81 @@ export const getAnnouncementsForParent = async (req, res) => {
       message: "Internal Server Error",
       error: error.message,
     });
+  }
+};
+
+export const getDeletedAnnouncements = async (req, res) => {
+  const { courseId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can view deleted announcements
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const CourseSch = await import("../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: courseId, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only view deleted announcements of your own courses" });
+      }
+    }
+
+    const deletedAnnouncements = await Announcement.find({ course: courseId, isDeleted: true })
+      .sort({ deletedAt: -1 })
+      .populate("teacher", "firstName lastName email");
+
+    res.status(200).json({
+      message: "Deleted announcements fetched successfully",
+      count: deletedAnnouncements.length,
+      deletedAnnouncements,
+    });
+  } catch (error) {
+    console.error("Error fetching deleted announcements:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const restoreAnnouncement = async (req, res) => {
+  const { announcementId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can restore announcements
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const announcement = await Announcement.findById(announcementId);
+    if (!announcement) {
+      return res.status(404).json({ message: "Announcement not found" });
+    }
+
+    if (!announcement.isDeleted) {
+      return res.status(400).json({ message: "Announcement is not deleted" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const CourseSch = await import("../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: announcement.course, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only restore announcements of your own courses" });
+      }
+    }
+
+    // Restore the announcement
+    announcement.isDeleted = false;
+    announcement.deletedAt = null;
+    await announcement.save();
+
+    res.status(200).json({ message: "Announcement restored successfully", announcement });
+  } catch (error) {
+    console.error("Error restoring announcement:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };

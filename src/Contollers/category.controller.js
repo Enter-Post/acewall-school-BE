@@ -7,7 +7,7 @@ import CourseSch from "../Models/courses.model.sch.js";
 
 export const getAllCategories = async (req, res) => {
   try {
-    const categories = await Category.find({});
+    const categories = await Category.find({ isDeleted: false });
     return res.status(200).json({
       categories,
       message: "Categories fetched successfully",
@@ -73,7 +73,7 @@ export const deleteCategory = async (req, res) => {
   }
 
   try {
-    const courseCount = await CourseSch.countDocuments({ category: categoryId });
+    const courseCount = await CourseSch.countDocuments({ category: categoryId, isDeleted: false });
 
     if (courseCount > 0) {
       return res.status(400).json({
@@ -82,7 +82,7 @@ export const deleteCategory = async (req, res) => {
       });
     }
 
-    const category = await Category.findByIdAndDelete(categoryId);
+    const category = await Category.findByIdAndUpdate(categoryId, { isDeleted: true });
 
     if (!category) {
       return res.status(404).json({

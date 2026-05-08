@@ -22,6 +22,7 @@ const CourseShareSchema = new mongoose.Schema(
       enum: ["pending", "imported", "rejected"],
       default: "pending",
     },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

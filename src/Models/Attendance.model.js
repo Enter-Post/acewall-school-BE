@@ -32,6 +32,7 @@ const AttendanceSchema = new mongoose.Schema(
       maxlength: 500,
       default: "",
     },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

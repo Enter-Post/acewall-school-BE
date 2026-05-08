@@ -10,6 +10,7 @@ import Submission from "../Models/submission.model.js";
 import Discussion from "../Models/discussion.model.js";
 import nodemailer from "nodemailer";
 import User from "../Models/user.model.js";
+import { v2 as cloudinary } from "cloudinary";
 
 export const sendAssessmentReminder = async (req, res) => {
   try {
@@ -348,10 +349,42 @@ export const createAssessment = async (req, res) => {
 export const deleteAssessment = async (req, res) => {
   const { id } = req.params;
   try {
-    const deletedAssessment = await Assessment.findByIdAndDelete(id);
-    if (!deletedAssessment) {
+    // Find assessment first (don't delete yet)
+    const assessment = await Assessment.findById(id);
+    if (!assessment) {
       return res.status(404).json({ message: "Assessment not found" });
     }
+
+    // Delete all files from Cloudinary
+    if (assessment.questions && assessment.questions.length > 0) {
+      for (const question of assessment.questions) {
+        if (question.files && question.files.length > 0) {
+          for (const file of question.files) {
+            // Only delete files from Cloudinary (skip Google Drive files)
+            if (file.source === 'local' && file.publicId) {
+              try {
+                await cloudinary.uploader.destroy(file.publicId, {
+                  resource_type: "raw",
+                });
+              } catch (cloudinaryError) {
+                console.error(`Failed to delete Cloudinary file ${file.publicId}:`, cloudinaryError);
+                // Continue with deletion even if Cloudinary cleanup fails
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Soft delete associated submissions
+    await Submission.updateMany({ assessment: id }, { isDeleted: true });
+
+    // Soft delete the assessment
+    await Assessment.findByIdAndUpdate(id, { 
+      isDeleted: true, 
+      deletedAt: new Date() 
+    });
+
     res.status(200).json({ message: "Assessment deleted successfully" });
   } catch (error) {
     console.error("Error deleting assessment:", error.message);
@@ -424,7 +457,7 @@ export const getAssesmentbyID = async (req, res) => {
       select: "name",
     }).populate("studentDueDateOverrides.student", "firstName middleName lastName email");
 
-    if (!assessment) {
+    if (!assessment || assessment.isDeleted) {
       return res.status(404).json({ message: "Assessment not found" });
     }
 
@@ -438,6 +471,7 @@ export const getAssesmentbyID = async (req, res) => {
       const isEnrollment = await Enrollment.findOne({
         student: userIdObj,
         course: courseIdObj,
+        isDeleted: false,
       });
 
       if (!isEnrollment) {
@@ -466,7 +500,7 @@ export const allAssessmentByTeacher = async (req, res) => {
       return res.status(401).json({ error: "Unauthorized. User ID missing." });
     }
 
-    const assessments = await Assessment.find({ createdby })
+    const assessments = await Assessment.find({ createdby, isDeleted: false })
       .select(
         "dueDate title description course chapter lesson createdAt category type"
       )
@@ -495,6 +529,7 @@ export const getAllassessmentforStudent = async (req, res, next) => {
     const allEnrollmentofStudent = await Enrollment.find({
       student: studentId,
       status: { $ne: "CANCELLED" },
+      isDeleted: false,
     });
 
     const courseIds = allEnrollmentofStudent.map(
@@ -566,7 +601,7 @@ export const getAllassessmentforStudent = async (req, res, next) => {
 
     // 2. Fetch assessments
     const assessments = await Assessment.aggregate([
-      { $match: { course: { $in: courseIds } } },
+      { $match: { course: { $in: courseIds }, isDeleted: false } },
       ...commonLookups,
       {
         $lookup: {
@@ -646,7 +681,7 @@ export const getAllassessmentforStudent = async (req, res, next) => {
 
     // 3. Fetch discussions
     const discussions = await Discussion.aggregate([
-      { $match: { course: { $in: courseIds } } },
+      { $match: { course: { $in: courseIds }, isDeleted: false } },
       ...commonLookups,
       {
         $lookup: {
@@ -824,7 +859,7 @@ export const getAssessmentsByCourseForAdmin = async (req, res) => {
   try {
     const assessments = await Assessment.aggregate([
       // Match assessments for the given course
-      { $match: { course: new mongoose.Types.ObjectId(courseId) } },
+      { $match: { course: new mongoose.Types.ObjectId(courseId), isDeleted: false } },
 
       // Lookup category
       {
@@ -1305,10 +1340,91 @@ export const updateLatePolicy = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Late penalty policy updated successfully",
-      assessment,
     });
   } catch (err) {
     console.error("Error updating late policy:", err);
     res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+export const getDeletedAssessments = async (req, res) => {
+  const { courseId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can view deleted assessments
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const CourseSch = await import("../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: courseId, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only view deleted assessments of your own courses" });
+      }
+    }
+
+    const deletedAssessments = await Assessment.find({ course: courseId, isDeleted: true })
+      .sort({ deletedAt: -1 })
+      .populate("category", "name")
+      .populate("chapter", "title")
+      .populate("lesson", "title")
+      .populate("createdby", "firstName lastName email");
+
+    res.status(200).json({
+      message: "Deleted assessments fetched successfully",
+      count: deletedAssessments.length,
+      deletedAssessments,
+    });
+  } catch (error) {
+    console.error("Error fetching deleted assessments:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const restoreAssessment = async (req, res) => {
+  const { assessmentId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can restore assessments
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const assessment = await Assessment.findById(assessmentId);
+    if (!assessment) {
+      return res.status(404).json({ message: "Assessment not found" });
+    }
+
+    if (!assessment.isDeleted) {
+      return res.status(400).json({ message: "Assessment is not deleted" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const CourseSch = await import("../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: assessment.course, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only restore assessments of your own courses" });
+      }
+    }
+
+    // Restore the assessment
+    assessment.isDeleted = false;
+    assessment.deletedAt = null;
+    await assessment.save();
+
+    // Restore related submissions
+    await Submission.updateMany({ assessment: assessmentId }, { isDeleted: false });
+
+    res.status(200).json({ message: "Assessment restored successfully", assessment });
+  } catch (error) {
+    console.error("Error restoring assessment:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };

@@ -44,6 +44,7 @@ import {
 } from "../Contollers/auth.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { upload } from "../lib/multer.config.js";
+import { loginRateLimiter } from "../middlewares/rateLimiter.middleware.js";
 import cleverRoutes from "../modules/clever/clever.routes.js";
 // import { checkRole, isAllowed } from "../Middlewares/admins.Middleware.js";
 const router = express.Router();
@@ -371,7 +372,7 @@ router.post("/resendOTP", resendOTP);
  *       401:
  *         description: Invalid credentials
  */
-router.post("/login", login);
+router.post("/login", loginRateLimiter, login);
 
 /**
  * @swagger
@@ -445,7 +446,7 @@ router.post("/createGuardianAcc/:id", isUser, createGuardianAcc);
  *       401:
  *         description: Invalid credentials
  */
-router.post("/loginGuardianAcc", loginGuardianAcc);
+router.post("/loginGuardianAcc", loginRateLimiter, loginGuardianAcc);
 
 /**
  * @swagger

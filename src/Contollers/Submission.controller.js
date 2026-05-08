@@ -38,6 +38,7 @@ export const submission = async (req, res) => {
       const lastSubmission = await Submission.find({
         studentId,
         assessment: assessmentId,
+        isDeleted: false,
       }).sort({ createdAt: -1 }).limit(1);
 
       submissionCount = ++lastSubmission[0].resubmitted.count || 0;
@@ -338,6 +339,7 @@ export const getSubmissionsforStudent = async (req, res) => {
   try {
     const submissions = await Submission.find({
       studentId: req.params.studentId,
+      isDeleted: false,
     })
       .populate("assessment")
       .sort({ submittedAt: -1 });

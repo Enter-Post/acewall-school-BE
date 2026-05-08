@@ -16,6 +16,7 @@ const ConversationSchema = mongoose.Schema(
       of: Date,
       default: {},
     },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

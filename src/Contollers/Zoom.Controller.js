@@ -223,7 +223,7 @@ export const scheduleMeeting = async (req, res) => {
 export const getCourseMeetings = async (req, res) => {
   const { courseId } = req.params;
   try {
-    const meetings = await ZoomMeeting.find({ course: courseId }).sort({
+    const meetings = await ZoomMeeting.find({ course: courseId, isDeleted: false }).sort({
       scheduledAt: 1,
     });
     res.status(200).json(meetings);
@@ -238,7 +238,7 @@ export const getCourseMeetings = async (req, res) => {
 export const getActiveMeetings = async (req, res) => {
   const userId = req.user._id;
   try {
-    const enrollments = await Enrollment.find({ student: userId }).select(
+    const enrollments = await Enrollment.find({ student: userId, isDeleted: false }).select(
       "course",
     );
     const courseIds = enrollments.map((e) => e.course);
@@ -246,6 +246,7 @@ export const getActiveMeetings = async (req, res) => {
     const activeMeetings = await ZoomMeeting.find({
       course: { $in: courseIds },
       status: { $in: ["active", "started"] },
+      isDeleted: false,
     }).populate("course", "courseTitle");
 
     res.status(200).json(activeMeetings);
@@ -286,7 +287,7 @@ export const deleteMeeting = async (req, res) => {
       // Continue to delete from DB even if Zoom fails (e.g. already deleted)
     }
 
-    await ZoomMeeting.findByIdAndDelete(meetingId);
+    await ZoomMeeting.findByIdAndUpdate(meetingId, { isDeleted: true });
     res.status(200).json({ message: "Meeting deleted and ended" });
   } catch (error) {
     res

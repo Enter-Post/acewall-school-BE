@@ -1,6 +1,7 @@
 import express from "express";
 import { isUser } from "../../middlewares/Auth.Middleware.js";
 import { sendReplyofComment } from "../../Contollers/PostControllers/replypostcontroller.js";
+import { loginRateLimiter } from "../../middlewares/rateLimiter.middleware.js";
 
 const router = express.Router();
 
@@ -95,6 +96,6 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
-router.post("/reply/:commentId", isUser, sendReplyofComment);
+router.post("/reply/:commentId", isUser, loginRateLimiter, sendReplyofComment);
 
 export default router;

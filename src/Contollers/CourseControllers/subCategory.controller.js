@@ -37,7 +37,7 @@ export const createSubCategory = async (req, res) => {
 
 export const getSubcategory = async (req, res) => {
   try {
-    const subcategories = await Subcategory.find().sort({ name: 1 }); // Optional: sort alphabetically
+    const subcategories = await Subcategory.find({ isDeleted: false }).sort({ name: 1 }); // Optional: sort alphabetically
 
     res.status(200).json({
       success: true,
@@ -59,12 +59,14 @@ export const deleteSubcategory = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const deletedSub = await Subcategory.findByIdAndDelete(id);
-
-    if (!deletedSub) {
+    // Check if subcategory exists
+    const subcategory = await Subcategory.findById(id);
+    if (!subcategory) {
       return res.status(404).json({ message: "Subcategory not found" });
     }
-    const courseCount = await CourseSch.countDocuments({ subcategory: id });
+
+    // Check if subcategory has courses BEFORE deletion
+    const courseCount = await CourseSch.countDocuments({ subcategory: id, isDeleted: false });
 
     if (courseCount > 0) {
       return res.status(400).json({
@@ -73,6 +75,8 @@ export const deleteSubcategory = async (req, res) => {
       });
     }
 
+    // Soft delete
+    const deletedSub = await Subcategory.findByIdAndUpdate(id, { isDeleted: true });
 
     res.status(200).json({
       success: true,

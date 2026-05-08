@@ -152,9 +152,10 @@ export const deletePacingChart = async (req, res) => {
 
     const { courseId } = req.params;
 
-    const deletedChart = await PacingChart.findOneAndDelete({
-      course: courseId,
-    });
+    const deletedChart = await PacingChart.findOneAndUpdate(
+      { course: courseId },
+      { isDeleted: true }
+    );
 
     if (!deletedChart) {
       return res.status(404).json({

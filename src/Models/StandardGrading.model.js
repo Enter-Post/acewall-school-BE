@@ -10,6 +10,7 @@ const StanderdgradingScaleSchema = new mongoose.Schema({
             maxPercentage: Number, // maximum percentage
         },
     ],
+    isDeleted: { type: Boolean, default: false }
 });
 
 const StandardGrading = mongoose.model("StandardGradingScale", StanderdgradingScaleSchema);

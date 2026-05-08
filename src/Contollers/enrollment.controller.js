@@ -18,12 +18,12 @@ export const getMyEnrolledCourses = async (req, res) => {
 
     if (userRole === "teacher" || userRole === "admin") {
       // Teachers see courses they OWN/CREATED
-      courses = await CourseSch.find({ createdby: userId })
+      courses = await CourseSch.find({ createdby: userId, isDeleted: false })
         .select("courseTitle courseCode thumbnail")
         .lean();
     } else {
       // Students see courses they are ENROLLED in
-      const enrollments = await Enrollment.find({ student: userId })
+      const enrollments = await Enrollment.find({ student: userId, isDeleted: false })
         .populate("course", "courseTitle courseCode thumbnail")
         .lean();
 
@@ -78,6 +78,7 @@ export const isEnrolled = async (req, res) => {
     const exists = await Enrollment.findOne({
       student: userId,
       course: courseId,
+      isDeleted: false,
     });
 
     if (!exists) {
@@ -97,7 +98,7 @@ export const studenCourses = async (req, res) => {
   const search = req.query.search?.trim(); // Get the search query from the request
 
   try {
-    const filter = { student: userId }; // Find enrollments by student ID
+    const filter = { student: userId, isDeleted: false }; // Find enrollments by student ID
 
     // Find enrollments with optional search filter
     let enrolledCourses = await Enrollment.find(filter)
@@ -137,6 +138,7 @@ export const studentsEnrolledinCourse = async (req, res) => {
   try {
     const enrolledStudents = await Enrollment.find({
       course: courseId,
+      isDeleted: false,
     })
       .sort({ createdAt: -1 })
       .populate("student", "firstName middleName lastName profileImg");
@@ -150,10 +152,10 @@ export const unEnrollment = async (req, res) => {
   const { courseId } = req.params;
   const userId = req.user._id;
   try {
-    const enrollment = await Enrollment.findOneAndDelete({
-      student: userId,
-      course: courseId,
-    });
+    const enrollment = await Enrollment.findOneAndUpdate(
+      { student: userId, course: courseId },
+      { isDeleted: true }
+    );
     res.status(200).json(enrollment);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -354,6 +356,9 @@ export const chapterDetails = async (req, res) => {
           as: "lessons",
           pipeline: [
             {
+              $match: { isDeleted: false },
+            },
+            {
               $lookup: {
                 from: "assessments",
                 let: { lessonId: "$_id" },
@@ -364,6 +369,7 @@ export const chapterDetails = async (req, res) => {
                         $and: [
                           { $eq: ["$lesson", "$$lessonId"] },
                           { $eq: ["$type", "lesson-assessment"] },
+                          { $eq: ["$isDeleted", false] },
                         ],
                       },
                     },
@@ -393,6 +399,7 @@ export const chapterDetails = async (req, res) => {
                   $and: [
                     { $eq: ["$chapter", "$$chapterId"] },
                     { $eq: ["$type", "chapter-assessment"] },
+                    { $eq: ["$isDeleted", false] },
                   ],
                 },
               },
@@ -402,6 +409,7 @@ export const chapterDetails = async (req, res) => {
                 _id: 1,
                 title: 1,
                 description: 1,
+                category: 1,
               },
             },
           ],
@@ -459,6 +467,9 @@ export const chapterDetailsStdPre = async (req, res) => {
           as: "lessons",
           pipeline: [
             {
+              $match: { isDeleted: false },
+            },
+            {
               $lookup: {
                 from: "assessments",
                 let: { lessonId: "$_id" },
@@ -469,6 +480,7 @@ export const chapterDetailsStdPre = async (req, res) => {
                         $and: [
                           { $eq: ["$lesson", "$$lessonId"] },
                           { $eq: ["$type", "lesson-assessment"] },
+                          { $eq: ["$isDeleted", false] },
                         ],
                       },
                     },
@@ -498,6 +510,7 @@ export const chapterDetailsStdPre = async (req, res) => {
                   $and: [
                     { $eq: ["$chapter", "$$chapterId"] },
                     { $eq: ["$type", "chapter-assessment"] },
+                    { $eq: ["$isDeleted", false] },
                   ],
                 },
               },
@@ -507,6 +520,7 @@ export const chapterDetailsStdPre = async (req, res) => {
                 _id: 1,
                 title: 1,
                 description: 1,
+                category: 1,
               },
             },
           ],
@@ -547,7 +561,7 @@ export const getStudentEnrolledCourses = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const enrolledCourses = await Enrollment.find({ student: id })
+    const enrolledCourses = await Enrollment.find({ student: id, isDeleted: false })
       .sort({ createdAt: -1 })
       .populate({
         path: "course",
@@ -577,6 +591,7 @@ export const enrollmentforTeacher = async (req, res) => {
     const enrollments = await Enrollment.find({
       student: teacherId,
       course: courseId,
+      isDeleted: false,
     });
     const enrollment = enrollments[0];
     if (enrollment) {
@@ -616,7 +631,7 @@ export const getChildEnrolledCourses = async (req, res) => {
 
     // 2. FETCH ENROLLMENTS
     // We use the studentId from params instead of req.user._id
-    let enrolledCourses = await Enrollment.find({ student: studentId })
+    let enrolledCourses = await Enrollment.find({ student: studentId, isDeleted: false })
       .sort({ createdAt: -1 })
       .populate({
         path: "course",

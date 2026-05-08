@@ -1201,7 +1201,7 @@ export const allUser = async (req, res) => {
 
 export const checkAuth = (req, res) => {
   try {
-    res.status(200).json({ user: req.user });
+    res.status(200).json({ user: req.user, deepLinkSupport: req.deepLinkSupport });
   } catch (error) {
     console.log("error in check Auth", error.message);
     res.status(500).json({
@@ -1499,7 +1499,6 @@ export const getUserInfo = async (req, res) => {
     if (!user) {
       return res.status(404).json("User not found");
     }
-    console.log(user, "user");
     return res.status(200).json({ message: "User found successfully", user });
   } catch (error) {
     console.log("error in getUserInfo:", error);
@@ -2408,6 +2407,9 @@ export const googleAuthV2 = async (req, res) => {
         await user.save();
       }
 
+      // Track login activity
+      trackLogin(user._id, req, { loginMethod: "google" });
+
       generateToken(user, user.role, req, res);
 
       return res.status(200).json({
@@ -2458,6 +2460,9 @@ export const googleAuthV2 = async (req, res) => {
     });
 
     await newUser.save();
+
+    // Track login activity for new user
+    trackLogin(newUser._id, req, { loginMethod: "google", isNewUser: true });
 
     generateToken(newUser, newUser.role, req, res);
 

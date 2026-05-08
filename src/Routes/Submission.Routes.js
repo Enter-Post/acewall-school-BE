@@ -9,6 +9,7 @@ import {
 } from "../Contollers/Submission.controller.js";
 import { upload } from "../lib/multer.config.js";
 import { isEnrolledMiddleware } from "../middlewares/isEnrolled.middleware.js";
+import { loginRateLimiter } from "../middlewares/rateLimiter.middleware.js";
 
 const router = express.Router();
 
@@ -93,6 +94,7 @@ const router = express.Router();
 router.post(
   "/submission/:assessmentId",
   isUser,
+  loginRateLimiter,
   upload.array("files"),
   submission
 );
@@ -101,6 +103,7 @@ router.post(
   "/submission/v2/:assessmentId/:courseId",
   isUser,
   isEnrolledMiddleware,
+  loginRateLimiter,
   upload.array("files"),
   submission
 );

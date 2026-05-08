@@ -592,7 +592,7 @@ export const getGradebookForCourse = async (req, res) => {
       .lean();
 
     // All assessments for the course
-    const allAssessments = await Assessment.find({ course: courseId })
+    const allAssessments = await Assessment.find({ course: courseId, isDeleted: false })
       .populate("category semester quarter")
       .lean();
 
@@ -826,7 +826,7 @@ export const getTeacherStudentAnalytics = async (req, res) => {
 
     // 3. Fetch Assessment/Discussion details to get maxPoints and categories
     const [gradedAssessments, gradedDiscussions] = await Promise.all([
-      Assessment.find({ course: courseId, _id: { $in: submissions.map(s => s.assessment) } }).populate("category").lean(),
+      Assessment.find({ course: courseId, _id: { $in: submissions.map(s => s.assessment) }, isDeleted: false }).populate("category").lean(),
       Discussion.find({ course: courseId, _id: { $in: discussionComments.map(d => d.discussion) } }).populate("category").lean()
     ]);
 

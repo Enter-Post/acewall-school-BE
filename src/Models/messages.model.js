@@ -28,6 +28,7 @@ const messageModel = new mongoose.Schema(
         ref: "User",
       },
     ],
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
