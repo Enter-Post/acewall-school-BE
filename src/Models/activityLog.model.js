@@ -42,6 +42,10 @@ const ActivityLogSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
+    entitySnapshot: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
     ipAddress: {
       type: String,
       required: false,
@@ -89,6 +93,7 @@ const ActivityLogSchema = new mongoose.Schema(
       default: Date.now,
       index: true,
     },
+    isDeleted: { type: Boolean, default: false },
   },
   {
     timestamps: true,

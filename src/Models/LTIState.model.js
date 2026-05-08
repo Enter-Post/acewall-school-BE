@@ -7,7 +7,8 @@ const ltiStateSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
         expires: 600 // ⏱️ 600 seconds = 10 minutes
-    }
+    },
+    isDeleted: { type: Boolean, default: false }
 });
 
 const LTIState = mongoose.model("LTIState", ltiStateSchema);

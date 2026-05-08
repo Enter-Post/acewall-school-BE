@@ -17,6 +17,7 @@ const PostLikesSchema = new mongoose.Schema({
         ref: "SocialPost", 
         required: true 
     },
+    isDeleted: { type: Boolean, default: false }
 }, { timestamps: true });
 
 // Ensure a user can only have ONE reaction per post

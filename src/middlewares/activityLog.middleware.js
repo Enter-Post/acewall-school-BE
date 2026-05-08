@@ -11,6 +11,7 @@ const EXCLUDED_ROUTES = [
   "/api/api-docs",
   "/favicon.ico",
   "/api/logs", // Don't log the logging endpoint itself
+  "/api/admin/", // Don't log admin portal activities
 ];
 
 // Patterns to exclude (frequently running APIs like notifications, cron jobs)
@@ -19,6 +20,7 @@ const EXCLUDED_PATTERNS = [
   /^\/api\/zoom\/monitor/, // Zoom monitoring endpoints
   /^\/api\/cron/, // Any cron job endpoints
   /^\/health/, // Health check endpoints
+  /^\/api\/auth\/getUserInfo/, // User info endpoint - called frequently
 ];
 
 // Check if route should be excluded
@@ -86,6 +88,11 @@ export const requestLogger = (req, res, next) => {
  * Captures and logs all errors
  */
 export const errorLogger = (err, req, res, next) => {
+  // Skip excluded routes
+  if (shouldExcludeRoute(req.path)) {
+    return next(err);
+  }
+
   const userId = req.user?._id || req.user?.id || null;
 
   // Log the error (fire and forget)

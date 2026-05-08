@@ -66,11 +66,35 @@ export const createLesson = async (req, res) => {
 export const deleteLesson = async (req, res) => {
   const { lessonId } = req.params;
   try {
-    const lesson = await Lesson.findOneAndDelete({ _id: lessonId });
-    if (!lesson)
+    // Find lesson first (don't delete yet)
+    const lesson = await Lesson.findById(lessonId);
+    if (!lesson || lesson.isDeleted)
       return res
         .status(404)
         .json({ message: "No lesson found for this course" });
+
+    // Delete all PDF files from Cloudinary
+    if (lesson.pdfFiles && lesson.pdfFiles.length > 0) {
+      for (const file of lesson.pdfFiles) {
+        // Only delete files from Cloudinary (skip Google Drive files)
+        if (file.source === 'local' && file.public_id) {
+          try {
+            await cloudinary.uploader.destroy(file.public_id, {
+              resource_type: "raw",
+            });
+          } catch (cloudinaryError) {
+            console.error(`Failed to delete Cloudinary file ${file.public_id}:`, cloudinaryError);
+            // Continue with deletion even if Cloudinary cleanup fails
+          }
+        }
+      }
+    }
+
+    // Soft delete the lesson
+    await Lesson.findByIdAndUpdate(lessonId, { 
+      isDeleted: true, 
+      deletedAt: new Date() 
+    });
 
     res.status(200).json({ message: "Lesson deleted successfully" });
   } catch (error) {
@@ -82,7 +106,7 @@ export const deleteLesson = async (req, res) => {
 export const getLessons = async (req, res) => {
   const { chapterId } = req.params;
   try {
-    const lessons = await Lesson.find({ chapter: chapterId });
+    const lessons = await Lesson.find({ chapter: chapterId, isDeleted: false });
     if (!lessons)
       return res
         .status(404)
@@ -130,7 +154,7 @@ export const deleteFile = async (req, res) => {
 
   try {
     const lesson = await Lesson.findById(lessonId);
-    if (!lesson) {
+    if (!lesson || lesson.isDeleted) {
       return res.status(404).json({ message: "Lesson not found" });
     }
 
@@ -164,7 +188,7 @@ export const getallFilesofLesson = async (req, res) => {
   try {
     const lesson = await Lesson.findById(lessonId);
 
-    if (!lesson) {
+    if (!lesson || lesson.isDeleted) {
       return res.status(404).json({ message: "Lesson not found" });
     }
 
@@ -206,7 +230,7 @@ export const addMoreFiles = async (req, res) => {
 
   try {
     const lesson = await Lesson.findById(lessonId);
-    if (!lesson) {
+    if (!lesson || lesson.isDeleted) {
       return res.status(404).json({ message: "Lesson not found" });
     }
 
@@ -224,6 +248,91 @@ export const addMoreFiles = async (req, res) => {
     res.status(200).json({ message: "Files added successfully" });
   } catch (error) {
     console.error("Error adding files:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const getDeletedLessons = async (req, res) => {
+  const { chapterId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can view deleted lessons
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    // Get the chapter to verify course ownership
+    const Chapter = await import("../../Models/chapter.model.sch.js");
+    const chapter = await Chapter.default.findById(chapterId).populate("course");
+    if (!chapter) {
+      return res.status(404).json({ message: "Chapter not found" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const CourseSch = await import("../../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: chapter.course._id, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only view deleted lessons of your own courses" });
+      }
+    }
+
+    const deletedLessons = await Lesson.find({ chapter: chapterId, isDeleted: true })
+      .sort({ deletedAt: -1 })
+      .populate("chapter", "title");
+
+    res.status(200).json({
+      message: "Deleted lessons fetched successfully",
+      count: deletedLessons.length,
+      deletedLessons,
+    });
+  } catch (error) {
+    console.error("Error fetching deleted lessons:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const restoreLesson = async (req, res) => {
+  const { lessonId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can restore lessons
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const lesson = await Lesson.findById(lessonId).populate("chapter");
+    if (!lesson) {
+      return res.status(404).json({ message: "Lesson not found" });
+    }
+
+    if (!lesson.isDeleted) {
+      return res.status(400).json({ message: "Lesson is not deleted" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const Chapter = await import("../../Models/chapter.model.sch.js");
+      const chapter = await Chapter.default.findById(lesson.chapter._id).populate("course");
+      const CourseSch = await import("../../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: chapter.course._id, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only restore lessons of your own courses" });
+      }
+    }
+
+    // Restore the lesson
+    lesson.isDeleted = false;
+    lesson.deletedAt = null;
+    await lesson.save();
+
+    res.status(200).json({ message: "Lesson restored successfully", lesson });
+  } catch (error) {
+    console.error("Error restoring lesson:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };

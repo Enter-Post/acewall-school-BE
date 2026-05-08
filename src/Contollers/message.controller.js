@@ -35,7 +35,7 @@ export const createMessage = async (req, res) => {
 export const getConversationMessages = async (req, res) => {
   const { conversationId } = req.params;
   try {
-    const messages = await Message.find({ conversationId }).populate(
+    const messages = await Message.find({ conversationId, isDeleted: false }).populate(
       "sender",
       "firstName lastName profileImg"
     );

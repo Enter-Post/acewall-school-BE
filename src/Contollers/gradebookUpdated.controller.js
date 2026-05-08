@@ -527,7 +527,7 @@ export const getStudentGradebooksFormattedAnalytics = async (req, res) => {
 
                 // 2. Fetch Item Details
                 const [gradedAssessments, gradedDiscussions] = await Promise.all([
-                    Assessment.find({ course: courseId, _id: { $in: submissions.map(s => s.assessment) } }).populate("category").lean(),
+                    Assessment.find({ course: courseId, _id: { $in: submissions.map(s => s.assessment) }, isDeleted: false }).populate("category").lean(),
                     Discussion.find({ course: courseId, _id: { $in: discussionComments.map(d => d.discussion) } }).populate("category").lean()
                 ]);
 
@@ -658,7 +658,7 @@ export const getChildCourseAnalyticsForParent = async (req, res) => {
 
         // 3. FETCH ITEM DETAILS
         const [gradedAssessments, gradedDiscussions] = await Promise.all([
-            Assessment.find({ course: courseId, _id: { $in: submissions.map(s => s.assessment) } }).populate("category").lean(),
+            Assessment.find({ course: courseId, _id: { $in: submissions.map(s => s.assessment) }, isDeleted: false }).populate("category").lean(),
             Discussion.find({ course: courseId, _id: { $in: discussionComments.map(d => d.discussion) } }).populate("category").lean()
         ]);
 

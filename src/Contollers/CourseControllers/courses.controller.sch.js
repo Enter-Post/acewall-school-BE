@@ -47,7 +47,7 @@ export const getFullCourseData = async (req, res) => {
       .populate("createdby", "name email")
       .lean();
 
-    if (!course) return res.status(404).json({ message: "Course not found" });
+    if (!course || course.isDeleted) return res.status(404).json({ message: "Course not found" });
 
     // --- ADDITION 1: ASSESSMENT CATEGORIES ---
     // We fetch categories belonging to this specific course
@@ -72,8 +72,8 @@ export const getFullCourseData = async (req, res) => {
     );
 
     // 3. Fetch Assessments and Discussions
-    const assessments = await Assessment.find({ course: courseId }).lean();
-    const discussions = await Discussion.find({ course: courseId }).lean();
+    const assessments = await Assessment.find({ course: courseId, isDeleted: false }).lean();
+    const discussions = await Discussion.find({ course: courseId, isDeleted: false }).lean();
 
     // 4. COMBINE EVERYTHING
     // Note how quarters and assessmentCategories are added to the keys
@@ -99,7 +99,7 @@ export const toggleGradingSystem = async (req, res) => {
 
     // Find course
     const course = await CourseSch.findById(courseId);
-    if (!course) {
+    if (!course || course.isDeleted) {
       return res.status(404).json({ message: "Course not found" });
     }
 
@@ -155,7 +155,7 @@ export const toggleCourseComments = async (req, res) => {
 
   try {
     const course = await CourseSch.findById(courseId);
-    if (!course) {
+    if (!course || course.isDeleted) {
       return res.status(404).json({ message: "Course not found" });
     }
 
@@ -356,7 +356,7 @@ export const createCourseSch = async (req, res) => {
 
 export const getAllCoursesSch = async (req, res) => {
   try {
-    const courses = await CourseSch.find({})
+    const courses = await CourseSch.find({ isDeleted: false })
       .sort({ createdAt: -1 })
       .populate(
         "createdby",
@@ -405,7 +405,7 @@ export const getCoursesWithMeetings = async (req, res) => {
 
     // 3. Fetch course details
     // Use .lean() so we can easily attach the 'meetingCount' property
-    const courses = await CourseSch.find({ _id: { $in: courseIds } })
+    const courses = await CourseSch.find({ _id: { $in: courseIds }, isDeleted: false })
       .populate("createdby", "firstName lastName email")
       .populate("category", "title")
       .populate("subcategory", "title")
@@ -438,6 +438,7 @@ export const getCoursesbySubcategorySch = async (req, res) => {
     const query = {
       subcategory: subCategoryId,
       published: true,
+      isDeleted: false,
     };
 
     if (search) {
@@ -476,7 +477,7 @@ export const getunPurchasedCourseByIdSch = async (req, res) => {
 
     const courseData = await CourseSch.aggregate([
       {
-        $match: { _id: new mongoose.Types.ObjectId(courseId) },
+        $match: { _id: new mongoose.Types.ObjectId(courseId), isDeleted: false },
       },
       {
         $lookup: {
@@ -585,7 +586,7 @@ export const getunPurchasedCourseByIdStdPrew = async (req, res) => {
 
     const courseData = await CourseSch.aggregate([
       {
-        $match: { _id: new mongoose.Types.ObjectId(courseId) },
+        $match: { _id: new mongoose.Types.ObjectId(courseId), isDeleted: false },
       },
       {
         $lookup: {
@@ -764,11 +765,16 @@ export const getCourseDetails = async (req, res) => {
   try {
     const courseData = await CourseSch.findById(courseId);
 
+    if (!courseData || courseData.isDeleted) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
     const isCreated = courseData.createdby.toString() === userId.toString();
     const isAdmin = req.user.role === "admin";
     const isEnrolled = await Enrollment.findOne({
       student: userId,
       course: courseId,
+      isDeleted: false,
     });
 
     if (!isCreated && !isAdmin && !isEnrolled) {
@@ -780,7 +786,7 @@ export const getCourseDetails = async (req, res) => {
 
     const course = await CourseSch.aggregate([
       {
-        $match: { _id: new mongoose.Types.ObjectId(courseId) },
+        $match: { _id: new mongoose.Types.ObjectId(courseId), isDeleted: false },
       },
       // Sort courses by creation date, latest first (assuming `createdAt` is the field for creation date)
       {
@@ -931,46 +937,46 @@ export const deleteCourseSch = async (req, res) => {
   try {
     const courseObjectId = new mongoose.Types.ObjectId(courseId);
 
-    // Delete the course
-    const deletedCourse = await CourseSch.findByIdAndDelete(courseObjectId);
+    // Soft delete the course
+    const deletedCourse = await CourseSch.findByIdAndUpdate(courseObjectId, { isDeleted: true });
     if (!deletedCourse) {
       return res.status(404).json({ message: "Course not found" });
     }
 
-    // Delete all comments related to the course
-    await Comment.deleteMany({ course: courseObjectId });
+    // Soft delete all comments related to the course
+    await Comment.updateMany({ course: courseObjectId }, { isDeleted: true });
 
-    // Delete related chapters
+    // Find related chapters
     const chapters = await Chapter.find({ course: courseObjectId });
     const chapterIds = chapters.map((ch) => ch._id);
 
-    // Delete related lessons
+    // Find related lessons
     const lessons = await Lesson.find({ chapter: { $in: chapterIds } });
     const lessonIds = lessons.map((ls) => ls._id);
 
-    // Delete all related chapters and lessons
-    await Chapter.deleteMany({ _id: { $in: chapterIds } });
-    await Lesson.deleteMany({ _id: { $in: lessonIds } });
+    // Soft delete all related chapters and lessons
+    await Chapter.updateMany({ _id: { $in: chapterIds } }, { isDeleted: true });
+    await Lesson.updateMany({ _id: { $in: lessonIds } }, { isDeleted: true });
 
-    // Delete assessments related to the course, chapters, and lessons
-    await Assessment.deleteMany({
+    // Soft delete assessments related to the course, chapters, and lessons
+    await Assessment.updateMany({
       $or: [
         { course: courseObjectId, type: "final-assessment" },
         { chapter: { $in: chapterIds }, type: "chapter-assessment" },
         { lesson: { $in: lessonIds }, type: "lesson-assessment" },
       ],
-    });
+    }, { isDeleted: true });
 
-    // Delete announcements related to the course
-    await Announcement.deleteMany({ course: courseObjectId });
+    // Soft delete announcements related to the course
+    await Announcement.updateMany({ course: courseObjectId }, { isDeleted: true });
 
-    // Delete assessment categories related to the course
-    await AssessmentCategory.deleteMany({
+    // Soft delete assessment categories related to the course
+    await AssessmentCategory.updateMany({
       course: courseObjectId,
-    });
+    }, { isDeleted: true });
 
-    // Delete enrollments related to the course
-    await Enrollment.deleteMany({ course: courseObjectId });
+    // Soft delete enrollments related to the course
+    await Enrollment.updateMany({ course: courseObjectId }, { isDeleted: true });
 
     res.status(200).json({
       message:
@@ -992,6 +998,7 @@ export const getCoursesByTeacherSch = async (req, res) => {
     // Construct filter based on teacherId and search query
     const query = {
       createdby: teacherId,
+      isDeleted: false,
     };
 
     if (search) {
@@ -1062,6 +1069,7 @@ export const getallcoursesforteacher = async (req, res) => {
   try {
     const matchStage = {
       "courseDetails.createdby": new mongoose.Types.ObjectId(teacherId),
+      "courseDetails.isDeleted": false,
     };
 
     // Apply course title filter (partial match)
@@ -1740,5 +1748,87 @@ export const getStudentofCourse = async (req, res) => {
   } catch (error) {
     console.error("Error fetching students of course:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const getDeletedCourses = async (req, res) => {
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can view deleted courses
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    let query = { isDeleted: true };
+
+    // If teacher, only show their own deleted courses
+    if (userRole === "teacher") {
+      query.createdby = userId;
+    }
+
+    const deletedCourses = await CourseSch.find(query)
+      .sort({ deletedAt: -1 })
+      .populate("category", "title")
+      .populate("subcategory", "title")
+      .populate("semester", "name")
+      .populate("quarter", "name")
+      .populate("createdby", "firstName lastName email");
+
+    res.status(200).json({
+      message: "Deleted courses fetched successfully",
+      count: deletedCourses.length,
+      deletedCourses,
+    });
+  } catch (error) {
+    console.error("Error fetching deleted courses:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const restoreCourse = async (req, res) => {
+  const { courseId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can restore courses
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const course = await CourseSch.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    if (!course.isDeleted) {
+      return res.status(400).json({ message: "Course is not deleted" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher" && course.createdby.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "You can only restore your own courses" });
+    }
+
+    // Restore the course
+    course.isDeleted = false;
+    course.deletedAt = null;
+    await course.save();
+
+    // Restore related chapters, lessons, assessments, discussions, announcements
+    await Chapter.updateMany({ course: courseId }, { isDeleted: false });
+    await Lesson.updateMany({ course: courseId }, { isDeleted: false });
+    await Assessment.updateMany({ course: courseId }, { isDeleted: false });
+    await Discussion.updateMany({ course: courseId }, { isDeleted: false });
+    await Announcement.updateMany({ course: courseId }, { isDeleted: false });
+    await Comment.updateMany({ course: courseId }, { isDeleted: false });
+    await Enrollment.updateMany({ course: courseId }, { isDeleted: false });
+
+    res.status(200).json({ message: "Course and all related data restored successfully", course });
+  } catch (error) {
+    console.error("Error restoring course:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };

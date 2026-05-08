@@ -7,7 +7,8 @@ const GPASchema = new mongoose.Schema(
             gpa: { type: Number, required: true },
             minPercentage: { type: Number, required: true },
             maxPercentage: { type: Number, required: true },
-        }]
+        }],
+        isDeleted: { type: Boolean, default: false }
     },
     { timestamps: true }
 );

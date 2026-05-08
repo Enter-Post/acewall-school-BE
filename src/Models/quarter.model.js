@@ -11,6 +11,7 @@ const QuarterSchema = new mongoose.Schema(
       ref: "Semester",
       required: true,
     },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

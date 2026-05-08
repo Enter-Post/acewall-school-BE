@@ -5,6 +5,7 @@ const bookSchema = new mongoose.Schema({
     subject: { type: String, required: true },
     rawText: { type: String, required: true },
     originalfile: { type: String, required: true },
+    isDeleted: { type: Boolean, default: false }
 });
 
 const Book = mongoose.model("Book", bookSchema);

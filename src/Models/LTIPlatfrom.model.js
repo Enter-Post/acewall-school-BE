@@ -52,6 +52,7 @@ const LTIPlatformSchema = new mongoose.Schema({
   public_key: {
     type: String,
   },
+  isDeleted: { type: Boolean, default: false }
 
 }, { timestamps: true });
 

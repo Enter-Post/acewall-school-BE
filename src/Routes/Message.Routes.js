@@ -5,6 +5,7 @@ import {
 } from "../Contollers/message.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { createMessage_updated, getAllUnreadCounts, getConversationMessages_updated, markMessagesAsRead_updated } from "../Contollers/UPDATED_API_CONTROLLER/message.controller.web.js";
+import { loginRateLimiter } from "../middlewares/rateLimiter.middleware.js";
 
 const router = express.Router();
 
@@ -73,7 +74,7 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
-router.post("/create/:conversationId", isUser, createMessage);
+router.post("/create/:conversationId", isUser, loginRateLimiter, createMessage);
 
 /**
  * @swagger
@@ -228,7 +229,7 @@ router.get("/get/:conversationId", isUser, getConversationMessages);
  *       401:
  *         description: Unauthorized
  */
-router.post("/create_updated/:conversationId", isUser, createMessage_updated);
+router.post("/create_updated/:conversationId", isUser, loginRateLimiter, createMessage_updated);
 
 /**
  * @swagger

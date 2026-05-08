@@ -73,6 +73,7 @@ export const getAttendanceByDate = async (req, res) => {
     const records = await Attendance.find({
       course: courseId,
       date: searchDate,
+      isDeleted: false,
     });
 
     // Transform array into an object: { studentId: status }
@@ -100,7 +101,7 @@ export const getStudentAttendance = async (req, res) => {
   try {
     const studentId = req.user._id;
 
-    const attendance = await Attendance.find({ student: studentId })
+    const attendance = await Attendance.find({ student: studentId, isDeleted: false })
       .populate({
         path: "course",
         // 🔹 Added thumbnail here

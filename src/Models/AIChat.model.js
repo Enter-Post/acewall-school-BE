@@ -23,6 +23,7 @@ const AIChatSchema = new mongoose.Schema({
     },
     difficulty: String,
     fileUsed: String,
+    isDeleted: { type: Boolean, default: false }
 }, { timestamps: true }
 );
 

@@ -1,10 +1,9 @@
 import express from "express";
 import { createPost, deletePost, getPosts, specificUserPosts } from "../../Contollers/PostControllers/post.controller.js";
-import { upload } from "../../lib/DSmulter.config.js";
+import { upload } from "../../lib/multer.config.js";
 import { isUser } from "../../middlewares/Auth.Middleware.js";
-
+import { loginRateLimiter } from "../../middlewares/rateLimiter.middleware.js";
 const router = express.Router();
-
 /**
  * @swagger
  * /api/post/:
@@ -91,7 +90,7 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
-router.post("/", upload.array("assets"), isUser, createPost);
+router.post("/", upload.array("assets"), isUser, loginRateLimiter, createPost);
 
 /**
  * @swagger

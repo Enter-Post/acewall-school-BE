@@ -10,6 +10,7 @@ const gradingScaleSchema = new mongoose.Schema({
       letter: String, // corresponding letter grade
     },
   ],
+  isDeleted: { type: Boolean, default: false }
 });
 
 const GradingScale = mongoose.model("GradingScale", gradingScaleSchema);

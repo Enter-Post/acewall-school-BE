@@ -103,6 +103,7 @@ export const getDiscussionsOfTeacher = async (req, res) => {
   try {
     const discussion = await Discussion.find({
       createdby: teacherId,
+      isDeleted: false,
     }).populate({
       path: "course",
       select: "courseTitle thumbnail",
@@ -127,6 +128,10 @@ export const getDiscussionbyId = async (req, res) => {
       .populate("lesson", "title")
       .populate("createdby", "firstName middleName lastName profileImg")
       .populate("studentDueDateOverrides.student", "firstName middleName lastName profileImg email")
+
+    if (!discussion || discussion.isDeleted) {
+      return res.status(404).json({ message: "Discussion not found" });
+    }
 
     if (!discussion) {
       return res.status(404).json({ message: "Discussion not found" });
@@ -173,13 +178,14 @@ export const discussionforStudent = async (req, res) => {
 
     userId = new mongoose.Types.ObjectId(userId);
 
-    const studentEnrollment = await Enrollment.find({ student: userId });
+    const studentEnrollment = await Enrollment.find({ student: userId, isDeleted: false });
     const allEnrolledCourseIds = studentEnrollment.map((enr) => enr.course);
 
     const discussions = await Discussion.find({
       $or: [
         { course: { $in: allEnrolledCourseIds } },
-      ]
+      ],
+      isDeleted: false,
     })
       .populate("course", "courseTitle thumbnail")
       .populate("category", "title")
@@ -204,7 +210,7 @@ export const discussionforStudent = async (req, res) => {
 export const chapterDiscussions = async (req, res) => {
   const { chapterId } = req.params
   try {
-    const discussion = await Discussion.find({ chapter: chapterId }).populate("course", "courseTitle thumbnail")
+    const discussion = await Discussion.find({ chapter: chapterId, isDeleted: false }).populate("course", "courseTitle thumbnail")
     if (!discussion || discussion.length === 0) {
       return res.status(404).json({ message: "No discussions found for this chapter" });
     }
@@ -218,7 +224,7 @@ export const chapterDiscussions = async (req, res) => {
 export const lessonDiscussions = async (req, res) => {
   const { lessonId } = req.params
   try {
-    const discussion = await Discussion.find({ lesson: lessonId }).populate("course", "courseTitle thumbnail")
+    const discussion = await Discussion.find({ lesson: lessonId, isDeleted: false }).populate("course", "courseTitle thumbnail")
     if (!discussion || discussion.length === 0) {
       return res.status(404).json({ message: "No discussions found for this lesson" });
     }
@@ -227,22 +233,21 @@ export const lessonDiscussions = async (req, res) => {
     console.log("error in fetching chapter discussions", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-}
+};
 
 export const courseDiscussions = async (req, res) => {
   const { courseId } = req.params
   try {
-    const discussion = await Discussion.find({ course: courseId }).populate("course", "courseTitle thumbnail")
+    const discussion = await Discussion.find({ course: courseId, isDeleted: false }).populate("course", "courseTitle thumbnail")
     if (!discussion || discussion.length === 0) {
-      return res.status(404).json({ message: "No discussions found for this lesson" });
+      return res.status(404).json({ message: "No discussions found for this course" });
     }
     res.status(200).json({ message: "Discussions fetched successfully", discussion })
   } catch (error) {
-    console.log("error in fetching chapter discussions", error);
+    console.log("error in fetching course discussions", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-}
-
+};
 
 export const setDueDateForStudentsDiscussion = async (req, res) => {
   try {
@@ -374,5 +379,88 @@ export const toggleAllowResubmission = async (req, res) => {
       success: false,
       message: error.message || "Internal Server Error"
     });
+  }
+};
+
+export const getDeletedDiscussions = async (req, res) => {
+  const { courseId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can view deleted discussions
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const CourseSch = await import("../../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: courseId, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only view deleted discussions of your own courses" });
+      }
+    }
+
+    const deletedDiscussions = await Discussion.find({ course: courseId, isDeleted: true })
+      .sort({ deletedAt: -1 })
+      .populate("category", "title")
+      .populate("chapter", "title")
+      .populate("lesson", "title")
+      .populate("createdby", "firstName lastName email");
+
+    res.status(200).json({
+      message: "Deleted discussions fetched successfully",
+      count: deletedDiscussions.length,
+      deletedDiscussions,
+    });
+  } catch (error) {
+    console.error("Error fetching deleted discussions:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const restoreDiscussion = async (req, res) => {
+  const { discussionId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can restore discussions
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const discussion = await Discussion.findById(discussionId);
+    if (!discussion) {
+      return res.status(404).json({ message: "Discussion not found" });
+    }
+
+    if (!discussion.isDeleted) {
+      return res.status(400).json({ message: "Discussion is not deleted" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const CourseSch = await import("../../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: discussion.course, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only restore discussions of your own courses" });
+      }
+    }
+
+    // Restore the discussion
+    discussion.isDeleted = false;
+    discussion.deletedAt = null;
+    await discussion.save();
+
+    // Restore related comments
+    const DiscussionComment = await import("../../Models/discussionComment.model.js");
+    await DiscussionComment.default.updateMany({ discussion: discussionId }, { isDeleted: false });
+
+    res.status(200).json({ message: "Discussion restored successfully", discussion });
+  } catch (error) {
+    console.error("Error restoring discussion:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };

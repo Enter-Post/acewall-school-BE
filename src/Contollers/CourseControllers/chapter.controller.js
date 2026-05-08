@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import Chapter from "../../Models/chapter.model.sch.js";
 import Quarter from "../../Models/quarter.model.js";
+import Lesson from "../../Models/lesson.model.sch.js";
+import { v2 as cloudinary } from "cloudinary";
 
 export const createChapter = async (req, res) => {
   const quarter = req.params.quarterId;
@@ -26,7 +28,7 @@ export const createChapter = async (req, res) => {
 export const getChapterofCourse = async (req, res) => {
   const { quarterId } = req.params;
   try {
-    const chapters = await Chapter.find({ quarter: quarterId });
+    const chapters = await Chapter.find({ quarter: quarterId, isDeleted: false });
     if (!chapters)
       return res
         .status(404)
@@ -47,15 +49,49 @@ export const deleteChapter = async (req, res) => {
   const { chapterId } = req.params;
   console.log(chapterId, "chapterId");
   try {
-    const chapters = await Chapter.findOneAndDelete({ _id: chapterId });
-    if (!chapters)
+    // Find chapter first (don't delete yet)
+    const chapter = await Chapter.findById(chapterId);
+    if (!chapter)
       return res
         .status(404)
         .json({ message: "No chapters found for this course" });
 
+    // Find all lessons associated with this chapter
+    const lessons = await Lesson.find({ chapter: chapterId });
+
+    // Delete all lessons and their Cloudinary files
+    if (lessons && lessons.length > 0) {
+      for (const lesson of lessons) {
+        // Delete Cloudinary files for each lesson
+        if (lesson.pdfFiles && lesson.pdfFiles.length > 0) {
+          for (const file of lesson.pdfFiles) {
+            // Only delete files from Cloudinary (skip Google Drive files)
+            if (file.source === 'local' && file.public_id) {
+              try {
+                await cloudinary.uploader.destroy(file.public_id, {
+                  resource_type: "raw",
+                });
+              } catch (cloudinaryError) {
+                console.error(`Failed to delete Cloudinary file ${file.public_id}:`, cloudinaryError);
+                // Continue with deletion even if Cloudinary cleanup fails
+              }
+            }
+          }
+        }
+      }
+      // Soft delete all lessons from database
+      await Lesson.updateMany({ chapter: chapterId }, { isDeleted: true });
+    }
+
+    // Soft delete the chapter
+    const deletedChapter = await Chapter.findByIdAndUpdate(chapterId, { 
+      isDeleted: true, 
+      deletedAt: new Date() 
+    });
+
     res.status(200).json({
       message: "Chapter deleted successfully",
-      chapters,
+      chapter: deletedChapter,
     });
   } catch (error) {
     console.log("error in getting chapters", error);
@@ -78,6 +114,7 @@ export const getChapterOfQuarter = async (req, res) => {
         $match: {
           quarter: new mongoose.Types.ObjectId(quarterId),
           course: new mongoose.Types.ObjectId(courseId),
+          isDeleted: false,
         },
       },
 
@@ -115,6 +152,9 @@ export const getChapterOfQuarter = async (req, res) => {
           as: "lessons",
           pipeline: [
             {
+              $match: { isDeleted: false },
+            },
+            {
               $lookup: {
                 from: "assessments",
                 let: { lessonId: "$_id" },
@@ -125,6 +165,7 @@ export const getChapterOfQuarter = async (req, res) => {
                         $and: [
                           { $eq: ["$lesson", "$$lessonId"] },
                           { $eq: ["$type", "lesson-assessment"] },
+                          { $eq: ["$isDeleted", false] },
                         ],
                       },
                     },
@@ -163,6 +204,7 @@ export const getChapterOfQuarter = async (req, res) => {
                   $and: [
                     { $eq: ["$chapter", "$$chapterId"] },
                     { $eq: ["$type", "chapter-assessment"] },
+                    { $eq: ["$isDeleted", false] },
                   ],
                 },
               },
@@ -213,6 +255,7 @@ export const getChapterwithLessons = async (req, res) => {
       {
         $match: {
           _id: new mongoose.Types.ObjectId(chapterId),
+          isDeleted: false,
         },
       },
 
@@ -249,6 +292,9 @@ export const getChapterwithLessons = async (req, res) => {
           foreignField: "chapter",
           as: "lessons",
           pipeline: [
+            {
+              $match: { isDeleted: false },
+            },
             {
               $lookup: {
                 from: "assessments",
@@ -298,6 +344,7 @@ export const getChapterwithLessons = async (req, res) => {
                   $and: [
                     { $eq: ["$chapter", "$$chapterId"] },
                     { $eq: ["$type", "chapter-assessment"] },
+                    { $eq: ["$isDeleted", false] },
                   ],
                 },
               },
@@ -343,10 +390,11 @@ export const editChapter = async (req, res) => {
   const { title, description } = req.body;
   try {
     const chapter = await Chapter.findById(chapterId);
-    if (!chapter) {
+    if (!chapter || chapter.isDeleted) {
       return res.status(404).json({ message: "Chapter not found" });
     }
 
+    const lessons = await Lesson.find({ chapter: chapterId, isDeleted: false });
     chapter.title = title;
     chapter.description = description;
     chapter.save();
@@ -354,6 +402,83 @@ export const editChapter = async (req, res) => {
     res.status(200).json({ message: "Chapter updated successfully" });
   } catch (error) {
     console.log("Error in the Edit Chapter", error);
-    res.status(500).json({ message: "Somehthing went wrong" });
+    res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+export const getDeletedChapters = async (req, res) => {
+  const { courseId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can view deleted chapters
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const CourseSch = await import("../../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: courseId, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only view deleted chapters of your own courses" });
+      }
+    }
+
+    const deletedChapters = await Chapter.find({ course: courseId, isDeleted: true })
+      .sort({ deletedAt: -1 })
+      .populate("quarter", "name startDate endDate")
+      .populate("createdby", "firstName lastName");
+
+    res.status(200).json({
+      message: "Deleted chapters fetched successfully",
+      count: deletedChapters.length,
+      deletedChapters,
+    });
+  } catch (error) {
+    console.error("Error fetching deleted chapters:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const restoreChapter = async (req, res) => {
+  const { chapterId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can restore chapters
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const chapter = await Chapter.findById(chapterId);
+    if (!chapter) {
+      return res.status(404).json({ message: "Chapter not found" });
+    }
+
+    if (!chapter.isDeleted) {
+      return res.status(400).json({ message: "Chapter is not deleted" });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const CourseSch = await import("../../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: chapter.course, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only restore chapters of your own courses" });
+      }
+    }
+
+    // Restore the chapter
+    chapter.isDeleted = false;
+    chapter.deletedAt = null;
+    await chapter.save();
+
+    res.status(200).json({ message: "Chapter restored successfully", chapter });
+  } catch (error) {
+    console.error("Error restoring chapter:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };

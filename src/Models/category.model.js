@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const CategorySchema = new mongoose.Schema(
   {
     title: { type: String, required: true, unique: true },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

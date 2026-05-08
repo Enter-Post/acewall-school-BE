@@ -12,6 +12,7 @@ const LoginActivitySchema = new mongoose.Schema({
     },
     ipAddress: String,
     userAgent: String,
+    isDeleted: { type: Boolean, default: false }
 });
 
 const LoginActivity = mongoose.model("LoginActivity", LoginActivitySchema);

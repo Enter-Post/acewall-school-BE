@@ -5,6 +5,7 @@ import {
   sendReplyofComment,
 } from "../../Contollers/Discussion/replyDiscussion.controller.js";
 import { isUser } from "../../middlewares/Auth.Middleware.js";
+import { loginRateLimiter } from "../../middlewares/rateLimiter.middleware.js";
 
 const router = express.Router();
 
@@ -99,7 +100,7 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
-router.post("/send/:commentId", isUser, sendReplyofComment);
+router.post("/send/:commentId", isUser, loginRateLimiter, sendReplyofComment);
 
 /**
  * @swagger

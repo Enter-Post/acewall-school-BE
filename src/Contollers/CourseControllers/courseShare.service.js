@@ -145,7 +145,7 @@ export const fetchFullCourseData = async (courseId) => {
     }),
   );
 
-  const assessments = await Assessment.find({ course: courseId }).lean();
+  const assessments = await Assessment.find({ course: courseId, isDeleted: false }).lean();
 
   return {
     ...course,
