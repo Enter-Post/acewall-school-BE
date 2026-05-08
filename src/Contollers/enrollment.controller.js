@@ -356,6 +356,9 @@ export const chapterDetails = async (req, res) => {
           as: "lessons",
           pipeline: [
             {
+              $match: { isDeleted: false },
+            },
+            {
               $lookup: {
                 from: "assessments",
                 let: { lessonId: "$_id" },
@@ -366,6 +369,7 @@ export const chapterDetails = async (req, res) => {
                         $and: [
                           { $eq: ["$lesson", "$$lessonId"] },
                           { $eq: ["$type", "lesson-assessment"] },
+                          { $eq: ["$isDeleted", false] },
                         ],
                       },
                     },
@@ -395,6 +399,7 @@ export const chapterDetails = async (req, res) => {
                   $and: [
                     { $eq: ["$chapter", "$$chapterId"] },
                     { $eq: ["$type", "chapter-assessment"] },
+                    { $eq: ["$isDeleted", false] },
                   ],
                 },
               },
@@ -404,6 +409,7 @@ export const chapterDetails = async (req, res) => {
                 _id: 1,
                 title: 1,
                 description: 1,
+                category: 1,
               },
             },
           ],
@@ -461,6 +467,9 @@ export const chapterDetailsStdPre = async (req, res) => {
           as: "lessons",
           pipeline: [
             {
+              $match: { isDeleted: false },
+            },
+            {
               $lookup: {
                 from: "assessments",
                 let: { lessonId: "$_id" },
@@ -471,6 +480,7 @@ export const chapterDetailsStdPre = async (req, res) => {
                         $and: [
                           { $eq: ["$lesson", "$$lessonId"] },
                           { $eq: ["$type", "lesson-assessment"] },
+                          { $eq: ["$isDeleted", false] },
                         ],
                       },
                     },
@@ -500,6 +510,7 @@ export const chapterDetailsStdPre = async (req, res) => {
                   $and: [
                     { $eq: ["$chapter", "$$chapterId"] },
                     { $eq: ["$type", "chapter-assessment"] },
+                    { $eq: ["$isDeleted", false] },
                   ],
                 },
               },
@@ -509,6 +520,7 @@ export const chapterDetailsStdPre = async (req, res) => {
                 _id: 1,
                 title: 1,
                 description: 1,
+                category: 1,
               },
             },
           ],

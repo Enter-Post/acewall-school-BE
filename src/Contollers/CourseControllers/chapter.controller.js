@@ -84,7 +84,10 @@ export const deleteChapter = async (req, res) => {
     }
 
     // Soft delete the chapter
-    const deletedChapter = await Chapter.findByIdAndUpdate(chapterId, { isDeleted: true });
+    const deletedChapter = await Chapter.findByIdAndUpdate(chapterId, { 
+      isDeleted: true, 
+      deletedAt: new Date() 
+    });
 
     res.status(200).json({
       message: "Chapter deleted successfully",
@@ -149,6 +152,9 @@ export const getChapterOfQuarter = async (req, res) => {
           as: "lessons",
           pipeline: [
             {
+              $match: { isDeleted: false },
+            },
+            {
               $lookup: {
                 from: "assessments",
                 let: { lessonId: "$_id" },
@@ -159,6 +165,7 @@ export const getChapterOfQuarter = async (req, res) => {
                         $and: [
                           { $eq: ["$lesson", "$$lessonId"] },
                           { $eq: ["$type", "lesson-assessment"] },
+                          { $eq: ["$isDeleted", false] },
                         ],
                       },
                     },
@@ -197,6 +204,7 @@ export const getChapterOfQuarter = async (req, res) => {
                   $and: [
                     { $eq: ["$chapter", "$$chapterId"] },
                     { $eq: ["$type", "chapter-assessment"] },
+                    { $eq: ["$isDeleted", false] },
                   ],
                 },
               },
@@ -285,6 +293,9 @@ export const getChapterwithLessons = async (req, res) => {
           as: "lessons",
           pipeline: [
             {
+              $match: { isDeleted: false },
+            },
+            {
               $lookup: {
                 from: "assessments",
                 let: { lessonId: "$_id" },
@@ -333,6 +344,7 @@ export const getChapterwithLessons = async (req, res) => {
                   $and: [
                     { $eq: ["$chapter", "$$chapterId"] },
                     { $eq: ["$type", "chapter-assessment"] },
+                    { $eq: ["$isDeleted", false] },
                   ],
                 },
               },

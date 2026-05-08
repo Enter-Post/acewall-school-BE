@@ -29,6 +29,80 @@ const router = express.Router();
 
 /**
  * @swagger
+ * /api/assessment/deleted/:courseId:
+ *   get:
+ *     summary: Get deleted assessments for a course (teacher/admin only)
+ *     tags: [Assessments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Course ID
+ *     responses:
+ *       200:
+ *         description: List of deleted assessments
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 count:
+ *                   type: number
+ *                 deletedAssessments:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Assessment'
+ *       403:
+ *         description: Unauthorized
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/deleted/:courseId", isUser, getDeletedAssessments);
+
+/**
+ * @swagger
+ * /api/assessment/restore/:assessmentId:
+ *   patch:
+ *     summary: Restore a soft-deleted assessment (teacher/admin only)
+ *     tags: [Assessments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: assessmentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Assessment ID to restore
+ *     responses:
+ *       200:
+ *         description: Assessment restored successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 assessment:
+ *                   $ref: '#/components/schemas/Assessment'
+ *       403:
+ *         description: Unauthorized
+ *       404:
+ *         description: Assessment not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.patch("/restore/:assessmentId", isUser, restoreAssessment);
+
+/**
+ * @swagger
  * /api/assessment/{assessmentId}/send-reminder:
  *   post:
  *     summary: Send assessment reminder to students
@@ -543,79 +617,5 @@ router.post("/createAssessment/updated", upload.any(), isUser, loginRateLimiter,
 router.put(`/setDueDateForStudent/:assessmentId`, isUser, setDueDateForStudent);
 router.put("/setAllowResubmission/:assessmentId", isUser, settingAllowResubmission);
 router.put("/updateLatePolicy/:assessmentId", isUser, updateLatePolicy);
-
-/**
- * @swagger
- * /api/assessment/deleted/:courseId:
- *   get:
- *     summary: Get deleted assessments for a course (teacher/admin only)
- *     tags: [Assessments]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: courseId
- *         required: true
- *         schema:
- *           type: string
- *         description: Course ID
- *     responses:
- *       200:
- *         description: List of deleted assessments
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 count:
- *                   type: number
- *                 deletedAssessments:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Assessment'
- *       403:
- *         description: Unauthorized
- *       401:
- *         description: Unauthorized
- */
-router.get("/deleted/:courseId", isUser, getDeletedAssessments);
-
-/**
- * @swagger
- * /api/assessment/restore/:assessmentId:
- *   patch:
- *     summary: Restore a soft-deleted assessment (teacher/admin only)
- *     tags: [Assessments]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: assessmentId
- *         required: true
- *         schema:
- *           type: string
- *         description: Assessment ID to restore
- *     responses:
- *       200:
- *         description: Assessment restored successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 assessment:
- *                   $ref: '#/components/schemas/Assessment'
- *       403:
- *         description: Unauthorized
- *       404:
- *         description: Assessment not found
- *       401:
- *         description: Unauthorized
- */
-router.patch("/restore/:assessmentId", isUser, restoreAssessment);
 
 export default router;

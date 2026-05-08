@@ -91,7 +91,10 @@ export const deleteLesson = async (req, res) => {
     }
 
     // Soft delete the lesson
-    await Lesson.findByIdAndUpdate(lessonId, { isDeleted: true });
+    await Lesson.findByIdAndUpdate(lessonId, { 
+      isDeleted: true, 
+      deletedAt: new Date() 
+    });
 
     res.status(200).json({ message: "Lesson deleted successfully" });
   } catch (error) {

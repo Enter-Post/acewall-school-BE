@@ -380,7 +380,10 @@ export const deleteAssessment = async (req, res) => {
     await Submission.updateMany({ assessment: id }, { isDeleted: true });
 
     // Soft delete the assessment
-    await Assessment.findByIdAndUpdate(id, { isDeleted: true });
+    await Assessment.findByIdAndUpdate(id, { 
+      isDeleted: true, 
+      deletedAt: new Date() 
+    });
 
     res.status(200).json({ message: "Assessment deleted successfully" });
   } catch (error) {

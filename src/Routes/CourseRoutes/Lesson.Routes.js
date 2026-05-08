@@ -18,6 +18,80 @@ const router = express.Router();
 
 /**
  * @swagger
+ * /api/lesson/deleted/:chapterId:
+ *   get:
+ *     summary: Get deleted lessons for a chapter (teacher/admin only)
+ *     tags: [Lessons]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: chapterId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Chapter ID
+ *     responses:
+ *       200:
+ *         description: List of deleted lessons
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 count:
+ *                   type: number
+ *                 deletedLessons:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Lesson'
+ *       403:
+ *         description: Unauthorized
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/deleted/:chapterId", isUser, getDeletedLessons);
+
+/**
+ * @swagger
+ * /api/lesson/restore/:lessonId:
+ *   patch:
+ *     summary: Restore a soft-deleted lesson (teacher/admin only)
+ *     tags: [Lessons]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: lessonId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Lesson ID to restore
+ *     responses:
+ *       200:
+ *         description: Lesson restored successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 lesson:
+ *                   $ref: '#/components/schemas/Lesson'
+ *       403:
+ *         description: Unauthorized
+ *       404:
+ *         description: Lesson not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.patch("/restore/:lessonId", isUser, restoreLesson);
+
+/**
+ * @swagger
  * /api/lesson/create:
  *   post:
  *     summary: Create a new lesson
@@ -348,79 +422,5 @@ router.put(
   upload.array("pdfFiles"),
   addMoreFiles
 );
-
-/**
- * @swagger
- * /api/lesson/deleted/:chapterId:
- *   get:
- *     summary: Get deleted lessons for a chapter (teacher/admin only)
- *     tags: [Lessons]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: chapterId
- *         required: true
- *         schema:
- *           type: string
- *         description: Chapter ID
- *     responses:
- *       200:
- *         description: List of deleted lessons
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 count:
- *                   type: number
- *                 deletedLessons:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Lesson'
- *       403:
- *         description: Unauthorized
- *       401:
- *         description: Unauthorized
- */
-router.get("/deleted/:chapterId", isUser, getDeletedLessons);
-
-/**
- * @swagger
- * /api/lesson/restore/:lessonId:
- *   patch:
- *     summary: Restore a soft-deleted lesson (teacher/admin only)
- *     tags: [Lessons]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: lessonId
- *         required: true
- *         schema:
- *           type: string
- *         description: Lesson ID to restore
- *     responses:
- *       200:
- *         description: Lesson restored successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 lesson:
- *                   $ref: '#/components/schemas/Lesson'
- *       403:
- *         description: Unauthorized
- *       404:
- *         description: Lesson not found
- *       401:
- *         description: Unauthorized
- */
-router.patch("/restore/:lessonId", isUser, restoreLesson);
 
 export default router;

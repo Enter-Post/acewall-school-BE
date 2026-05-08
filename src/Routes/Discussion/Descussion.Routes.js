@@ -22,6 +22,80 @@ const router = express.Router();
 
 /**
  * @swagger
+ * /api/discussion/deleted/:courseId:
+ *   get:
+ *     summary: Get deleted discussions for a course (teacher/admin only)
+ *     tags: [Discussions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Course ID
+ *     responses:
+ *       200:
+ *         description: List of deleted discussions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 count:
+ *                   type: number
+ *                 deletedDiscussions:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Discussion'
+ *       403:
+ *         description: Unauthorized
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/deleted/:courseId", isUser, getDeletedDiscussions);
+
+/**
+ * @swagger
+ * /api/discussion/restore/:discussionId:
+ *   patch:
+ *     summary: Restore a soft-deleted discussion (teacher/admin only)
+ *     tags: [Discussions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: discussionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Discussion ID to restore
+ *     responses:
+ *       200:
+ *         description: Discussion restored successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 discussion:
+ *                   $ref: '#/components/schemas/Discussion'
+ *       403:
+ *         description: Unauthorized
+ *       404:
+ *         description: Discussion not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.patch("/restore/:discussionId", isUser, restoreDiscussion);
+
+/**
+ * @swagger
  * /api/discussion/create:
  *   post:
  *     summary: Create a new discussion
@@ -282,79 +356,5 @@ router.get("/v2/:id", isUser, resolveEnrollmentFromDiscussion, isEnrolledMiddlew
 
 router.put("/setDueDateForStudent/:discussionId", isUser, setDueDateForStudentsDiscussion);
 router.put("/toggleAllowResubmission/:discussionId", isUser, toggleAllowResubmission);
-
-/**
- * @swagger
- * /api/discussion/deleted/:courseId:
- *   get:
- *     summary: Get deleted discussions for a course (teacher/admin only)
- *     tags: [Discussions]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: courseId
- *         required: true
- *         schema:
- *           type: string
- *         description: Course ID
- *     responses:
- *       200:
- *         description: List of deleted discussions
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 count:
- *                   type: number
- *                 deletedDiscussions:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Discussion'
- *       403:
- *         description: Unauthorized
- *       401:
- *         description: Unauthorized
- */
-router.get("/deleted/:courseId", isUser, getDeletedDiscussions);
-
-/**
- * @swagger
- * /api/discussion/restore/:discussionId:
- *   patch:
- *     summary: Restore a soft-deleted discussion (teacher/admin only)
- *     tags: [Discussions]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: discussionId
- *         required: true
- *         schema:
- *           type: string
- *         description: Discussion ID to restore
- *     responses:
- *       200:
- *         description: Discussion restored successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 discussion:
- *                   $ref: '#/components/schemas/Discussion'
- *       403:
- *         description: Unauthorized
- *       404:
- *         description: Discussion not found
- *       401:
- *         description: Unauthorized
- */
-router.patch("/restore/:discussionId", isUser, restoreDiscussion);
 
 export default router;
