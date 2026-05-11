@@ -5,6 +5,7 @@ const discussionSchema = new mongoose.Schema(
     course: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "CourseSch",
+      required: true,
     },
     totalMarks: { type: Number, required: true },
     topic: { type: String, required: true },
@@ -47,11 +48,6 @@ const discussionSchema = new mongoose.Schema(
     quarter: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Quarter",
-    },
-    course: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "CourseSch",
-      required: true,
     },
     chapter: {
       type: mongoose.Schema.Types.ObjectId,

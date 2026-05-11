@@ -420,6 +420,57 @@ export const getDeletedDiscussions = async (req, res) => {
   }
 };
 
+export const softDeleteDiscussion = async (req, res) => {
+  const { discussionId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can delete discussions
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const discussion = await Discussion.findById(discussionId);
+    if (!discussion) {
+      return res.status(404).json({ message: "Discussion not found" });
+    }
+
+    // If discussion is already deleted, but frontend is trying to delete it,
+    // it means there's a data inconsistency. Just return success.
+    if (discussion.isDeleted) {
+      console.log("Discussion already marked as deleted, returning success to maintain UI consistency");
+      return res.status(200).json({ message: "Discussion deleted successfully", discussion });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const CourseSch = await import("../../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: discussion.course, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only delete discussions of your own courses" });
+      }
+    }
+
+    // Soft delete discussion
+    discussion.isDeleted = true;
+    discussion.deletedAt = new Date();
+    await discussion.save();
+
+    // Soft delete related comments
+    const DiscussionComment = await import("../../Models/discussionComment.model.js");
+    await DiscussionComment.default.updateMany(
+      { discussion: discussionId }, 
+      { isDeleted: true, deletedAt: new Date() }
+    );
+
+    res.status(200).json({ message: "Discussion deleted successfully", discussion });
+  } catch (error) {
+    console.error("Error deleting discussion:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 export const restoreDiscussion = async (req, res) => {
   const { discussionId } = req.params;
   const userId = req.user._id;
@@ -449,7 +500,7 @@ export const restoreDiscussion = async (req, res) => {
       }
     }
 
-    // Restore the discussion
+    // Restore discussion
     discussion.isDeleted = false;
     discussion.deletedAt = null;
     await discussion.save();
