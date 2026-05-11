@@ -35,6 +35,14 @@ const PagesSchema = new mongoose.Schema(
       publicId: { type: String },
       source: { type: String, default: 'local' },
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );
