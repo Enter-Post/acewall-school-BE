@@ -3,12 +3,14 @@ import Subcategory from "../../Models/subcategory.model.js";
 
 export const createSubCategory = async (req, res) => {
   const { title, category } = req.body;
-
+  const { districtId, schoolId } = req.user
   try {
     // Check if subcategory with same title exists for the same category
     const existingSub = await Subcategory.findOne({
       title: { $regex: new RegExp("^" + title + "$", "i") }, // case-insensitive
       category,
+      districtId,
+      schoolId,
     });
 
     if (existingSub) {
@@ -18,7 +20,7 @@ export const createSubCategory = async (req, res) => {
       });
     }
 
-    const subcategory = new Subcategory({ title, category });
+    const subcategory = new Subcategory({ title, category, districtId, schoolId });
     await subcategory.save();
 
     res.status(201).json({
@@ -36,8 +38,9 @@ export const createSubCategory = async (req, res) => {
 };
 
 export const getSubcategory = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
-    const subcategories = await Subcategory.find({ isDeleted: false }).sort({ name: 1 }); // Optional: sort alphabetically
+    const subcategories = await Subcategory.find({ isDeleted: false, districtId, schoolId }).sort({ name: 1 }); // Optional: sort alphabetically
 
     res.status(200).json({
       success: true,
@@ -57,7 +60,7 @@ export const getSubcategory = async (req, res) => {
 // DELETE a subcategory by ID
 export const deleteSubcategory = async (req, res) => {
   const { id } = req.params;
-
+  const { districtId, schoolId } = req.user
   try {
     // Check if subcategory exists
     const subcategory = await Subcategory.findById(id);
@@ -96,7 +99,7 @@ export const deleteSubcategory = async (req, res) => {
 export const updateSubCategory = async (req, res) => {
   const { id } = req.params;
   const { title, category } = req.body;
-
+  const { districtId, schoolId } = req.user
   try {
     const existing = await Subcategory.findOne({
       _id: { $ne: id },
@@ -138,6 +141,7 @@ export const updateSubCategory = async (req, res) => {
 
 export const getSubcategoruWithcategory = async (req, res) => {
   const { id } = req.params;
+  const { districtId, schoolId } = req.user
   try {
     const subcategories = await Subcategory.findById(id).populate("category");
     res.status(200).json({

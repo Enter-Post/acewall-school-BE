@@ -1,5 +1,6 @@
 import express from "express";
 import { sendContactMail, sendSupportMail } from "../Contollers/Support.controller.js";
+import { isUser } from "../middlewares/Auth.Middleware.js";
 // import { sendSupportMail } from "../contollers/Support.Controller.js";
 
 const router = express.Router();
@@ -73,7 +74,7 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/send", sendSupportMail);
+router.post("/send", isUser, sendSupportMail);
 
 /**
  * @swagger
@@ -140,6 +141,6 @@ router.post("/send", sendSupportMail);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/sendcontactmail", sendContactMail);
+router.post("/sendcontactmail", isUser, sendContactMail);
 
 export default router;

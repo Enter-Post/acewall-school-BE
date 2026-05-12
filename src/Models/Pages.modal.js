@@ -35,6 +35,19 @@ const PagesSchema = new mongoose.Schema(
       publicId: { type: String },
       source: { type: String, default: 'local' },
     },
+    // District and School isolation for new pages
+    districtId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "District",
+      required: false, // Optional for backward compatibility
+      index: true,
+    },
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      required: false, // Optional for backward compatibility
+      index: true,
+    },
   },
   { timestamps: true }
 );

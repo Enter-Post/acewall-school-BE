@@ -35,6 +35,17 @@ const notificationSchema = new mongoose.Schema({
     default: Date.now,
     expires: 604800, // Automatically delete notifications after 7 days
   },
+  // District and School isolation for new notifications
+  districtId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "District",
+    index: true,
+  },
+  schoolId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "School",
+    index: true,
+  },
   isDeleted: { type: Boolean, default: false }
 });
 

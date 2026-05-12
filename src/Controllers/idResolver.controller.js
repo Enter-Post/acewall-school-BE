@@ -5,6 +5,7 @@ import { resolveBulk, getCacheStats } from "../services/idResolver.service.js";
  * POST /api/admin/resolve-ids
  */
 export const resolveIds = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const { ids } = req.body;
 

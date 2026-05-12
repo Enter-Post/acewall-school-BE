@@ -18,6 +18,27 @@ const AssessmentCategorySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Virtual fields for district and school - inherited from course
+AssessmentCategorySchema.virtual('districtId', {
+  ref: 'CourseSch',
+  localField: 'course',
+  foreignField: '_id',
+  justOne: true,
+  options: { select: 'districtId' }
+});
+
+AssessmentCategorySchema.virtual('schoolId', {
+  ref: 'CourseSch', 
+  localField: 'course',
+  foreignField: '_id',
+  justOne: true,
+  options: { select: 'schoolId' }
+});
+
+// Ensure virtual fields are included in JSON output
+AssessmentCategorySchema.set('toJSON', { virtuals: true });
+AssessmentCategorySchema.set('toObject', { virtuals: true });
+
 const AssessmentCategory = mongoose.model(
   "AssessmentCategory",
   AssessmentCategorySchema

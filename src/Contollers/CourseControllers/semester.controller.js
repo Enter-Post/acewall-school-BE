@@ -4,8 +4,9 @@ import Semester from "../../Models/semester.model.js";
 
 export const createSemester = async (req, res) => {
   const { title, startDate, endDate } = req.body;
+  const { districtId, schoolId } = req.user
   try {
-    const newSemester = new Semester({ title, startDate, endDate });
+    const newSemester = new Semester({ title, startDate, endDate, districtId, schoolId });
     await newSemester.save();
     res
       .status(201)
@@ -17,9 +18,9 @@ export const createSemester = async (req, res) => {
 };
 
 export const getSemester = async (req, res) => {
-  console.log("getSemester called");
+  const { districtId, schoolId } = req.user
   try {
-    const semesters = await Semester.find();
+    const semesters = await Semester.find({ districtId, schoolId });
     res
       .status(200)
       .json({ message: "Semesters found successfully", semesters });
@@ -30,6 +31,7 @@ export const getSemester = async (req, res) => {
 };
 
 export const getSemesterwithQuarter = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const semesters = await Semester.aggregate([
       {
@@ -39,6 +41,9 @@ export const getSemesterwithQuarter = async (req, res) => {
           foreignField: "semester",
           as: "quarters",
         },
+      },
+      {
+        $match: { districtId, schoolId }
       },
       {
         $sort: { startDate: 1 }, // Optional: sort semesters chronologically

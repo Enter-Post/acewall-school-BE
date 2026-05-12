@@ -1,6 +1,7 @@
 import express from "express";
 import { ChapterPagesforStudent, createpage, deletePage, getAllPages, getStudentPages, lessonPagesforStudent } from "../Contollers/pages.controller.js";
 import { upload } from "../lib/multer.config.js";
+import { isUser } from "../middlewares/Auth.Middleware.js";
 
 const router = express.Router();
 
@@ -133,6 +134,7 @@ const router = express.Router();
  */
 router.post(
    "/createpage/:courseId/:type/:typeId",
+   isUser,
    upload.fields([
        { name: "image", maxCount: 1 },
        { name: "files", maxCount: 10 },
@@ -257,7 +259,7 @@ router.post(
  *       401:
  *         description: Unauthorized
  */
-router.get("/:courseId/:type/:typeId", getAllPages);
+router.get("/:courseId/:type/:typeId", isUser, getAllPages);
 
 /**
  * @swagger
@@ -288,7 +290,7 @@ router.get("/:courseId/:type/:typeId", getAllPages);
  *       401:
  *         description: Unauthorized
  */
-router.delete("/deletepage/:pageId", deletePage);
+router.delete("/deletepage/:pageId", isUser, deletePage);
 
 /**
  * @swagger
@@ -397,7 +399,7 @@ router.delete("/deletepage/:pageId", deletePage);
  *       401:
  *         description: Unauthorized
  */
-router.get("/studentpages", getStudentPages);
+router.get("/studentpages", isUser, getStudentPages);
 
 /**
  * @swagger
@@ -497,7 +499,7 @@ router.get("/studentpages", getStudentPages);
  *       401:
  *         description: Unauthorized
  */
-router.get("/getChapterPages/:chapterId", ChapterPagesforStudent);
+router.get("/getChapterPages/:chapterId", isUser, ChapterPagesforStudent);
 
 /**
  * @swagger
@@ -604,7 +606,7 @@ router.get("/getChapterPages/:chapterId", ChapterPagesforStudent);
  *       401:
  *         description: Unauthorized
  */
-router.get("/getLessonPages/:lessonId", lessonPagesforStudent);
+router.get("/getLessonPages/:lessonId", isUser, lessonPagesforStudent);
 
 export default router;
 

@@ -22,6 +22,12 @@ import { upload } from "../lib/multer.config.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { getResultsMiddleware } from "../middlewares/isSubmitted.middleware.js";
 import { loginRateLimiter } from "../middlewares/rateLimiter.middleware.js";
+import { 
+  preventCrossDistrictAccess, 
+  restrictToOwnSchool, 
+  addDistrictFilter,
+  addSchoolFilter 
+} from "../middlewares/district.middleware.js";
 import { createAssessment_updated } from "../Contollers/UPDATED_API_CONTROLLER/assessment.controller.web.js";
 import { isEnrolledMiddleware } from "../middlewares/isEnrolled.middleware.js";
 
@@ -260,6 +266,9 @@ router.get("/stats/:assessmentId", isUser, getAssessmentStats);
  */
 router.post("/create", upload.any(), isUser, loginRateLimiter, createAssessment);
 
+// V2 Routes with district and school access control
+router.post("/v2/create", upload.any(), isUser, preventCrossDistrictAccess, loginRateLimiter, createAssessment);
+
 /**
  * @swagger
  * /api/assessment/allAssessmentByTeacher:
@@ -286,6 +295,9 @@ router.post("/create", upload.any(), isUser, loginRateLimiter, createAssessment)
  *         description: Unauthorized
  */
 router.get("/allAssessmentByTeacher", isUser, allAssessmentByTeacher);
+
+// V2 Routes with district and school access control
+router.get("/v2/allAssessmentByTeacher", isUser, preventCrossDistrictAccess, addSchoolFilter, allAssessmentByTeacher);
 
 /**
  * @swagger
@@ -321,6 +333,9 @@ router.get("/allAssessmentByTeacher", isUser, allAssessmentByTeacher);
  *         description: Unauthorized
  */
 router.get("/getAllassessmentforStudent", isUser, getAllassessmentforStudent);
+
+// V2 Routes with district and school access control
+router.get("/v2/getAllassessmentforStudent", isUser, preventCrossDistrictAccess, addSchoolFilter, getAllassessmentforStudent);
 
 /**
  * @swagger

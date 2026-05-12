@@ -157,12 +157,34 @@ export const extractSamlProfile = (profile) => {
     profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] ||
     email;
 
+  // Extract school and district for BCPS RBAC
+  const school =
+    profile.school ||
+    profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/organization"] ||
+    profile.organization ||
+    null;
+
+  const district =
+    profile.district ||
+    profile["http://schemas.microsoft.com/identity/claims/tenantid"] ||
+    null;
+
+  // Extract role if provided by IdP
+  const role =
+    profile.role ||
+    profile["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] ||
+    null;
+
   return {
     email: email.toLowerCase().trim(),
     firstName: firstName.trim(),
     lastName: lastName.trim(),
     displayName: displayName.trim(),
     samlId: samlId.trim(),
+    // BCPS RBAC additions
+    school,
+    district,
+    role,
   };
 };
 

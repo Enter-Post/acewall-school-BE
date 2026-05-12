@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 
 export const sendSupportMail = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { fullName, email, feedback } = req.body;
 
   console.log("Support request received:", email);
@@ -67,6 +68,7 @@ export const sendSupportMail = async (req, res) => {
 
 
 export const sendContactMail = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { name, email, phone, subject, message } = req.body;
 
   console.log("Contact request received:", email);

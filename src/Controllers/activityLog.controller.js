@@ -24,6 +24,7 @@ export const createLogEntry = async (req, res) => {
 
     // Get user info from auth middleware
     const userId = req.user?._id || req.user?.id || null;
+    const { districtId, schoolId } = req.user
 
     // Capture request metadata
     const ipAddress = getClientIp(req);

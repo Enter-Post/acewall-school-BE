@@ -93,6 +93,19 @@ const ActivityLogSchema = new mongoose.Schema(
       default: Date.now,
       index: true,
     },
+    // District and School isolation for audit trail
+    districtId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "District",
+      required: false, // Optional for backward compatibility
+      index: true,
+    },
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      required: false, // Optional for backward compatibility
+      index: true,
+    },
     isDeleted: { type: Boolean, default: false },
   },
   {

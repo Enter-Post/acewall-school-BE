@@ -23,6 +23,19 @@ const PostSchema = new mongoose.Schema({
         ref: "CourseSch",
         required: function() { return this.postType === "course"; } 
     },
+    // District and School isolation for new posts
+    districtId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "District",
+        required: false, // Optional for backward compatibility
+        index: true,
+    },
+    schoolId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "School",
+        required: false, // Optional for backward compatibility
+        index: true,
+    },
     isDeleted: { type: Boolean, default: false }
 }, { timestamps: true });
 

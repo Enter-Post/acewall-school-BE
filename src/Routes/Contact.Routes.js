@@ -1,5 +1,6 @@
 import express from "express";
 import { sendSchoolcontactmail } from "../Contollers/contact.controller.js";
+import { isUser } from "../middlewares/Auth.Middleware.js";
 
 const router = express.Router();
 
@@ -72,6 +73,6 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/sendSchoolcontactmail", sendSchoolcontactmail)
+router.post("/sendSchoolcontactmail", isUser, sendSchoolcontactmail)
 
 export default router;

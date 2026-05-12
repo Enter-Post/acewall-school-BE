@@ -1,6 +1,7 @@
 import StandardGrading from "../Models/StandardGrading.model.js";
 
 export const SetStandardGradingScale = async (req, res) => {
+    const { districtId, schoolId } = req.user
     const { scale } = req.body;
     
     if (!Array.isArray(scale) || scale.length === 0) {

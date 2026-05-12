@@ -8,6 +8,7 @@ import path from "path";
 import Book from "../Models/books.model.js";
 
 export const getChatHistory = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const limit = req.query.limit ? parseInt(req.query.limit) : 10;
     const userId = req.user._id;
@@ -21,6 +22,7 @@ export const getChatHistory = async (req, res) => {
 };
 
 export const askAIupdated = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const userId = req.user._id;
 
   try {

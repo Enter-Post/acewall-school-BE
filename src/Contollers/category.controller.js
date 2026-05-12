@@ -6,8 +6,10 @@ import CourseSch from "../Models/courses.model.sch.js";
 
 
 export const getAllCategories = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
-    const categories = await Category.find({ isDeleted: false });
+    const categories = await Category.find({ isDeleted: false, districtId, schoolId });
+
     return res.status(200).json({
       categories,
       message: "Categories fetched successfully",
@@ -22,8 +24,10 @@ export const getAllCategories = async (req, res) => {
 
 export const createCategory = async (req, res) => {
   const { title } = req.body;
+  const { districtId, schoolId } = req.user
+
   try {
-    if (!title) {
+    if (!title || !districtId || !schoolId) {
       return res.status(400).json({
         error: true,
         message: "Please fill all the fields",
@@ -40,6 +44,8 @@ export const createCategory = async (req, res) => {
 
     const category = await Category.create({
       title,
+      districtId,
+      schoolId,
     });
     return res.status(200).json({
       category,
@@ -57,6 +63,7 @@ export const createCategory = async (req, res) => {
 
 export const deleteCategory = async (req, res) => {
   const { categoryId } = req.params;
+  const { districtId, schoolId } = req.user
 
   if (!categoryId) {
     return res.status(400).json({
@@ -105,6 +112,7 @@ export const deleteCategory = async (req, res) => {
 };
 
 export const getCategoriesforAdmin = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const categories = await Category.aggregate([
       {
@@ -128,21 +136,8 @@ export const getCategoriesforAdmin = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 export const getSubcategoriesByCategoryId = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const { categoryId } = req.params;
 
@@ -178,7 +173,7 @@ export const getSubcategoriesByCategoryId = async (req, res) => {
 export const editCategory = async (req, res) => {
   const { categoryId } = req.params;
   const { title } = req.body;
-
+  const { districtId, schoolId } = req.user
   try {
     if (!categoryId || !title) {
       return res.status(400).json({
