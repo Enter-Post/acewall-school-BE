@@ -1,5 +1,5 @@
 import express from "express";
-import { createPost, deletePost, getPosts, specificUserPosts } from "../../Contollers/PostControllers/post.controller.js";
+import { createPost, deletePost, getPosts, specificUserPosts, restorePost } from "../../Contollers/PostControllers/post.controller.js";
 import { upload } from "../../lib/multer.config.js";
 import { isUser } from "../../middlewares/Auth.Middleware.js";
 import { loginRateLimiter } from "../../middlewares/rateLimiter.middleware.js";
@@ -300,5 +300,36 @@ router.get("/specificUserPosts/:id", isUser, specificUserPosts);
  *         description: Unauthorized
  */
 router.delete("/deletePost/:postId", isUser, deletePost);
+
+/**
+ * @swagger
+ * /api/post/restorePost/{postId}:
+ *   post:
+ *     summary: Restore a deleted post
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Post ID to restore
+ *     responses:
+ *       200:
+ *         description: Post restored successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       404:
+ *         description: Post not found
+ *       403:
+ *         description: Not authorized to restore this post
+ *       401:
+ *         description: Unauthorized
+ */
+router.post("/restorePost/:postId", isUser, restorePost);
 
 export default router;
