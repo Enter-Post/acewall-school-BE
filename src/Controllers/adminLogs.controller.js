@@ -15,6 +15,7 @@ import {
  * GET /api/admin/users
  */
 export const getUsersByRole = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const { role } = req.query;
 
@@ -46,6 +47,7 @@ export const getUsersByRole = async (req, res) => {
  * GET /api/admin/logs/:userId
  */
 export const getUserLogs = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const { userId } = req.params;
     const {
@@ -102,6 +104,7 @@ export const getUserLogs = async (req, res) => {
  * GET /api/admin/logs/:userId/stats
  */
 export const getUserActivityStats = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const { userId } = req.params;
     const { days = 30 } = req.query;
@@ -133,6 +136,7 @@ export const getUserActivityStats = async (req, res) => {
  * DELETE /api/admin/logs/cleanup
  */
 export const triggerLogCleanup = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const { days = 60 } = req.body;
 
@@ -165,6 +169,7 @@ export const triggerLogCleanup = async (req, res) => {
  * GET /api/admin/logs/:userId/export
  */
 export const exportUserLogs = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const { userId } = req.params;
     const { type, startDate, endDate } = req.query;

@@ -53,6 +53,19 @@ const ZoomMeetingSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    // District and School isolation for new meetings
+    districtId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "District",
+      required: false, // Optional for backward compatibility
+      index: true,
+    },
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      required: false, // Optional for backward compatibility
+      index: true,
+    },
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true },

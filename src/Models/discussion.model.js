@@ -69,6 +69,16 @@ const discussionSchema = new mongoose.Schema(
     allowResubmission: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
     deletedAt: { type: Date, default: null },
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      required: true,
+    },
+    districtId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "District",
+      required: true,
+    }
   },
   { timestamps: true }
 );

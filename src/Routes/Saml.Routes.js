@@ -7,6 +7,7 @@ import {
   samlError,
   samlAuthenticateMiddleware,
 } from "../Contollers/saml.controller.js";
+import { isUser } from "../middlewares/Auth.Middleware.js";
 
 const router = express.Router();
 
@@ -43,7 +44,7 @@ const router = express.Router();
  *                       displayName:
  *                         type: string
  */
-router.get("/providers", getSamlProviders);
+router.get("/providers", isUser, getSamlProviders);
 
 /**
  * @swagger
@@ -156,6 +157,6 @@ router.post("/callback", (req, res, next) => {
  *       302:
  *         description: Redirect to frontend login with error
  */
-router.get("/error", samlError);
+router.get("/error", isUser, samlError);
 
 export default router;

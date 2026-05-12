@@ -13,6 +13,7 @@ import fs from "fs";
 //  console.log(req.body, "data ");
 //   return;
 export const createAnnouncement = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const { title, message, courseId, teacherId, links } = req.body;
 
@@ -168,6 +169,7 @@ export const createAnnouncement = async (req, res) => {
 };
 
 export const getAnnouncementsForCourse = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { courseId } = req.params;
   try {
     const announcements = await Announcement.find({ course: courseId, isDeleted: false })
@@ -181,6 +183,7 @@ export const getAnnouncementsForCourse = async (req, res) => {
 };
 
 export const getAnnouncementsByTeacher = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { teacherId } = req.params;
   const { course } = req.query; // destructure courseId from query
 
@@ -205,6 +208,7 @@ export const getAnnouncementsByTeacher = async (req, res) => {
 };
 
 export const deleteAnnouncement = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { id } = req.params;
 
   try {
@@ -241,6 +245,7 @@ export const deleteAnnouncement = async (req, res) => {
 };
 
 export const getAnnouncementsForStudent = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const studentId = req.user._id;
 
   try {
@@ -278,6 +283,7 @@ export const getAnnouncementsForStudent = async (req, res) => {
 };
 
 export const getAnnouncementsForParent = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { studentId } = req.params; // The ID of the child passed from frontend
   const parentEmail = req.user.email; // From your auth middleware
 
@@ -334,6 +340,7 @@ export const getAnnouncementsForParent = async (req, res) => {
 };
 
 export const getDeletedAnnouncements = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { courseId } = req.params;
   const userId = req.user._id;
   const userRole = req.user.role;
@@ -369,6 +376,7 @@ export const getDeletedAnnouncements = async (req, res) => {
 };
 
 export const restoreAnnouncement = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { announcementId } = req.params;
   const userId = req.user._id;
   const userRole = req.user.role;

@@ -29,6 +29,8 @@ const UserSchema = new mongoose.Schema(
         "student",
         "teacher",
         "admin",
+        "super_admin",
+        "district_admin",
         "teacherAsStudent",
         "parent",
         "instructor",
@@ -42,7 +44,7 @@ const UserSchema = new mongoose.Schema(
     password: { type: String, required: false },
     cleverId: { type: String, unique: true, sparse: true },
     districtId: { type: String },
-    schoolIds: [{ type: String }],
+    schoolId: { type: String },
     authProvider: {
       type: String,
       enum: ["local", "google", "clever", "saml"],

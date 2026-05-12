@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 export const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI,  {
-      dbName: "dev", // 👈 FORCE database here
+      dbName: "District-dev", // 👈 FORCE database here
     });
     console.log("DB connected succcesfully");
   } catch (error) {

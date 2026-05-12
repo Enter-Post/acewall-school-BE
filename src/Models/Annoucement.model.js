@@ -34,6 +34,19 @@ const announcementSchema = new mongoose.Schema(
       ref: "CourseSch",
       required: true,
     },
+    // District and School isolation for new announcements
+    districtId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "District",
+      required: false, // Optional for backward compatibility
+      index: true,
+    },
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      required: false, // Optional for backward compatibility
+      index: true,
+    },
     isDeleted: { type: Boolean, default: false },
     deletedAt: { type: Date, default: null },
   },

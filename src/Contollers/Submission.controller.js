@@ -16,6 +16,7 @@ import { trackAssignmentSubmission, trackQuizSubmission } from "../Utiles/busine
 dotenv.config();
 
 export const submission = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const studentId = req.user._id;
   const { assessmentId } = req.params;
   const answers = req.body;

@@ -17,6 +17,8 @@ import Discussion from "../../Models/discussion.model.js";
 import Quarter from "../../Models/quarter.model.js";
 import { ZoomMeeting } from "../../Models/ZoomMeeting.model.js";
 import CourseShare from "../../Models/CourseShare.model.js";
+import School from "../../Models/school.model.js";
+import { ROLES } from "../../modules/rbac/roles.js";
 import { processCourseImport } from "./courseShare.service.js";
 
 export const importFullCourse = async (req, res) => {
@@ -134,9 +136,8 @@ export const toggleAllCoursesComments = async (req, res) => {
     const result = await CourseSch.updateMany({}, { commentsEnabled: enable });
 
     res.status(200).json({
-      message: `Comments & Ratings ${
-        enable ? "enabled" : "disabled"
-      } for all courses`,
+      message: `Comments & Ratings ${enable ? "enabled" : "disabled"
+        } for all courses`,
       commentsEnabled: enable,
       modifiedCount: result.modifiedCount, // optional: how many courses were updated
     });
@@ -163,9 +164,8 @@ export const toggleCourseComments = async (req, res) => {
     await course.save();
 
     res.status(200).json({
-      message: `Comments & Ratings ${
-        enable ? "enabled" : "disabled"
-      } successfully`,
+      message: `Comments & Ratings ${enable ? "enabled" : "disabled"
+        } successfully`,
       commentsEnabled: enable,
     });
     console.log(enable);
@@ -196,7 +196,26 @@ export const createCourseSch = async (req, res) => {
 
   const files = req.files;
 
+  const { schoolId, districtId } = req.user
+
   try {
+
+    if (!schoolId) {
+      return res.status(400).json({
+        error: true,
+        message: "School ID is required to create a course",
+      });
+    }
+
+    // Validate school exists and get district
+    const school = await School.findById(schoolId);
+    if (!school || school.isDeleted) {
+      return res.status(404).json({
+        error: true,
+        message: "School not found",
+      });
+    }
+
     // Find teacher info for email
     const teacher = await User.findById(createdby).select(
       "firstName lastName email",
@@ -272,6 +291,8 @@ export const createCourseSch = async (req, res) => {
       semester: parsedSemester,
       quarter: parsedQuarter,
       courseCode: code.toUpperCase(),
+      schoolId: schoolId,
+      districtId: districtId,
     });
 
     // Auto-enroll creator
@@ -289,9 +310,8 @@ export const createCourseSch = async (req, res) => {
     });
 
     const mailOptions = {
-      from: `"${
-        process.env.MAIL_FROM_NAME || "Acewall Scholars Team"
-      }" <support@acewallscholars.org>`,
+      from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars Team"
+        }" <support@acewallscholars.org>`,
       to: teacher.email,
       subject: `Course Created Successfully: ${courseTitle}`,
       html: `
@@ -312,13 +332,11 @@ export const createCourseSch = async (req, res) => {
 
           <!-- Body -->
           <div style="padding: 20px; color: #333;">
-            <p style="font-size: 16px;">Hi, ${teacher.firstName} ${
-              teacher.lastName
-            },</p>
+            <p style="font-size: 16px;">Hi, ${teacher.firstName} ${teacher.lastName
+        },</p>
 
-            <p style="font-size: 16px;">Your course <strong>${
-              course.courseTitle
-            }</strong> has been successfully created.</p>
+            <p style="font-size: 16px;">Your course <strong>${course.courseTitle
+        }</strong> has been successfully created.</p>
 
             <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #007bff;">
               <p style="font-size: 16px; margin: 0;">
@@ -356,14 +374,61 @@ export const createCourseSch = async (req, res) => {
 
 export const getAllCoursesSch = async (req, res) => {
   try {
-    const courses = await CourseSch.find({ isDeleted: false })
+    // --- BCPS RBAC: Build query based on user role ---
+    let query = { isDeleted: false };
+
+    if (req.user.role === ROLES.SUPER_ADMIN) {
+      // Super admin sees all courses
+      query = { isDeleted: false };
+    } else if (req.user.role === ROLES.DISTRICT_ADMIN) {
+      // District admin sees all courses in their district
+      query = {
+        isDeleted: false,
+        districtId: req.user.districtId,
+      };
+    } else if (req.user.role === ROLES.TEACHER || req.user.role === ROLES.INSTRUCTOR) {
+      // Teachers see courses in their assigned schools + courses they created
+      const userSchoolIds = req.user.schoolIds || [];
+      if (userSchoolIds.length > 0) {
+        query = {
+          isDeleted: false,
+          $or: [
+            { schoolId: { $in: userSchoolIds } },
+            { createdby: req.user._id },
+          ],
+        };
+      } else {
+        // If no schools assigned, only see courses they created
+        query = {
+          isDeleted: false,
+          createdby: req.user._id,
+        };
+      }
+    } else {
+      // Students and others see courses in their assigned schools only
+      const userSchoolIds = req.user.schoolIds || [];
+      if (userSchoolIds.length > 0) {
+        query = {
+          isDeleted: false,
+          schoolId: { $in: userSchoolIds },
+        };
+      } else {
+        return res.status(200).json({
+          courses: [],
+          message: "No courses available - you are not assigned to any school",
+        });
+      }
+    }
+
+    const courses = await CourseSch.find(query)
       .sort({ createdAt: -1 })
       .populate(
         "createdby",
         "firstName middleName lastName Bio email profileImg",
-      ) // only include necessary fields
-      .populate("category", "name") // populate category name only
-      .populate("subcategory", "name"); // if you want to include subcategory too
+      )
+      .populate("category", "name")
+      .populate("subcategory", "name")
+      .populate("schoolId", "name");
 
     if (!courses || courses.length === 0) {
       return res.status(200).json({ courses: [], message: "No courses found" });
@@ -1114,31 +1179,31 @@ export const getallcoursesforteacher = async (req, res) => {
       // Apply student name search if provided (partial match)
       ...(studentName
         ? [
-            {
-              $match: {
-                $or: [
-                  {
-                    "studentDetails.firstName": {
-                      $regex: studentName,
-                      $options: "i",
-                    },
+          {
+            $match: {
+              $or: [
+                {
+                  "studentDetails.firstName": {
+                    $regex: studentName,
+                    $options: "i",
                   },
-                  {
-                    "studentDetails.middleName": {
-                      $regex: studentName,
-                      $options: "i",
-                    },
+                },
+                {
+                  "studentDetails.middleName": {
+                    $regex: studentName,
+                    $options: "i",
                   },
-                  {
-                    "studentDetails.lastName": {
-                      $regex: studentName,
-                      $options: "i",
-                    },
+                },
+                {
+                  "studentDetails.lastName": {
+                    $regex: studentName,
+                    $options: "i",
                   },
-                ],
-              },
+                },
+              ],
             },
-          ]
+          },
+        ]
         : []),
 
       // Group by student
@@ -1543,8 +1608,8 @@ export const getUserCoursesforFilter = async (req, res) => {
 
     const searchFilter = search
       ? {
-          courseTitle: { $regex: search, $options: "i" },
-        }
+        courseTitle: { $regex: search, $options: "i" },
+      }
       : {};
 
     let courses = [];
@@ -1633,11 +1698,11 @@ export const getUserCoursesforFilter = async (req, res) => {
         {
           $match: search
             ? {
-                "course.courseTitle": {
-                  $regex: search,
-                  $options: "i",
-                },
-              }
+              "course.courseTitle": {
+                $regex: search,
+                $options: "i",
+              },
+            }
             : {},
         },
 

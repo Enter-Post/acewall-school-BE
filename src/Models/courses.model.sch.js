@@ -38,6 +38,21 @@ const SchCourseSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+
+    // BCPS RBAC: School and District isolation
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      required: true,
+      index: true,
+    },
+    districtId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "District",
+      required: true,
+      index: true,
+    },
+
     semester: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -60,6 +75,11 @@ const SchCourseSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Compound indexes for efficient filtering
+SchCourseSchema.index({ districtId: 1, schoolId: 1 });
+SchCourseSchema.index({ districtId: 1, schoolId: 1, published: 1 });
+SchCourseSchema.index({ schoolId: 1, createdby: 1 });
 
 const CourseSch = mongoose.model("CourseSch", SchCourseSchema);
 export default CourseSch;

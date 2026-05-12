@@ -259,7 +259,7 @@ router.post(
  *       401:
  *         description: Unauthorized
  */
-router.get("/:courseId/:type/:typeId", getAllPages);
+router.get("/:courseId/:type/:typeId", isUser, getAllPages);
 
 /**
  * @swagger
@@ -399,7 +399,7 @@ router.delete("/deletepage/:pageId", isUser, deletePage);
  *       401:
  *         description: Unauthorized
  */
-router.get("/studentpages", getStudentPages);
+router.get("/studentpages", isUser, getStudentPages);
 
 /**
  * @swagger
@@ -499,7 +499,7 @@ router.get("/studentpages", getStudentPages);
  *       401:
  *         description: Unauthorized
  */
-router.get("/getChapterPages/:chapterId", ChapterPagesforStudent);
+router.get("/getChapterPages/:chapterId", isUser, ChapterPagesforStudent);
 
 /**
  * @swagger
@@ -606,7 +606,7 @@ router.get("/getChapterPages/:chapterId", ChapterPagesforStudent);
  *       401:
  *         description: Unauthorized
  */
-router.get("/getLessonPages/:lessonId", lessonPagesforStudent);
+router.get("/getLessonPages/:lessonId", isUser, lessonPagesforStudent);
 
 /**
  * @swagger

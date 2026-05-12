@@ -21,6 +21,16 @@ const LessonSchema = new mongoose.Schema(
       ref: "Chapter",
       required: true,
     },
+    districtId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "District",
+      required: true,
+    },
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      required: true,
+    },
     createdby: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -32,6 +42,7 @@ const LessonSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
 
 const Lesson = mongoose.model("Lesson", LessonSchema);
 export default Lesson;

@@ -65,6 +65,8 @@ import { startLogCleanupJob } from "./cronJobs/logCleanup.js";
 import { errorHandler } from "./middlewares/errorHandler.middleware.js";
 import { requestLogger, errorLogger } from "./middlewares/activityLog.middleware.js";
 import activityLogRoutes from "./Routes/activityLog.Routes.js";
+import schoolRoutes from "./Routes/school.Routes.js";
+import districtRoutes from "./Routes/District.Routes.js";
 import { importSPKI, exportJWK } from "jose";
 import fs from "fs";
 
@@ -245,7 +247,9 @@ app.use("/api/zoom", zoomRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/drive", googleDriveRoutes);
 app.use("/api/logs", activityLogRoutes);
-app.use("/api/lti", ltiRoutes)
+app.use("/api/lti", ltiRoutes);
+app.use("/api/schools", schoolRoutes);
+app.use("/api/districts", districtRoutes);
 
 
 // Swagger API Documentation

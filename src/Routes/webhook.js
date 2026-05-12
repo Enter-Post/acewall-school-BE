@@ -2,6 +2,7 @@
 import express from "express";
 import Stripe from "stripe";
 import User from "../Models/user.model.js";
+import { isUser } from "../middlewares/Auth.Middleware.js";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const router = express.Router();
 

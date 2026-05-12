@@ -9,6 +9,7 @@ export const createChapter = async (req, res) => {
   const course = req.params.courseId;
   const createdby = req.user._id;
   const { title, description } = req.body;
+  const { schoolId, districtId } = req.user;
 
   try {
     const chapter = await Chapter.create({
@@ -17,6 +18,8 @@ export const createChapter = async (req, res) => {
       quarter,
       course,
       createdby,
+      schoolId,
+      districtId
     });
     res.status(201).json({ message: "Chapter created successfully", chapter });
   } catch (error) {
@@ -27,8 +30,9 @@ export const createChapter = async (req, res) => {
 
 export const getChapterofCourse = async (req, res) => {
   const { quarterId } = req.params;
+  const { schoolId, districtId } = req.user
   try {
-    const chapters = await Chapter.find({ quarter: quarterId, isDeleted: false });
+    const chapters = await Chapter.find({ quarter: quarterId, isDeleted: false, schoolId, districtId });
     if (!chapters)
       return res
         .status(404)
@@ -84,9 +88,9 @@ export const deleteChapter = async (req, res) => {
     }
 
     // Soft delete the chapter
-    const deletedChapter = await Chapter.findByIdAndUpdate(chapterId, { 
-      isDeleted: true, 
-      deletedAt: new Date() 
+    const deletedChapter = await Chapter.findByIdAndUpdate(chapterId, {
+      isDeleted: true,
+      deletedAt: new Date()
     });
 
     res.status(200).json({
@@ -101,6 +105,7 @@ export const deleteChapter = async (req, res) => {
 
 export const getChapterOfQuarter = async (req, res) => {
   const { courseId, quarterId } = req.params;
+  const { schoolId, districtId } = req.user
 
   try {
     const quarter = await Quarter.findById(quarterId);
@@ -115,6 +120,8 @@ export const getChapterOfQuarter = async (req, res) => {
           quarter: new mongoose.Types.ObjectId(quarterId),
           course: new mongoose.Types.ObjectId(courseId),
           isDeleted: false,
+          schoolId: new mongoose.Types.ObjectId(schoolId),
+          districtId: new mongoose.Types.ObjectId(districtId)
         },
       },
 

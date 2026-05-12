@@ -1,6 +1,7 @@
 import GPA from "../Models/GPA.model.js"
 
 export const setGPAscale = async (req, res) => {
+    const { districtId, schoolId } = req.user
     const { gpaScale } = req.body;
 
     if (!Array.isArray(gpaScale) || gpaScale.length === 0) {
@@ -31,6 +32,7 @@ export const setGPAscale = async (req, res) => {
 };
 
 export const getGPAScale = async (req, res) => {
+    const { districtId, schoolId } = req.user
     try {
         const GPADoc = await GPA.findOne();
 

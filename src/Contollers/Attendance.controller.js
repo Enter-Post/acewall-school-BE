@@ -1,6 +1,7 @@
 import Attendance from "../Models/Attendance.model.js"; // Don't forget to import the model!
 import mongoose from "mongoose";
 export const saveAttendance = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const { courseId, date, records } = req.body;
 

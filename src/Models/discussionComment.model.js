@@ -31,6 +31,27 @@ const DiscussionCommentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Virtual fields for district and school - inherited from discussion->course
+DiscussionCommentSchema.virtual('districtId', {
+  ref: 'Discussion',
+  localField: 'discussion',
+  foreignField: '_id',
+  justOne: true,
+  options: { select: 'districtId' }
+});
+
+DiscussionCommentSchema.virtual('schoolId', {
+  ref: 'Discussion', 
+  localField: 'discussion',
+  foreignField: '_id',
+  justOne: true,
+  options: { select: 'schoolId' }
+});
+
+// Ensure virtual fields are included in JSON output
+DiscussionCommentSchema.set('toJSON', { virtuals: true });
+DiscussionCommentSchema.set('toObject', { virtuals: true });
+
 const DiscussionComment = mongoose.model("DiscussionComment", DiscussionCommentSchema);
 
 export default DiscussionComment;

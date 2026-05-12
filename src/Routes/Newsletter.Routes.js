@@ -1,5 +1,6 @@
 import express from "express";
 import { getAllSubscribers, subscribeToNewsletter } from "../Contollers/newsletter.controller.js";
+import { isUser } from "../middlewares/Auth.Middleware.js";
 const router = express.Router();
 
 /**
@@ -65,7 +66,7 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/subscribe', subscribeToNewsletter);
+router.post('/subscribe', isUser, subscribeToNewsletter);
 
 /**
  * @swagger
@@ -155,6 +156,6 @@ router.post('/subscribe', subscribeToNewsletter);
  *       401:
  *         description: Unauthorized
  */
-router.get('/subscribers', getAllSubscribers);
+router.get('/subscribers', isUser, getAllSubscribers);
 
 export default router;

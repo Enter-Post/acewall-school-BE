@@ -5,6 +5,7 @@ import { v2 as cloudinary } from "cloudinary";
 export const createLesson = async (req, res) => {
   const createdby = req.user._id;
   const { title, description, youtubeLinks, otherLink, chapter, googleDriveFiles } = req.body;
+  const { schoolId, districtId } = req.user
   const pdfFiles = req.files;
 
   try {
@@ -51,6 +52,8 @@ export const createLesson = async (req, res) => {
       otherLink,
       pdfFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined, // If no PDF files, set as undefined
       chapter,
+      schoolId,
+      districtId,
       createdby,
     });
 
@@ -91,9 +94,9 @@ export const deleteLesson = async (req, res) => {
     }
 
     // Soft delete the lesson
-    await Lesson.findByIdAndUpdate(lessonId, { 
-      isDeleted: true, 
-      deletedAt: new Date() 
+    await Lesson.findByIdAndUpdate(lessonId, {
+      isDeleted: true,
+      deletedAt: new Date()
     });
 
     res.status(200).json({ message: "Lesson deleted successfully" });
@@ -105,8 +108,9 @@ export const deleteLesson = async (req, res) => {
 
 export const getLessons = async (req, res) => {
   const { chapterId } = req.params;
+  const { schoolId, districtId } = req.user
   try {
-    const lessons = await Lesson.find({ chapter: chapterId, isDeleted: false });
+    const lessons = await Lesson.find({ chapter: chapterId, isDeleted: false, schoolId, districtId });
     if (!lessons)
       return res
         .status(404)
