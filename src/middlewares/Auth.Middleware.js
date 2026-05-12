@@ -71,6 +71,13 @@ export const isUser = async (req, res, next) => {
     req.user = decoded.user;
     req.deepLinkSupport = decoded.deepLinkSupport;
 
+    // Add permissions helper to user object for convenience
+    if (req.user && req.user.permissions) {
+      req.user.hasPermission = (permission) => {
+        return req.user.permissions.includes(permission);
+      };
+    }
+
     next();
   } catch (error) {
     console.error("Error in isUser middleware:", error);

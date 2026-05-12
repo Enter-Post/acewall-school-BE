@@ -4,6 +4,7 @@ import Enrollment from "../Models/Enrollement.model.js";
 
 // Create Pacing Chart (Admin Only)
 export const createPacingChart = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const isAdmin = req.user.role === "admin";
     if (!isAdmin) {

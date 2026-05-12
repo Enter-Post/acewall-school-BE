@@ -115,29 +115,43 @@ export const createpage = async (req, res) => {
 
 export const getAllPages = async (req, res) => {
     const { courseId, type, typeId } = req.params
+    console.log("Fetching pages with params:", { courseId, type, typeId });
+    
     try {
         let pages;
+        let query = { isDeleted: false };
 
         if (type === "lesson") {
-            pages = await Pages.find({ lesson: typeId, isDeleted: false })
-        }
-        if (type === "chapter") {
-            pages = await Pages.find({ chapter: typeId, isDeleted: false })
-        }
-        if (!pages) {
-            return res.status(404).json({
-                message: "Pages not found"
-            })
+            query.lesson = typeId;
+        } else if (type === "chapter") {
+            query.chapter = typeId;
+        } else if (type === "course") {
+            query.course = courseId;
+        } else {
+            return res.status(400).json({
+                message: "Invalid type. Must be 'lesson', 'chapter', or 'course'"
+            });
         }
 
-        res.status(201).json({
+        console.log("Query:", query);
+        pages = await Pages.find(query);
+        console.log("Found pages:", pages.length, pages);
+        
+        if (!pages || pages.length === 0) {
+            return res.status(200).json({
+                pages: [],
+                message: "No pages found for this " + type
+            });
+        }
+
+        res.status(200).json({
             pages,
             message: "pages found successfully."
         })
 
     } catch (error) {
         console.error("Error fetching pages:", error);
-        res.status(500).json({ message: "Failed to fetch pages" });
+        res.status(500).json({ message: "Failed to fetch pages", error: error.message });
     }
 };
 
@@ -146,18 +160,117 @@ export const getAllPages = async (req, res) => {
 // DELETE a page by ID
 export const deletePage = async (req, res) => {
     const { pageId } = req.params;
+    const userId = req.user._id;
+    const userRole = req.user.role;
 
     try {
-        const deletedPage = await Pages.findByIdAndUpdate(pageId, { isDeleted: true });
+        // Authorization check: only teachers and admins can delete pages
+        if (userRole !== "teacher" && userRole !== "admin") {
+            return res.status(403).json({ message: "Unauthorized" });
+        }
 
-        if (!deletedPage) {
+        const page = await Pages.findById(pageId);
+        if (!page) {
             return res.status(404).json({ message: "Page not found" });
         }
+
+        // If teacher, verify they own the course
+        if (userRole === "teacher") {
+            const CourseSch = await import("../Models/courses.model.sch.js");
+            const course = await CourseSch.default.findOne({ _id: page.course, createdby: userId });
+            if (!course) {
+                return res.status(403).json({ message: "You can only delete pages of your own courses" });
+            }
+        }
+
+        // Soft delete page
+        const deletedPage = await Pages.findByIdAndUpdate(pageId, { 
+            isDeleted: true, 
+            deletedAt: new Date() 
+        });
 
         res.status(200).json({ message: "Page deleted successfully", page: deletedPage });
     } catch (error) {
         console.error("Error deleting page:", error);
         res.status(500).json({ message: "Failed to delete page", error: error.message });
+    }
+};
+
+export const getDeletedPages = async (req, res) => {
+    const { courseId } = req.params;
+    const userId = req.user._id;
+    const userRole = req.user.role;
+
+    try {
+        // Authorization check: only teachers and admins can view deleted pages
+        if (userRole !== "teacher" && userRole !== "admin") {
+            return res.status(403).json({ message: "Unauthorized" });
+        }
+
+        // If teacher, verify they own the course
+        if (userRole === "teacher") {
+            const CourseSch = await import("../Models/courses.model.sch.js");
+            const course = await CourseSch.default.findOne({ _id: courseId, createdby: userId });
+            if (!course) {
+                return res.status(403).json({ message: "You can only view deleted pages of your own courses" });
+            }
+        }
+
+        const deletedPages = await Pages.find({ course: courseId, isDeleted: true })
+            .sort({ deletedAt: -1 })
+            .populate("course", "courseTitle")
+            .populate("chapter", "title")
+            .populate("lesson", "title");
+
+        res.status(200).json({
+            message: "Deleted pages fetched successfully",
+            count: deletedPages.length,
+            deletedPages,
+        });
+    } catch (error) {
+        console.error("Error fetching deleted pages:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+export const restorePage = async (req, res) => {
+    const { pageId } = req.params;
+    const userId = req.user._id;
+    const userRole = req.user.role;
+
+    try {
+        // Authorization check: only teachers and admins can restore pages
+        if (userRole !== "teacher" && userRole !== "admin") {
+            return res.status(403).json({ message: "Unauthorized" });
+        }
+
+        const page = await Pages.findById(pageId);
+        if (!page) {
+            return res.status(404).json({ message: "Page not found" });
+        }
+
+        if (!page.isDeleted) {
+            return res.status(400).json({ message: "Page is not deleted" });
+        }
+
+        // If teacher, verify they own the course
+        if (userRole === "teacher") {
+            const CourseSch = await import("../Models/courses.model.sch.js");
+            const course = await CourseSch.default.findOne({ _id: page.course, createdby: userId });
+            if (!course) {
+                return res.status(403).json({ message: "You can only restore pages of your own courses" });
+            }
+        }
+
+        // Restore page
+        page.isDeleted = false;
+        page.deletedAt = null;
+        await page.save();
+
+        res.status(200).json({ message: "Page restored successfully", page });
+    } catch (error) {
+        console.error("Error restoring page:", error);
+        res.status(500).json({ message: "Internal Server Error" });
     }
 };
 

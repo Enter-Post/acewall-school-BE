@@ -6,6 +6,7 @@ import {
   getAllCategories,
   getSubcategoriesByCategoryId,
 } from "../Contollers/category.controller.js";
+import { isUser } from "../middlewares/Auth.Middleware.js";
 
 const router = express.Router();
 
@@ -36,7 +37,7 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get("/get", getAllCategories);
+router.get("/get", isUser, getAllCategories);
 
 /**
  * @swagger
@@ -82,7 +83,7 @@ router.get("/get", getAllCategories);
  *       500:
  *         description: Server error
  */
-router.post("/create", createCategory);
+router.post("/create", isUser,createCategory);
 
 /**
  * @swagger
@@ -113,7 +114,7 @@ router.post("/create", createCategory);
  *       500:
  *         description: Server error
  */
-router.delete("/delete/:categoryId", deleteCategory);
+router.delete("/delete/:categoryId", isUser, deleteCategory);
 
 /**
  * @swagger
@@ -164,7 +165,7 @@ router.delete("/delete/:categoryId", deleteCategory);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get("/subcategories/:categoryId", getSubcategoriesByCategoryId);
+router.get("/subcategories/:categoryId", isUser, getSubcategoriesByCategoryId);
 
 /**
  * @swagger
@@ -215,6 +216,6 @@ router.get("/subcategories/:categoryId", getSubcategoriesByCategoryId);
  *       400:
  *         description: Invalid input data
  */
-router.put("/edit/:categoryId", editCategory);
+router.put("/edit/:categoryId", isUser, editCategory);
 
 export default router;

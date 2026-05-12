@@ -1,6 +1,7 @@
 import express from "express";
-import { ChapterPagesforStudent, createpage, deletePage, getAllPages, getStudentPages, lessonPagesforStudent } from "../Contollers/pages.controller.js";
+import { ChapterPagesforStudent, createpage, deletePage, getAllPages, getStudentPages, lessonPagesforStudent, getDeletedPages, restorePage } from "../Contollers/pages.controller.js";
 import { upload } from "../lib/multer.config.js";
+import { isUser } from "../middlewares/Auth.Middleware.js";
 
 const router = express.Router();
 
@@ -133,6 +134,7 @@ const router = express.Router();
  */
 router.post(
    "/createpage/:courseId/:type/:typeId",
+   isUser,
    upload.fields([
        { name: "image", maxCount: 1 },
        { name: "files", maxCount: 10 },
@@ -257,7 +259,7 @@ router.post(
  *       401:
  *         description: Unauthorized
  */
-router.get("/:courseId/:type/:typeId", getAllPages);
+router.get("/:courseId/:type/:typeId", isUser, getAllPages);
 
 /**
  * @swagger
@@ -288,7 +290,7 @@ router.get("/:courseId/:type/:typeId", getAllPages);
  *       401:
  *         description: Unauthorized
  */
-router.delete("/deletepage/:pageId", deletePage);
+router.delete("/deletepage/:pageId", isUser, deletePage);
 
 /**
  * @swagger
@@ -397,7 +399,7 @@ router.delete("/deletepage/:pageId", deletePage);
  *       401:
  *         description: Unauthorized
  */
-router.get("/studentpages", getStudentPages);
+router.get("/studentpages", isUser, getStudentPages);
 
 /**
  * @swagger
@@ -497,7 +499,7 @@ router.get("/studentpages", getStudentPages);
  *       401:
  *         description: Unauthorized
  */
-router.get("/getChapterPages/:chapterId", ChapterPagesforStudent);
+router.get("/getChapterPages/:chapterId", isUser, ChapterPagesforStudent);
 
 /**
  * @swagger
@@ -604,7 +606,85 @@ router.get("/getChapterPages/:chapterId", ChapterPagesforStudent);
  *       401:
  *         description: Unauthorized
  */
-router.get("/getLessonPages/:lessonId", lessonPagesforStudent);
+router.get("/getLessonPages/:lessonId", isUser, lessonPagesforStudent);
+
+/**
+ * @swagger
+ * /api/pages/delete/{pageId}:
+ *   delete:
+ *     summary: Delete a page
+ *     tags: [Pages]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: pageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Page ID
+ *     responses:
+ *       200:
+ *         description: Page deleted successfully
+ *       403:
+ *         description: Unauthorized
+ *       404:
+ *         description: Page not found
+ *       500:
+ *         description: Internal server error
+ */
+router.delete("/deletepage/:pageId", isUser, deletePage);
+
+/**
+ * @swagger
+ * /api/pages/deleted/{courseId}:
+ *   get:
+ *     summary: Get deleted pages for a course
+ *     tags: [Pages]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Course ID
+ *     responses:
+ *       200:
+ *         description: Deleted pages retrieved successfully
+ *       403:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/deleted/:courseId", isUser, getDeletedPages);
+
+/**
+ * @swagger
+ * /api/pages/restore/{pageId}:
+ *   put:
+ *     summary: Restore a deleted page
+ *     tags: [Pages]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: pageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Page ID
+ *     responses:
+ *       200:
+ *         description: Page restored successfully
+ *       403:
+ *         description: Unauthorized
+ *       404:
+ *         description: Page not found
+ *       500:
+ *         description: Internal server error
+ */
+router.put("/restore/:pageId", isUser, restorePage);
 
 export default router;
-

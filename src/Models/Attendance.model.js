@@ -32,6 +32,19 @@ const AttendanceSchema = new mongoose.Schema(
       maxlength: 500,
       default: "",
     },
+    // District and School isolation for new attendance records
+    districtId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "District",
+      required: false, // Optional for backward compatibility
+      index: true,
+    },
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      required: false, // Optional for backward compatibility
+      index: true,
+    },
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }

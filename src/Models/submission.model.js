@@ -55,6 +55,29 @@ const submissionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Virtual fields for district and school - inherited from assessment->course
+submissionSchema.virtual('districtId', {
+  ref: 'assessment',
+  localField: 'assessment',
+  foreignField: '_id',
+  justOne: true,
+  options: { select: 'course' },
+  // This will need to be populated in two steps: submission->assessment->course
+});
+
+submissionSchema.virtual('schoolId', {
+  ref: 'assessment', 
+  localField: 'assessment',
+  foreignField: '_id',
+  justOne: true,
+  options: { select: 'course' },
+  // This will need to be populated in two steps: submission->assessment->course
+});
+
+// Ensure virtual fields are included in JSON output
+submissionSchema.set('toJSON', { virtuals: true });
+submissionSchema.set('toObject', { virtuals: true });
+
 const Submission = mongoose.model("submission", submissionSchema);
 
 export default Submission;

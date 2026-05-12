@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { getUserPermissions } from "../middlewares/rbac.middleware.js";
 
 export const generateToken = (
   user,
@@ -27,14 +28,23 @@ export const generateToken = (
   const portal = host && host.startsWith("admin.") ? "admin" : "client";
   const cookieName = portal === "admin" ? "admin_jwt" : "client_jwt";
 
+  // ----------------- Calculate permissions based on role -----------------
+  const userRole = role || user.role;
+  const permissions = getUserPermissions(userRole);
+
   // ----------------- Clean user object -----------------
   const safeUser = {
     _id: user._id,
     email: user.email,
-    role: role || user.role,
+    role: userRole,
     name: user.name,
     profileImg: user.profileImg,
     deepLinkSupport: deepLinkSupport || false,
+    // BCPS RBAC additions
+    districtId: user.districtId || null,
+    schoolId: user.schoolId || "",
+    permissions: permissions,
+    authProvider: user.authProvider || "local",
   };
 
   // ----------------- Sign JWT -----------------

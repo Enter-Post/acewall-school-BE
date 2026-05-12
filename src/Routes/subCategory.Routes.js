@@ -1,5 +1,6 @@
 import express from "express"
-import { createSubCategory, getSubcategory,deleteSubcategory, updateSubCategory, getSubcategoruWithcategory } from "../Contollers/CourseControllers/subCategory.controller.js";
+import { createSubCategory, getSubcategory, deleteSubcategory, updateSubCategory, getSubcategoruWithcategory } from "../Contollers/CourseControllers/subCategory.controller.js";
+import { isUser } from "../middlewares/Auth.Middleware.js";
 
 const router = express.Router();
 
@@ -83,7 +84,7 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
-router.post("/create", createSubCategory);
+router.post("/create", isUser, createSubCategory);
 
 /**
  * @swagger
@@ -174,7 +175,7 @@ router.post("/create", createSubCategory);
  *       401:
  *         description: Unauthorized
  */
-router.get("/get", getSubcategory);
+router.get("/get", isUser, getSubcategory);
 
 /**
  * @swagger
@@ -205,7 +206,7 @@ router.get("/get", getSubcategory);
  *       401:
  *         description: Unauthorized
  */
-router.delete("/delete/:id", deleteSubcategory); 
+router.delete("/delete/:id", deleteSubcategory);
 
 /**
  * @swagger

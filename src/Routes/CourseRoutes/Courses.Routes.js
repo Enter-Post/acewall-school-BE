@@ -2,6 +2,13 @@ import express from "express";
 import { isUser } from "../../middlewares/Auth.Middleware.js";
 import { upload } from "../../lib/multer.config.js";
 import { loginRateLimiter } from "../../middlewares/rateLimiter.middleware.js";
+import { 
+  preventCrossDistrictAccess, 
+  restrictToOwnSchool, 
+  enforceCourseSchoolCreation,
+  addDistrictFilter,
+  addSchoolFilter 
+} from "../../middlewares/district.middleware.js";
 import {
   createCourseSch,
   deleteCourseSch,
@@ -311,6 +318,9 @@ router.post("/reject-share/:shareId", isUser, rejectShare);
  */
 router.get("/getTeacherCourses", isUser, getCoursesByTeacherSch_WEB);
 
+// V2 Routes with district and school access control
+router.get("/v2/getTeacherCourses", isUser, preventCrossDistrictAccess, addSchoolFilter, getCoursesByTeacherSch_WEB);
+
 /**
  * @swagger
  * /api/course/getUserCoursesforFilter:
@@ -504,6 +514,21 @@ router.post(
   ]),
   createCourseSch,
 );
+
+// V2 Routes with district and school access control
+// router.post(
+//   "/v2/create",
+//   isUser,
+//   preventCrossDistrictAccess,
+//   enforceCourseSchoolCreation,
+//   loginRateLimiter,
+//   upload.fields([
+//     { name: "thumbnail", maxCount: 1 },
+//     { name: "syllabus", maxCount: 1 },
+//   ]),
+//   createCourseSch,
+// );
+
 router.get("/all", getAllCoursesSch);
 router.get("/getindividualcourse", isUser, getCoursesByTeacherSch);
 router.get("/getCoursesforadminofteacher", getCoursesforadminofteacher);
@@ -548,6 +573,9 @@ router.get("/:subCategoryId", getCoursesbySubcategorySch);
  *         description: Unauthorized
  */
 router.get("/details/:courseId", isUser, getCourseDetails);
+
+// V2 Routes with district and school access control
+router.get("/v2/details/:courseId", isUser, preventCrossDistrictAccess, restrictToOwnSchool, getCourseDetails);
 
 /**
  * @swagger
@@ -637,6 +665,9 @@ router.get("/getstdprew/:id", getunPurchasedCourseByIdStdPrew);
  *         description: Unauthorized
  */
 router.delete("/delete/:courseId", isUser, deleteCourseSch);
+
+// V2 Routes with district and school access control
+router.delete("/v2/delete/:courseId", isUser, preventCrossDistrictAccess, restrictToOwnSchool, deleteCourseSch);
 router.get(`/getcourseDueDate/:courseId`, isUser, getDueDate);
 router.get(`/getCourseBasics/:courseId`, isUser, getCourseBasics);
 router.put(

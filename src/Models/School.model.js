@@ -1,26 +1,106 @@
 import mongoose from "mongoose";
 
 const SchoolSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    districtId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "District",
+      required: true,
+      index: true,
+    },
 
-    {
-        schoollogo: {
-            type: String,
-            default:
-                "https://res.cloudinary.com/dhylynexh/image/upload/v1745191204/image-removebg-preview_cc47c1.png",
+    schoolLogo: {
+      type: String,
+    },
+
+    homeAddress: {
+      type: String,
+    },
+
+    email: {
+      type: String,
+      required: true,
+    },
+
+    phone: {
+      type: String,
+    },
+
+    website: {
+      type: String,
+    },
+
+    active: {
+      type: Boolean,
+      default: true,
+    },
+
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+
+    // 🔗 External system mapping ONLY (NO credentials here)
+    externalMappings: {
+      clever: {
+        schoolId: { type: String },
+        lastSyncAt: { type: Date },
+        syncStatus: {
+          type: String,
+          enum: ["pending", "synced", "failed"],
+          default: "pending",
         },
-        schoolname: {
-            type: String,
-            required: true,
+      },
+
+      canvas: {
+        accountId: { type: String },
+        lastSyncAt: { type: Date },
+        syncStatus: {
+          type: String,
+          enum: ["pending", "synced", "failed"],
+          default: "pending",
         },
-        homeAddress: { type: String,  },
-        email: { type: String, required: true, unique: true },
-        phone: { type: String, required: true },
-        website: { type: String },
-        isDeleted: { type: Boolean, default: false }
+      },
 
-    }
+      oneroster: {
+        schoolId: { type: String },
+        lastSyncAt: { type: Date },
+        syncStatus: {
+          type: String,
+          enum: ["pending", "synced", "failed"],
+          default: "pending",
+        },
+      },
 
+      lti: {
+        contextId: { type: String },
+        deploymentId: { type: String },
+        lastSyncAt: { type: Date },
+        syncStatus: {
+          type: String,
+          enum: ["pending", "synced", "failed"],
+          default: "pending",
+        },
+      },
+    },
+
+    settings: {
+      type: Object,
+      default: {},
+    },
+  },
+  { timestamps: true }
 );
-const School = mongoose.model("School", SchoolSchema);
+
+// indexes
+SchoolSchema.index({ districtId: 1, name: 1 });
+
+const School =
+  mongoose.models.School || mongoose.model("School", SchoolSchema);
 
 export default School;

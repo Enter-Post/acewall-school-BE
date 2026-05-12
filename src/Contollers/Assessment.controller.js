@@ -13,6 +13,7 @@ import User from "../Models/user.model.js";
 import { v2 as cloudinary } from "cloudinary";
 
 export const sendAssessmentReminder = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const { assessmentId } = req.params;
     const teacherId = req.user._id;
@@ -170,6 +171,7 @@ export const sendAssessmentReminder = async (req, res) => {
 };
 
 export const createAssessment = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const {
     title,
     description,
@@ -347,6 +349,7 @@ export const createAssessment = async (req, res) => {
 };
 
 export const deleteAssessment = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { id } = req.params;
   try {
     // Find assessment first (don't delete yet)
@@ -393,6 +396,7 @@ export const deleteAssessment = async (req, res) => {
 };
 
 export const uploadFiles = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const files = req.files;
   const { id } = req.params;
 
@@ -416,6 +420,7 @@ export const uploadFiles = async (req, res) => {
 };
 
 export const deleteFile = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { assessmentId, fileId } = req.params;
 
   const assessment = await Assessment.findById(assessmentId);
@@ -446,6 +451,7 @@ export const deleteFile = async (req, res) => {
 };
 
 export const getAssesmentbyID = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { assessmentId } = req.params;
   const userId = req.user._id;
 
@@ -493,6 +499,7 @@ export const getAssesmentbyID = async (req, res) => {
 
 
 export const allAssessmentByTeacher = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const createdby = req.user._id;
 
   try {
@@ -778,6 +785,7 @@ export const getAllassessmentforStudent = async (req, res, next) => {
 };
 
 export const editAssessmentInfo = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { assessmentId } = req.params;
   const { title, description, category, dueDate } = req.body;
 
@@ -808,6 +816,7 @@ export const editAssessmentInfo = async (req, res) => {
 };
 
 export const setReminderTime = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { assessmentId } = req.params;
   const { reminder } = req.body;
 
@@ -831,6 +840,7 @@ export const setReminderTime = async (req, res) => {
 };
 
 export const findReminderTime = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { assessmentId } = req.params;
   try {
     const assessment = await Assessment.findById(assessmentId);
@@ -854,6 +864,7 @@ export const findReminderTime = async (req, res) => {
 
 // GET /api/admin/courses/:courseId/assessments
 export const getAssessmentsByCourseForAdmin = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { courseId } = req.params;
 
   try {
@@ -950,6 +961,7 @@ export const getAssessmentsByCourseForAdmin = async (req, res) => {
 
 // New API Controller
 export const getAssessmentStats = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { assessmentId } = req.params;
 
   try {
@@ -994,6 +1006,7 @@ export const getAssessmentStats = async (req, res) => {
 
 
 export const getAllAssessmentForParent = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { studentId } = req.params; // ID of the child
   const parentEmail = req.user.email; // From auth middleware
 
@@ -1232,6 +1245,7 @@ export const getAllAssessmentForParent = async (req, res) => {
 };
 
 export const setDueDateForStudent = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const { assessmentId } = req.params;
     const { studentIds, newDueDate } = req.body;
@@ -1289,6 +1303,7 @@ export const setDueDateForStudent = async (req, res) => {
 };
 
 export const settingAllowResubmission = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const { assessmentId } = req.params;
     const { allowResubmission } = req.body;
@@ -1316,6 +1331,7 @@ export const settingAllowResubmission = async (req, res) => {
 };
 
 export const updateLatePolicy = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const { assessmentId } = req.params;
     const { enabled, strategy, deductionType, deductionValue } = req.body;
@@ -1348,6 +1364,7 @@ export const updateLatePolicy = async (req, res) => {
 };
 
 export const getDeletedAssessments = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { courseId } = req.params;
   const userId = req.user._id;
   const userRole = req.user.role;
@@ -1386,6 +1403,7 @@ export const getDeletedAssessments = async (req, res) => {
 };
 
 export const restoreAssessment = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { assessmentId } = req.params;
   const userId = req.user._id;
   const userRole = req.user.role;

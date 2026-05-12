@@ -52,6 +52,7 @@ const getZoomAccessToken = async () => {
 
 // In your controller
 export const getUpcomingStudentMeeting = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     // 1. Get all courses the student is enrolled in (assuming you have enrollment logic)
     // OR simply find the nearest meeting across ALL courses if that's the intended behavior for now.
@@ -128,6 +129,7 @@ const updateZoomMeetingStatus = async (zoomMeetingId, action = "end") => {
 
 // 1. Schedule a Meeting
 export const scheduleMeeting = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { courseId, topic, scheduledAt, duration = 40 } = req.body;
   const userId = req.user._id;
 
@@ -221,6 +223,7 @@ export const scheduleMeeting = async (req, res) => {
 
 // 2. Get Course Meetings
 export const getCourseMeetings = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { courseId } = req.params;
   try {
     const meetings = await ZoomMeeting.find({ course: courseId, isDeleted: false }).sort({
@@ -236,6 +239,7 @@ export const getCourseMeetings = async (req, res) => {
 
 // 2.1 Get All Active Meetings for Student
 export const getActiveMeetings = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const userId = req.user._id;
   try {
     const enrollments = await Enrollment.find({ student: userId, isDeleted: false }).select(
@@ -260,6 +264,7 @@ export const getActiveMeetings = async (req, res) => {
 
 // 3. Delete Meeting
 export const deleteMeeting = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { meetingId } = req.params;
   const userId = req.user._id;
 
@@ -299,6 +304,7 @@ export const deleteMeeting = async (req, res) => {
 // 4. Start/Join Meeting
 // This endpoint returns the relevant URL based on who is asking.
 export const joinMeeting = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { meetingId } = req.params; // DB ID, not Zoom ID
   const userId = req.user._id;
   // Assuming req.user has role or we check course ownership
@@ -344,6 +350,7 @@ export const joinMeeting = async (req, res) => {
 
 // 5. End Meeting (Manual)
 export const endMeeting = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const { meetingId } = req.params;
   const userId = req.user._id;
 
@@ -376,6 +383,7 @@ export const endMeeting = async (req, res) => {
 
 // 6. Zoom Webhook Handler
 export const handleZoomWebhook = async (req, res) => {
+  const { districtId, schoolId } = req.user
   const event = req.body;
 
   // Zoom Webhook Verification (De-validation)

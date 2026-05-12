@@ -86,7 +86,7 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
-router.post("/create", createSemester);
+router.post("/create", isUser, createSemester);
 
 /**
  * @swagger
@@ -171,7 +171,7 @@ router.post("/create", createSemester);
  *       401:
  *         description: Unauthorized
  */
-router.get("/get", getSemester);
+router.get("/get", isUser, getSemester);
 
 /**
  * @swagger
@@ -273,7 +273,7 @@ router.get("/get", getSemester);
  *       401:
  *         description: Unauthorized
  */
-router.get("/getSemesterwithQuarter", getSemesterwithQuarter);
+router.get("/getSemesterwithQuarter", isUser, getSemesterwithQuarter);
 
 /**
  * @swagger
@@ -341,7 +341,7 @@ router.get("/getSemesterwithQuarter", getSemesterwithQuarter);
  *       401:
  *         description: Unauthorized
  */
-router.post("/selectingNewSemesterwithQuarter/:courseId", selectingNewSemesterwithQuarter);
+router.post("/selectingNewSemesterwithQuarter/:courseId", isUser, selectingNewSemesterwithQuarter);
 
 /**
  * @swagger

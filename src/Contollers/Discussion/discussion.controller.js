@@ -21,6 +21,7 @@ export const createDiscussion = async (req, res) => {
   } = req.body;
   const files = req.files;
   const createdby = req.user._id;
+  const { districtId, schoolId } = req.user;
 
   let uploadedFiles = [];
 
@@ -85,7 +86,9 @@ export const createDiscussion = async (req, res) => {
       lesson,
       category,
       semester,
-      quarter
+      quarter,
+      districtId,
+      schoolId,
     });
 
     discussion.save();
@@ -121,8 +124,13 @@ export const getDiscussionsOfTeacher = async (req, res) => {
 export const getDiscussionbyId = async (req, res) => {
   const id = req.params.id;
   const userId = req.user._id;
+  const { districtId, schoolId } = req.user;
   try {
-    const discussion = await Discussion.findById(id)
+    const discussion = await Discussion.findOne({
+      _id: id,
+      district: districtId,
+      school: schoolId,
+    })
       .populate("course", "courseTitle thumbnail")
       .populate("chapter", "title")
       .populate("lesson", "title")
@@ -152,6 +160,8 @@ export const getDiscussionbyId = async (req, res) => {
     const exists = await Enrollment.findOne({
       student: userId,
       course: discussion.course,
+      district: districtId,
+      school: schoolId,
     });
 
     if (!exists) {
@@ -171,6 +181,7 @@ export const getDiscussionbyId = async (req, res) => {
 
 export const discussionforStudent = async (req, res) => {
   let userId = req.user._id;
+  const { schoolId, districtId } = req.user;
   try {
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ message: "Invalid user ID" });
@@ -178,7 +189,7 @@ export const discussionforStudent = async (req, res) => {
 
     userId = new mongoose.Types.ObjectId(userId);
 
-    const studentEnrollment = await Enrollment.find({ student: userId, isDeleted: false });
+    const studentEnrollment = await Enrollment.find({ student: userId, isDeleted: false, districtId, schoolId });
     const allEnrolledCourseIds = studentEnrollment.map((enr) => enr.course);
 
     const discussions = await Discussion.find({
@@ -186,6 +197,8 @@ export const discussionforStudent = async (req, res) => {
         { course: { $in: allEnrolledCourseIds } },
       ],
       isDeleted: false,
+      district: districtId,
+      school: schoolId,
     })
       .populate("course", "courseTitle thumbnail")
       .populate("category", "title")
@@ -209,8 +222,9 @@ export const discussionforStudent = async (req, res) => {
 
 export const chapterDiscussions = async (req, res) => {
   const { chapterId } = req.params
+  const { districtId, schoolId } = req.user;
   try {
-    const discussion = await Discussion.find({ chapter: chapterId, isDeleted: false }).populate("course", "courseTitle thumbnail")
+    const discussion = await Discussion.find({ chapter: chapterId, isDeleted: false, districtId, schoolId }).populate("course", "courseTitle thumbnail")
     if (!discussion || discussion.length === 0) {
       return res.status(404).json({ message: "No discussions found for this chapter" });
     }
@@ -223,8 +237,9 @@ export const chapterDiscussions = async (req, res) => {
 
 export const lessonDiscussions = async (req, res) => {
   const { lessonId } = req.params
+  const { schoolId, districtId, } = req.user;
   try {
-    const discussion = await Discussion.find({ lesson: lessonId, isDeleted: false }).populate("course", "courseTitle thumbnail")
+    const discussion = await Discussion.find({ lesson: lessonId, isDeleted: false, districtId, schoolId }).populate("course", "courseTitle thumbnail")
     if (!discussion || discussion.length === 0) {
       return res.status(404).json({ message: "No discussions found for this lesson" });
     }
@@ -237,8 +252,9 @@ export const lessonDiscussions = async (req, res) => {
 
 export const courseDiscussions = async (req, res) => {
   const { courseId } = req.params
+  const { districtId, schoolId } = req.user;
   try {
-    const discussion = await Discussion.find({ course: courseId, isDeleted: false }).populate("course", "courseTitle thumbnail")
+    const discussion = await Discussion.find({ course: courseId, isDeleted: false, districtId, schoolId }).populate("course", "courseTitle thumbnail")
     if (!discussion || discussion.length === 0) {
       return res.status(404).json({ message: "No discussions found for this course" });
     }
@@ -420,6 +436,57 @@ export const getDeletedDiscussions = async (req, res) => {
   }
 };
 
+export const softDeleteDiscussion = async (req, res) => {
+  const { discussionId } = req.params;
+  const userId = req.user._id;
+  const userRole = req.user.role;
+
+  try {
+    // Authorization check: only teachers and admins can delete discussions
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const discussion = await Discussion.findById(discussionId);
+    if (!discussion) {
+      return res.status(404).json({ message: "Discussion not found" });
+    }
+
+    // If discussion is already deleted, but frontend is trying to delete it,
+    // it means there's a data inconsistency. Just return success.
+    if (discussion.isDeleted) {
+      console.log("Discussion already marked as deleted, returning success to maintain UI consistency");
+      return res.status(200).json({ message: "Discussion deleted successfully", discussion });
+    }
+
+    // If teacher, verify they own the course
+    if (userRole === "teacher") {
+      const CourseSch = await import("../../Models/courses.model.sch.js");
+      const course = await CourseSch.default.findOne({ _id: discussion.course, createdby: userId });
+      if (!course) {
+        return res.status(403).json({ message: "You can only delete discussions of your own courses" });
+      }
+    }
+
+    // Soft delete discussion
+    discussion.isDeleted = true;
+    discussion.deletedAt = new Date();
+    await discussion.save();
+
+    // Soft delete related comments
+    const DiscussionComment = await import("../../Models/discussionComment.model.js");
+    await DiscussionComment.default.updateMany(
+      { discussion: discussionId }, 
+      { isDeleted: true, deletedAt: new Date() }
+    );
+
+    res.status(200).json({ message: "Discussion deleted successfully", discussion });
+  } catch (error) {
+    console.error("Error deleting discussion:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 export const restoreDiscussion = async (req, res) => {
   const { discussionId } = req.params;
   const userId = req.user._id;
@@ -449,7 +516,7 @@ export const restoreDiscussion = async (req, res) => {
       }
     }
 
-    // Restore the discussion
+    // Restore discussion
     discussion.isDeleted = false;
     discussion.deletedAt = null;
     await discussion.save();

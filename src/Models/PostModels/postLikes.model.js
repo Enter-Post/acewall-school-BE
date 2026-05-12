@@ -17,6 +17,19 @@ const PostLikesSchema = new mongoose.Schema({
         ref: "SocialPost", 
         required: true 
     },
+    // District and School isolation for new post likes
+    districtId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "District",
+        required: false, // Optional for backward compatibility
+        index: true,
+    },
+    schoolId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "School",
+        required: false, // Optional for backward compatibility
+        index: true,
+    },
     isDeleted: { type: Boolean, default: false }
 }, { timestamps: true });
 
