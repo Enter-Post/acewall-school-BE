@@ -11,6 +11,7 @@ import {
   toggleAllowResubmission,
   getDeletedDiscussions,
   restoreDiscussion,
+  softDeleteDiscussion,
 } from "../../Contollers/Discussion/discussion.controller.js";
 import { upload } from "../../lib/multer.config.js";
 import { isUser } from "../../middlewares/Auth.Middleware.js";
@@ -93,6 +94,42 @@ router.get("/deleted/:courseId", isUser, getDeletedDiscussions);
  *         description: Unauthorized
  */
 router.patch("/restore/:discussionId", isUser, restoreDiscussion);
+
+/**
+ * @swagger
+ * /api/discussion/{discussionId}:
+ *   delete:
+ *     summary: Soft delete a discussion (teacher/admin only)
+ *     tags: [Discussions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: discussionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Discussion ID to delete
+ *     responses:
+ *       200:
+ *         description: Discussion deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 discussion:
+ *                   $ref: '#/components/schemas/Discussion'
+ *       403:
+ *         description: Unauthorized
+ *       404:
+ *         description: Discussion not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.delete("/:discussionId", isUser, softDeleteDiscussion);
 
 /**
  * @swagger

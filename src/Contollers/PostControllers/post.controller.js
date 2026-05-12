@@ -134,15 +134,22 @@ export const getPosts = async (req, res) => {
 
 export const specificUserPosts = async (req, res) => {
     const userId = req.params.id;
+    const { includeDeleted } = req.query;
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
 
         const skip = (page - 1) * limit;
 
-        const totalPosts = await Posts.countDocuments({ author: userId, isDeleted: false });
+        // Build query based on includeDeleted parameter
+        let query = { author: userId };
+        if (includeDeleted !== 'true') {
+            query.isDeleted = false;
+        }
 
-        const posts = await Posts.find({ author: userId, isDeleted: false })
+        const totalPosts = await Posts.countDocuments(query);
+
+        const posts = await Posts.find(query)
             .populate('author', '_id firstName middleName lastName profileImg')
             .sort({ createdAt: -1 }) // newest first
             .skip(skip)
@@ -217,6 +224,32 @@ export const deletePost = async (req, res) => {
     res.status(200).json({ message: "Post deleted successfully" });
   } catch (error) {
     console.error("Error in deletePost:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const restorePost = async (req, res) => {
+  const { postId } = req.params;
+
+  try {
+    // Find post first
+    const post = await Posts.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    // Authorization check: only post author can restore
+    if (post.author.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Unauthorized to restore this post" });
+    }
+
+    // Restore the post
+    await Posts.findByIdAndUpdate(postId, { isDeleted: false });
+
+    res.status(200).json({ message: "Post restored successfully" });
+  } catch (error) {
+    console.error("Error in restorePost:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
