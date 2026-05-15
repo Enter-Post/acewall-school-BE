@@ -3,8 +3,9 @@ import PostLike from "../../Models/PostModels/postLikes.model.js";
 
 export const likePost = async (req, res) => {
   const { id } = req.params;
-  const { type = "like" } = req.body; 
+  const { type = "like" } = req.body;
   const userId = req.user._id;
+  const { districtId, schoolId } = req.user;
 
   try {
     const post = await Posts.findById(id);
@@ -26,20 +27,20 @@ export const likePost = async (req, res) => {
       }
     } else {
       // Create new reaction
-      reaction = new PostLike({ post: id, likedBy: userId, type });
+      reaction = new PostLike({ post: id, likedBy: userId, type, districtId, schoolId });
       await reaction.save();
       currentUserReaction = type;
     }
 
     // Get updated count of all reactions
     const totalLikes = await PostLike.countDocuments({ post: id });
-    
+
     post.likes = totalLikes;
     await post.save();
 
     res.status(200).json({
       success: true,
-      userReaction: currentUserReaction, 
+      userReaction: currentUserReaction,
       totalLikes,
     });
   } catch (error) {
@@ -50,15 +51,16 @@ export const likePost = async (req, res) => {
 // ✅ Check if post is liked by current user
 // ✅ Updated to support reaction types
 export const isPostLiked = async (req, res) => {
+  const { districtId, schoolId } = req.user;
   try {
     const { id } = req.params;
     const userId = req.user._id;
 
     // 1. Find the specific reaction record for this user and post
-    const reaction = await PostLike.findOne({ post: id, likedBy: userId });
+    const reaction = await PostLike.findOne({ post: id, likedBy: userId, districtId, schoolId });
 
     // 2. Count all reactions for this post
-    const totalLikes = await PostLike.countDocuments({ post: id });
+    const totalLikes = await PostLike.countDocuments({ post: id, districtId, schoolId });
 
     res.status(200).json({
       // Return the reaction type (e.g., "love") or null if they haven't reacted

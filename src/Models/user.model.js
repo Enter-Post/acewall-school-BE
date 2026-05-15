@@ -43,8 +43,8 @@ const UserSchema = new mongoose.Schema(
     mailingAddress: { type: String },
     password: { type: String, required: false },
     cleverId: { type: String, unique: true, sparse: true },
-    districtId: { type: String },
-    schoolId: { type: String },
+    districtId: { type: mongoose.Schema.Types.ObjectId, ref: "District", required: true },
+    schoolId: { type: mongoose.Schema.Types.ObjectId, ref: "School" },
     authProvider: {
       type: String,
       enum: ["local", "google", "clever", "saml"],

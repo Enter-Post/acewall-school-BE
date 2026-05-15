@@ -3,11 +3,14 @@ import AssessmentCategory from "../Models/assessment-category.js";
 export const createAssessmentCategory = async (req, res) => {
   const { name, weight } = req.body;
   const { courseId } = req.params;
+  const { districtId, schoolId } = req.user;
   const createdBy = req.user._id;
   try {
     const isExistingCategory = await AssessmentCategory.findOne({
       name,
       course: courseId,
+      districtId,
+      schoolId,
     });
     if (isExistingCategory) {
       return res.status(400).json({
@@ -19,6 +22,8 @@ export const createAssessmentCategory = async (req, res) => {
       weight,
       course: courseId,
       createdBy,
+      districtId,
+      schoolId
     });
 
     await newCategory.save();
@@ -35,8 +40,13 @@ export const createAssessmentCategory = async (req, res) => {
 
 export const getAssessmentCategories = async (req, res) => {
   const { courseId } = req.params;
+  const { districtId, schoolId } = req.user;
   try {
-    const categories = await AssessmentCategory.find({ course: courseId });
+    const categories = await AssessmentCategory.find({
+      course: courseId,
+      districtId,
+      schoolId,
+    });
     if (!categories || categories.length === 0) {
       return res
         .status(404)
@@ -76,7 +86,9 @@ export const deleteAssessmentCategory = async (req, res) => {
   const { categoryId } = req.params;
 
   try {
-    const category = await AssessmentCategory.findByIdAndDelete(categoryId);
+    const category = await AssessmentCategory.findOneAndDelete({
+      _id: categoryId,
+    });
     if (!category) {
       return res.status(404).json({ message: "Category not found" });
     }

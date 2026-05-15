@@ -12,30 +12,11 @@ const QuarterSchema = new mongoose.Schema(
       required: true,
     },
     isDeleted: { type: Boolean, default: false },
+    districtId: { type: mongoose.Schema.Types.ObjectId, ref: "District", required: true },
+    schoolId: { type: mongoose.Schema.Types.ObjectId, ref: "School", required: true },
   },
   { timestamps: true }
 );
-
-// Virtual fields for district and school - inherited from semester
-QuarterSchema.virtual('districtId', {
-  ref: 'Semester',
-  localField: 'semester',
-  foreignField: '_id',
-  justOne: true,
-  options: { select: 'districtId' }
-});
-
-QuarterSchema.virtual('schoolId', {
-  ref: 'Semester', 
-  localField: 'semester',
-  foreignField: '_id',
-  justOne: true,
-  options: { select: 'schoolId' }
-});
-
-// Ensure virtual fields are included in JSON output
-QuarterSchema.set('toJSON', { virtuals: true });
-QuarterSchema.set('toObject', { virtuals: true });
 
 const Quarter = mongoose.models.Quarter || mongoose.model("Quarter", QuarterSchema);
 export default Quarter;

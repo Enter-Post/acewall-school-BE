@@ -10,6 +10,18 @@ const StanderdgradingScaleSchema = new mongoose.Schema({
             maxPercentage: Number, // maximum percentage
         },
     ],
+    districtId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "District",
+        required: true,
+        index: true,
+    },
+    schoolId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "School",
+        required: true,
+        index: true
+    },
     isDeleted: { type: Boolean, default: false }
 });
 

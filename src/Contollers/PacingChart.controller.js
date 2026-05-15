@@ -38,6 +38,8 @@ export const createPacingChart = async (req, res) => {
       course: courseId,
       items,
       createdby: userId,
+      districtId,
+      schoolId,
     });
 
     await newChart.save();
@@ -57,6 +59,7 @@ export const createPacingChart = async (req, res) => {
 export const getPacingChartByCourse = async (req, res) => {
   try {
     const { courseId } = req.params;
+    const { districtId, schoolId } = req.user;
     const userId = req.user._id;
 
     // Authorization check
@@ -81,7 +84,7 @@ export const getPacingChartByCourse = async (req, res) => {
       });
     }
 
-    const pacingChart = await PacingChart.findOne({ course: courseId })
+    const pacingChart = await PacingChart.findOne({ course: courseId, districtId, schoolId })
       .populate("course", "courseTitle")
       .populate("createdby", "firstName lastName");
 

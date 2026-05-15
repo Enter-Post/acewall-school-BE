@@ -2,12 +2,12 @@ import express from "express";
 import { isUser } from "../../middlewares/Auth.Middleware.js";
 import { upload } from "../../lib/multer.config.js";
 import { loginRateLimiter } from "../../middlewares/rateLimiter.middleware.js";
-import { 
-  preventCrossDistrictAccess, 
-  restrictToOwnSchool, 
+import {
+  preventCrossDistrictAccess,
+  restrictToOwnSchool,
   enforceCourseSchoolCreation,
   addDistrictFilter,
-  addSchoolFilter 
+  addSchoolFilter
 } from "../../middlewares/district.middleware.js";
 import {
   createCourseSch,
@@ -433,8 +433,7 @@ router.get("/all", getAllCoursesSch);
  *       500:
  *         description: Server error
  */
-router.get("/allupdated", getAllCoursesSchupdated);
-// XXXXX
+router.get("/allupdated", isUser, getAllCoursesSchupdated);
 router.get("/getindividualcourse", isUser, getCoursesByTeacherSch);
 router.get("/getCoursesforadminofteacher", isUser, getCoursesforadminofteacher);
 
@@ -537,7 +536,7 @@ router.get("/getallCoursesforTeacher", isUser, getallcoursesforteacher);
 router.get("/with-meetings", isUser, getCoursesWithMeetings);
 
 // ❌ KEEP THIS AT THE BOTTOM
-router.get("/:subCategoryId", getCoursesbySubcategorySch);
+router.get("/:subCategoryId", isUser, getCoursesbySubcategorySch);
 
 // Other specific routes
 /**
@@ -605,7 +604,7 @@ router.get("/v2/details/:courseId", isUser, preventCrossDistrictAccess, restrict
  *       404:
  *         description: Course not found
  */
-router.get("/get/:id", getunPurchasedCourseByIdSch);
+router.get("/get/:id", isUser, getunPurchasedCourseByIdSch);
 
 /**
  * @swagger
@@ -635,7 +634,7 @@ router.get("/get/:id", getunPurchasedCourseByIdSch);
  *       404:
  *         description: Course not found
  */
-router.get("/getstdprew/:id", getunPurchasedCourseByIdStdPrew);
+router.get("/getstdprew/:id", isUser, getunPurchasedCourseByIdStdPrew);
 
 /**
  * @swagger
@@ -672,6 +671,7 @@ router.get(`/getcourseDueDate/:courseId`, isUser, getDueDate);
 router.get(`/getCourseBasics/:courseId`, isUser, getCourseBasics);
 router.put(
   "/editCourseBasics/:courseId",
+  isUser,
   upload.single("syllabus"), // <--- handle syllabus upload
   editCourseInfo,
 );
@@ -682,11 +682,11 @@ router.put(
   thumnailChange,
 );
 router.get("/searchCoursebycode/:courseCode", isUser, searchCoursebycode);
-router.put("/course/:courseId/toggle-grading", toggleGradingSystem);
+router.put("/course/:courseId/toggle-grading", isUser, toggleGradingSystem);
 
-router.get("/stats/:courseId", getCourseEnrollmentStats);
+router.get("/stats/:courseId", isUser, getCourseEnrollmentStats);
 
-router.get("/:courseId/pacing-chart", isUser, getPacingChartByCourse);
+router.get("/:courseId/pacing-chart", isUser, isUser, getPacingChartByCourse);
 router.get("/getStudentofCourse/:courseId", isUser, getStudentofCourse)
 
 /**

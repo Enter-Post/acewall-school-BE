@@ -42,9 +42,10 @@ export const importFullCourse = async (req, res) => {
 export const getFullCourseData = async (req, res) => {
   try {
     const { courseId } = req.params;
+    const { districtId, schoolId } = req.user;
 
     // 1. Fetch the main course object
-    const course = await CourseSch.findById(courseId)
+    const course = await CourseSch.findOne({ _id: courseId, districtId, schoolId })
       .populate("category subcategory semester")
       .populate("createdby", "name email")
       .lean();
@@ -55,6 +56,8 @@ export const getFullCourseData = async (req, res) => {
     // We fetch categories belonging to this specific course
     const assessmentCategories = await AssessmentCategory.find({
       course: courseId,
+      districtId,
+      schoolId
     }).lean();
 
     // --- ADDITION 2: QUARTERS ---
@@ -62,20 +65,22 @@ export const getFullCourseData = async (req, res) => {
     const semesterIds = course.semester?.map((s) => s._id) || [];
     const quarters = await Quarter.find({
       semester: { $in: semesterIds },
+      districtId,
+      schoolId
     }).lean();
 
     // 2. Fetch Chapters and Lessons
-    const chapters = await Chapter.find({ course: courseId }).lean();
+    const chapters = await Chapter.find({ course: courseId, districtId, schoolId }).lean();
     const chaptersWithLessons = await Promise.all(
       chapters.map(async (chapter) => {
-        const lessons = await Lesson.find({ chapter: chapter._id }).lean();
+        const lessons = await Lesson.find({ chapter: chapter._id, districtId, schoolId }).lean();
         return { ...chapter, lessons };
       }),
     );
 
     // 3. Fetch Assessments and Discussions
-    const assessments = await Assessment.find({ course: courseId, isDeleted: false }).lean();
-    const discussions = await Discussion.find({ course: courseId, isDeleted: false }).lean();
+    const assessments = await Assessment.find({ course: courseId, isDeleted: false, districtId, schoolId }).lean();
+    const discussions = await Discussion.find({ course: courseId, isDeleted: false, districtId, schoolId }).lean();
 
     // 4. COMBINE EVERYTHING
     // Note how quarters and assessmentCategories are added to the keys
@@ -98,9 +103,10 @@ export const getFullCourseData = async (req, res) => {
 export const toggleGradingSystem = async (req, res) => {
   try {
     const { courseId } = req.params;
+    const { districtId, schoolId } = req.user;
 
     // Find course
-    const course = await CourseSch.findById(courseId);
+    const course = await CourseSch.findOne({ _id: courseId, districtId, schoolId });
     if (!course || course.isDeleted) {
       return res.status(404).json({ message: "Course not found" });
     }
@@ -126,6 +132,7 @@ export const toggleGradingSystem = async (req, res) => {
 // PATCH /admin/toggle-all-comments
 export const toggleAllCoursesComments = async (req, res) => {
   const { enable } = req.body; // boolean: true/false
+  const { districtId, schoolId } = req.user;
 
   try {
     if (typeof enable !== "boolean") {
@@ -133,7 +140,7 @@ export const toggleAllCoursesComments = async (req, res) => {
     }
 
     // Update all courses in the database
-    const result = await CourseSch.updateMany({}, { commentsEnabled: enable });
+    const result = await CourseSch.updateMany({ districtId, schoolId }, { commentsEnabled: enable });
 
     res.status(200).json({
       message: `Comments & Ratings ${enable ? "enabled" : "disabled"
@@ -153,9 +160,10 @@ export const toggleAllCoursesComments = async (req, res) => {
 export const toggleCourseComments = async (req, res) => {
   const { courseId } = req.params;
   const { enable } = req.body; // boolean: true/false
+  const { districtId, schoolId } = req.user;
 
   try {
-    const course = await CourseSch.findById(courseId);
+    const course = await CourseSch.findOne({ _id: courseId, districtId, schoolId });
     if (!course || course.isDeleted) {
       return res.status(404).json({ message: "Course not found" });
     }
@@ -296,7 +304,7 @@ export const createCourseSch = async (req, res) => {
     });
 
     // Auto-enroll creator
-    await Enrollment.create({ student: createdby, course: course._id });
+    await Enrollment.create({ student: createdby, course: course._id, schoolId, districtId });
 
     // --- Send Course Creation Email ---
     const transporter = nodemailer.createTransport({
@@ -374,6 +382,7 @@ export const createCourseSch = async (req, res) => {
 
 export const getAllCoursesSch = async (req, res) => {
   try {
+    const { districtId, schoolId } = req.user;
     // --- BCPS RBAC: Build query based on user role ---
     let query = { isDeleted: false };
 
@@ -384,16 +393,16 @@ export const getAllCoursesSch = async (req, res) => {
       // District admin sees all courses in their district
       query = {
         isDeleted: false,
-        districtId: req.user.districtId,
+        districtId: districtId,
       };
     } else if (req.user.role === ROLES.TEACHER || req.user.role === ROLES.INSTRUCTOR) {
       // Teachers see courses in their assigned schools + courses they created
-      const userSchoolIds = req.user.schoolIds || [];
-      if (userSchoolIds.length > 0) {
+      if (schoolId) {
         query = {
           isDeleted: false,
+          districtId,
           $or: [
-            { schoolId: { $in: userSchoolIds } },
+            { schoolId: schoolId },
             { createdby: req.user._id },
           ],
         };
@@ -401,16 +410,17 @@ export const getAllCoursesSch = async (req, res) => {
         // If no schools assigned, only see courses they created
         query = {
           isDeleted: false,
+          districtId,
           createdby: req.user._id,
         };
       }
     } else {
       // Students and others see courses in their assigned schools only
-      const userSchoolIds = req.user.schoolIds || [];
-      if (userSchoolIds.length > 0) {
+      if (schoolId) {
         query = {
           isDeleted: false,
-          schoolId: { $in: userSchoolIds },
+          districtId,
+          schoolId: schoolId,
         };
       } else {
         return res.status(200).json({
@@ -447,9 +457,10 @@ export const getAllCoursesSch = async (req, res) => {
 
 export const getCoursesWithMeetings = async (req, res) => {
   try {
+    const { districtId, schoolId } = req.user;
     // 1. Fetch all meetings to count them per course
     // Use .lean() for performance since we just need the data
-    const meetings = await ZoomMeeting.find({}, "course").lean();
+    const meetings = await ZoomMeeting.find({ districtId, schoolId }, "course").lean();
 
     // 2. Calculate meeting counts per course
     const meetingCounts = {};
@@ -470,7 +481,7 @@ export const getCoursesWithMeetings = async (req, res) => {
 
     // 3. Fetch course details
     // Use .lean() so we can easily attach the 'meetingCount' property
-    const courses = await CourseSch.find({ _id: { $in: courseIds }, isDeleted: false })
+    const courses = await CourseSch.find({ _id: { $in: courseIds }, isDeleted: false, districtId, schoolId })
       .populate("createdby", "firstName lastName email")
       .populate("category", "title")
       .populate("subcategory", "title")
@@ -498,12 +509,18 @@ export const getCoursesWithMeetings = async (req, res) => {
 export const getCoursesbySubcategorySch = async (req, res) => {
   const { search } = req.query;
   const { subCategoryId } = req.params;
+  const { districtId, schoolId } = req.user;
+
+  console.log("districtId in getCoursesbySubcategorySch: ", districtId)
+  console.log("schoolId in getCoursesbySubcategorySch: ", schoolId)
 
   try {
     const query = {
       subcategory: subCategoryId,
       published: true,
       isDeleted: false,
+      districtId,
+      schoolId
     };
 
     if (search) {
@@ -539,10 +556,11 @@ export const getCoursesbySubcategorySch = async (req, res) => {
 export const getunPurchasedCourseByIdSch = async (req, res) => {
   try {
     const courseId = req.params.id;
+    const { districtId, schoolId } = req.user;
 
     const courseData = await CourseSch.aggregate([
       {
-        $match: { _id: new mongoose.Types.ObjectId(courseId), isDeleted: false },
+        $match: { _id: new mongoose.Types.ObjectId(courseId), isDeleted: false, districtId: new mongoose.Types.ObjectId(districtId), schoolId: new mongoose.Types.ObjectId(schoolId) },
       },
       {
         $lookup: {
@@ -633,9 +651,6 @@ export const getunPurchasedCourseByIdSch = async (req, res) => {
       return res.status(404).json({ error: "Course not found" });
     }
 
-    // Log the createdby info here
-    console.log("Created by:", courseData[0].createdby);
-
     res
       .status(200)
       .json({ course: courseData[0], message: "Course fetched successfully" });
@@ -648,10 +663,11 @@ export const getunPurchasedCourseByIdSch = async (req, res) => {
 export const getunPurchasedCourseByIdStdPrew = async (req, res) => {
   try {
     const courseId = req.params.id;
+    const { districtId, schoolId } = req.user;
 
     const courseData = await CourseSch.aggregate([
       {
-        $match: { _id: new mongoose.Types.ObjectId(courseId), isDeleted: false },
+        $match: { _id: new mongoose.Types.ObjectId(courseId), isDeleted: false, districtId: new mongoose.Types.ObjectId(districtId), schoolId: new mongoose.Types.ObjectId(schoolId) },
       },
       {
         $lookup: {
@@ -827,8 +843,9 @@ export const getunPurchasedCourseByIdStdPrew = async (req, res) => {
 export const getCourseDetails = async (req, res) => {
   const { courseId } = req.params;
   const userId = req.user._id;
+  const { districtId, schoolId } = req.user;
   try {
-    const courseData = await CourseSch.findById(courseId);
+    const courseData = await CourseSch.findOne({ _id: courseId, districtId, schoolId });
 
     if (!courseData || courseData.isDeleted) {
       return res.status(404).json({ message: "Course not found" });
@@ -840,6 +857,8 @@ export const getCourseDetails = async (req, res) => {
       student: userId,
       course: courseId,
       isDeleted: false,
+      districtId,
+      schoolId
     });
 
     if (!isCreated && !isAdmin && !isEnrolled) {
@@ -851,7 +870,7 @@ export const getCourseDetails = async (req, res) => {
 
     const course = await CourseSch.aggregate([
       {
-        $match: { _id: new mongoose.Types.ObjectId(courseId), isDeleted: false },
+        $match: { _id: new mongoose.Types.ObjectId(courseId), isDeleted: false, districtId: new mongoose.Types.ObjectId(districtId), schoolId: new mongoose.Types.ObjectId(schoolId) },
       },
       // Sort courses by creation date, latest first (assuming `createdAt` is the field for creation date)
       {
@@ -998,30 +1017,31 @@ export const getCourseDetails = async (req, res) => {
 
 export const deleteCourseSch = async (req, res) => {
   const { courseId } = req.params;
+  const { districtId, schoolId } = req.user;
 
   try {
     const courseObjectId = new mongoose.Types.ObjectId(courseId);
 
     // Soft delete the course
-    const deletedCourse = await CourseSch.findByIdAndUpdate(courseObjectId, { isDeleted: true });
+    const deletedCourse = await CourseSch.findOneAndUpdate({ _id: courseObjectId, districtId, schoolId }, { isDeleted: true });
     if (!deletedCourse) {
       return res.status(404).json({ message: "Course not found" });
     }
 
     // Soft delete all comments related to the course
-    await Comment.updateMany({ course: courseObjectId }, { isDeleted: true });
+    await Comment.updateMany({ course: courseObjectId, districtId, schoolId }, { isDeleted: true });
 
     // Find related chapters
-    const chapters = await Chapter.find({ course: courseObjectId });
+    const chapters = await Chapter.find({ course: courseObjectId, districtId, schoolId });
     const chapterIds = chapters.map((ch) => ch._id);
 
     // Find related lessons
-    const lessons = await Lesson.find({ chapter: { $in: chapterIds } });
+    const lessons = await Lesson.find({ chapter: { $in: chapterIds }, districtId, schoolId });
     const lessonIds = lessons.map((ls) => ls._id);
 
     // Soft delete all related chapters and lessons
-    await Chapter.updateMany({ _id: { $in: chapterIds } }, { isDeleted: true });
-    await Lesson.updateMany({ _id: { $in: lessonIds } }, { isDeleted: true });
+    await Chapter.updateMany({ _id: { $in: chapterIds }, districtId, schoolId }, { isDeleted: true });
+    await Lesson.updateMany({ _id: { $in: lessonIds }, districtId, schoolId }, { isDeleted: true });
 
     // Soft delete assessments related to the course, chapters, and lessons
     await Assessment.updateMany({
@@ -1030,18 +1050,22 @@ export const deleteCourseSch = async (req, res) => {
         { chapter: { $in: chapterIds }, type: "chapter-assessment" },
         { lesson: { $in: lessonIds }, type: "lesson-assessment" },
       ],
+      districtId,
+      schoolId
     }, { isDeleted: true });
 
     // Soft delete announcements related to the course
-    await Announcement.updateMany({ course: courseObjectId }, { isDeleted: true });
+    await Announcement.updateMany({ course: courseObjectId, districtId, schoolId }, { isDeleted: true });
 
     // Soft delete assessment categories related to the course
     await AssessmentCategory.updateMany({
       course: courseObjectId,
+      districtId,
+      schoolId
     }, { isDeleted: true });
 
     // Soft delete enrollments related to the course
-    await Enrollment.updateMany({ course: courseObjectId }, { isDeleted: true });
+    await Enrollment.updateMany({ course: courseObjectId, districtId, schoolId }, { isDeleted: true });
 
     res.status(200).json({
       message:
@@ -1057,6 +1081,7 @@ export const deleteCourseSch = async (req, res) => {
 
 export const getCoursesByTeacherSch = async (req, res) => {
   const teacherId = req.user._id;
+  const { districtId, schoolId } = req.user;
   const search = req.query.search?.trim();
 
   try {
@@ -1064,6 +1089,8 @@ export const getCoursesByTeacherSch = async (req, res) => {
     const query = {
       createdby: teacherId,
       isDeleted: false,
+      districtId,
+      schoolId
     };
 
     if (search) {
@@ -1129,12 +1156,15 @@ export const getCoursesforadminofteacher = async (req, res) => {
 
 export const getallcoursesforteacher = async (req, res) => {
   const teacherId = req.user._id;
+  const { districtId, schoolId } = req.user;
   const { courseTitle, studentName, page = 1, limit = 8 } = req.query;
   const { courseId } = req.params;
   try {
     const matchStage = {
       "courseDetails.createdby": new mongoose.Types.ObjectId(teacherId),
       "courseDetails.isDeleted": false,
+      "courseDetails.districtId": new mongoose.Types.ObjectId(districtId),
+      "courseDetails.schoolId": new mongoose.Types.ObjectId(schoolId),
     };
 
     // Apply course title filter (partial match)
@@ -1146,6 +1176,12 @@ export const getallcoursesforteacher = async (req, res) => {
     }
 
     const studentsWithCourses = await Enrollment.aggregate([
+      {
+        $match: {
+          districtId: new mongoose.Types.ObjectId(districtId),
+          schoolId: new mongoose.Types.ObjectId(schoolId)
+        }
+      },
       // Join course details
       {
         $lookup: {
@@ -1264,8 +1300,9 @@ export const getallcoursesforteacher = async (req, res) => {
 
 export const getDueDate = async (req, res) => {
   const { courseId } = req.params;
+  const { districtId, schoolId } = req.user;
   try {
-    const course = await CourseSch.findById(courseId).select(
+    const course = await CourseSch.findOne({ _id: courseId, districtId, schoolId }).select(
       "startingDate endingDate",
     );
     if (!course) {
@@ -1282,10 +1319,11 @@ export const getDueDate = async (req, res) => {
 
 export const archivedCourse = async (req, res) => {
   const { courseId } = req.params;
+  const { districtId, schoolId } = req.user;
 
   try {
     // Fetch the course first
-    const course = await CourseSch.findById(courseId);
+    const course = await CourseSch.findOne({ _id: courseId, districtId, schoolId });
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
     }
@@ -1307,8 +1345,9 @@ export const archivedCourse = async (req, res) => {
 
 export const getCourseBasics = async (req, res) => {
   const { courseId } = req.params;
+  const { districtId, schoolId } = req.user;
   try {
-    const course = await CourseSch.findById(courseId);
+    const course = await CourseSch.findOne({ _id: courseId, districtId, schoolId });
 
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
@@ -1328,13 +1367,14 @@ export const getCourseBasics = async (req, res) => {
 
 export const getBasicCoursesByTeacherId = async (req, res) => {
   const { teacherId } = req.query;
+  const { districtId, schoolId } = req.user;
 
   if (!teacherId) {
     return res.status(400).json({ error: "teacherId is required" });
   }
 
   try {
-    const courses = await CourseSch.find({ createdby: teacherId })
+    const courses = await CourseSch.find({ createdby: teacherId, districtId, schoolId })
       .sort({ createdAt: -1 })
       .select("courseTitle thumbnail _id category") // ⬅️ Use top-level fields
       .populate("category", "title"); // Populate only the 'name' of category
@@ -1357,6 +1397,7 @@ export const getBasicCoursesByTeacherId = async (req, res) => {
 
 export const editCourseInfo = async (req, res) => {
   const { courseId } = req.params;
+  const { districtId, schoolId } = req.user;
   const {
     courseTitle,
     category,
@@ -1368,7 +1409,7 @@ export const editCourseInfo = async (req, res) => {
   } = req.body;
 
   try {
-    const course = await CourseSch.findById(courseId);
+    const course = await CourseSch.findOne({ _id: courseId, districtId, schoolId });
 
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
@@ -1396,10 +1437,11 @@ export const editCourseInfo = async (req, res) => {
 
 export const thumnailChange = async (req, res) => {
   const { courseId } = req.params;
+  const { districtId, schoolId } = req.user;
   const thumbnail = req.file;
 
   try {
-    const course = await CourseSch.findById(courseId);
+    const course = await CourseSch.findOne({ _id: courseId, districtId, schoolId });
 
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
@@ -1427,6 +1469,7 @@ export const thumnailChange = async (req, res) => {
 
 export const searchCoursebycode = async (req, res) => {
   const { courseCode } = req.params;
+  const { districtId, schoolId } = req.user;
 
   try {
     if (!courseCode || courseCode.trim() === "") {
@@ -1435,7 +1478,11 @@ export const searchCoursebycode = async (req, res) => {
 
     // Find by courseCode (case-insensitive)
     const course = await CourseSch.findOne(
-      { courseCode: { $regex: `^${courseCode}$`, $options: "i" } },
+      {
+        courseCode: { $regex: `^${courseCode}$`, $options: "i" },
+        districtId,
+        schoolId
+      },
       {
         courseTitle: 1,
         courseCode: 1,
@@ -1465,6 +1512,7 @@ export const searchCoursebycode = async (req, res) => {
 };
 
 export const getAllCoursesForAdmin = async (req, res) => {
+  const { districtId, schoolId } = req.user;
   try {
     // Pagination (optional but recommended)
     const page = Number(req.query.page) || 1;
@@ -1472,6 +1520,12 @@ export const getAllCoursesForAdmin = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const courses = await CourseSch.aggregate([
+      {
+        $match: {
+          districtId: new mongoose.Types.ObjectId(districtId),
+          schoolId: new mongoose.Types.ObjectId(schoolId)
+        }
+      },
       // Sort latest first
       { $sort: { createdAt: -1 } },
 
@@ -1523,7 +1577,7 @@ export const getAllCoursesForAdmin = async (req, res) => {
       },
     ]);
 
-    const totalCourses = await CourseSch.countDocuments();
+    const totalCourses = await CourseSch.countDocuments({ districtId, schoolId });
 
     res.status(200).json({
       message: "Courses fetched successfully",
@@ -1541,6 +1595,7 @@ export const getAllCoursesForAdmin = async (req, res) => {
 export const getCourseEnrollmentStats = async (req, res) => {
   const { courseId } = req.params;
   const { range } = req.query;
+  const { districtId, schoolId } = req.user;
   console.log(range, "this is the range");
 
   try {
@@ -1561,6 +1616,8 @@ export const getCourseEnrollmentStats = async (req, res) => {
 
     const matchStage = {
       course: new mongoose.Types.ObjectId(courseId),
+      districtId: new mongoose.Types.ObjectId(districtId),
+      schoolId: new mongoose.Types.ObjectId(schoolId),
     };
 
     if (startDate) {
@@ -1601,6 +1658,7 @@ export const getCourseEnrollmentStats = async (req, res) => {
 };
 
 export const getUserCoursesforFilter = async (req, res) => {
+  const { districtId, schoolId } = req.user;
   try {
     const userId = req.user._id;
     const role = req.user.role;
@@ -1622,6 +1680,8 @@ export const getUserCoursesforFilter = async (req, res) => {
         {
           $match: {
             createdby: new mongoose.Types.ObjectId(userId),
+            districtId: new mongoose.Types.ObjectId(districtId),
+            schoolId: new mongoose.Types.ObjectId(schoolId),
             ...searchFilter,
           },
         },
@@ -1680,6 +1740,8 @@ export const getUserCoursesforFilter = async (req, res) => {
         {
           $match: {
             student: new mongoose.Types.ObjectId(userId),
+            districtId: new mongoose.Types.ObjectId(districtId),
+            schoolId: new mongoose.Types.ObjectId(schoolId),
           },
         },
         {
@@ -1772,6 +1834,7 @@ export const getUserCoursesforFilter = async (req, res) => {
 
 
 export const getStudentofCourse = async (req, res) => {
+  const { districtId, schoolId } = req.user;
   try {
     const { courseId } = req.params;
     const { search } = req.query;
@@ -1780,7 +1843,7 @@ export const getStudentofCourse = async (req, res) => {
       throw new Error("Valid course ID is required");
     }
 
-    const enrollments = await Enrollment.find({ course: courseId })
+    const enrollments = await Enrollment.find({ course: courseId, districtId, schoolId })
       .populate("student", "firstName middleName lastName email profileImg");
 
     if (!enrollments || enrollments.length === 0) {
@@ -1819,6 +1882,7 @@ export const getStudentofCourse = async (req, res) => {
 export const getDeletedCourses = async (req, res) => {
   const userId = req.user._id;
   const userRole = req.user.role;
+  const { districtId, schoolId } = req.user;
 
   try {
     // Authorization check: only teachers and admins can view deleted courses
@@ -1826,7 +1890,7 @@ export const getDeletedCourses = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-    let query = { isDeleted: true };
+    let query = { isDeleted: true, districtId, schoolId };
 
     // If teacher, only show their own deleted courses
     if (userRole === "teacher") {
@@ -1856,6 +1920,7 @@ export const restoreCourse = async (req, res) => {
   const { courseId } = req.params;
   const userId = req.user._id;
   const userRole = req.user.role;
+  const { districtId, schoolId } = req.user;
 
   try {
     // Authorization check: only teachers and admins can restore courses
@@ -1863,7 +1928,7 @@ export const restoreCourse = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-    const course = await CourseSch.findById(courseId);
+    const course = await CourseSch.findOne({ _id: courseId, districtId, schoolId });
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
     }
@@ -1883,13 +1948,13 @@ export const restoreCourse = async (req, res) => {
     await course.save();
 
     // Restore related chapters, lessons, assessments, discussions, announcements
-    await Chapter.updateMany({ course: courseId }, { isDeleted: false });
-    await Lesson.updateMany({ course: courseId }, { isDeleted: false });
-    await Assessment.updateMany({ course: courseId }, { isDeleted: false });
-    await Discussion.updateMany({ course: courseId }, { isDeleted: false });
-    await Announcement.updateMany({ course: courseId }, { isDeleted: false });
-    await Comment.updateMany({ course: courseId }, { isDeleted: false });
-    await Enrollment.updateMany({ course: courseId }, { isDeleted: false });
+    await Chapter.updateMany({ course: courseId, districtId, schoolId }, { isDeleted: false });
+    await Lesson.updateMany({ course: courseId, districtId, schoolId }, { isDeleted: false });
+    await Assessment.updateMany({ course: courseId, districtId, schoolId }, { isDeleted: false });
+    await Discussion.updateMany({ course: courseId, districtId, schoolId }, { isDeleted: false });
+    await Announcement.updateMany({ course: courseId, districtId, schoolId }, { isDeleted: false });
+    await Comment.updateMany({ course: courseId, districtId, schoolId }, { isDeleted: false });
+    await Enrollment.updateMany({ course: courseId, districtId, schoolId }, { isDeleted: false });
 
     res.status(200).json({ message: "Course and all related data restored successfully", course });
   } catch (error) {

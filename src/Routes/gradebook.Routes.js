@@ -256,7 +256,7 @@ router.get("/getGradingScale", isUser, getGradingScale);
  *       404:
  *         description: Course not found
  */
-router.get("/course/:courseId", getGradebookForCourse);
+router.get("/course/:courseId", isUser, getGradebookForCourse);
 
 /**
  * @swagger

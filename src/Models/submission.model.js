@@ -51,32 +51,22 @@ const submissionSchema = new mongoose.Schema(
     allowResubmission: { type: Boolean, default: false },
     resubmitted: { status: { type: Boolean, default: false }, count: { type: Number, default: 0 } },
     isDeleted: { type: Boolean, default: false },
+    districtId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "District",
+      required: true,
+      index: 1,
+    },
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      required: true,
+      index: 1,
+    },
   },
   { timestamps: true }
 );
 
-// Virtual fields for district and school - inherited from assessment->course
-submissionSchema.virtual('districtId', {
-  ref: 'assessment',
-  localField: 'assessment',
-  foreignField: '_id',
-  justOne: true,
-  options: { select: 'course' },
-  // This will need to be populated in two steps: submission->assessment->course
-});
-
-submissionSchema.virtual('schoolId', {
-  ref: 'assessment', 
-  localField: 'assessment',
-  foreignField: '_id',
-  justOne: true,
-  options: { select: 'course' },
-  // This will need to be populated in two steps: submission->assessment->course
-});
-
-// Ensure virtual fields are included in JSON output
-submissionSchema.set('toJSON', { virtuals: true });
-submissionSchema.set('toObject', { virtuals: true });
 
 const Submission = mongoose.model("submission", submissionSchema);
 

@@ -43,8 +43,9 @@ export const getCoursesByTeacherSch_WEB = async (req, res) => {
 export const getAllCoursesSchupdated = async (req, res) => {
   try {
     const { search, published, page = 1, limit = 6 } = req.query;
+    const { districtId, schoolId } = req.user;
 
-    const match = {};
+    const match = { districtId, schoolId };
 
     if (search) {
       match.courseTitle = { $regex: search, $options: "i" };
@@ -53,6 +54,7 @@ export const getAllCoursesSchupdated = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const courseQuery = { ...match };
+
     if (published !== undefined) {
       courseQuery.published = published;
     }

@@ -380,6 +380,6 @@ router.put("/subcategory/:id", updateSubCategory);
  *       401:
  *         description: Unauthorized
  */
-router.get("/getSubcategoryWithCategory/:id", getSubcategoruWithcategory);
+router.get("/getSubcategoryWithCategory/:id", isUser,getSubcategoruWithcategory);
 
 export default router;

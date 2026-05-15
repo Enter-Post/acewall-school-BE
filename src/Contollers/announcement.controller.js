@@ -22,13 +22,13 @@ export const createAnnouncement = async (req, res) => {
     }
 
     // Validate teacher
-    const teacher = await User.findById(teacherId);
+    const teacher = await User.findOne({ _id: teacherId, districtId, schoolId });
     if (!teacher || teacher.role !== "teacher") {
       return res.status(400).json({ error: "Invalid teacher." });
     }
 
     // Validate course
-    const course = await CourseSch.findById(courseId);
+    const course = await CourseSch.findOne({ _id: courseId, districtId, schoolId });
     if (!course) {
       return res.status(400).json({ error: "Course not found." });
     }
@@ -36,9 +36,9 @@ export const createAnnouncement = async (req, res) => {
     // Process links
     const linkArray = links
       ? links
-          .split(",")
-          .map((l) => l.trim())
-          .filter((l) => l.length > 0)
+        .split(",")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0)
       : [];
 
     // Upload attachments to Cloudinary
@@ -66,12 +66,14 @@ export const createAnnouncement = async (req, res) => {
       links: linkArray,
       teacher: teacherId,
       course: courseId,
+      districtId,
+      schoolId
     });
 
     await announcement.save();
 
     // Fetch enrolled students + guardians
-    const enrollments = await Enrollment.find({ course: courseId }).populate(
+    const enrollments = await Enrollment.find({ course: courseId, districtId, schoolId }).populate(
       "student",
       "email guardianEmails guardianEmailPreferences firstName lastName"
     );
@@ -127,22 +129,19 @@ export const createAnnouncement = async (req, res) => {
                 <h1 style="color: #fff; margin: 0; font-size: 20px;">New Announcement</h1>
               </div>
               <div style="padding: 20px; color: #333;">
-                <p style="font-size: 16px;">There’s a new announcement for your course <strong>${
-                  course.courseTitle
-                }</strong>:</p>
+                <p style="font-size: 16px;">There’s a new announcement for your course <strong>${course.courseTitle
+          }</strong>:</p>
                 <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #28a745;">
                   <p style="font-size: 16px; margin: 0;">${message}</p>
                 </div>
-                ${
-                  linkArray.length
-                    ? `<p>Links:<br>${linkArray
-                        .map((l) => `<a href="${l}" target="_blank">${l}</a>`)
-                        .join("<br>")}</p>`
-                    : ""
-                }
-                <p style="font-size: 14px; margin-top: 10px;"><em>From: ${
-                  teacher.firstName
-                } ${teacher.lastName}</em></p>
+                ${linkArray.length
+            ? `<p>Links:<br>${linkArray
+              .map((l) => `<a href="${l}" target="_blank">${l}</a>`)
+              .join("<br>")}</p>`
+            : ""
+          }
+                <p style="font-size: 14px; margin-top: 10px;"><em>From: ${teacher.firstName
+          } ${teacher.lastName}</em></p>
               </div>
               <div style="background: #f0f4f8; color: #555; text-align: center; padding: 15px; font-size: 12px;">
                 <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
@@ -172,7 +171,7 @@ export const getAnnouncementsForCourse = async (req, res) => {
   const { districtId, schoolId } = req.user
   const { courseId } = req.params;
   try {
-    const announcements = await Announcement.find({ course: courseId, isDeleted: false })
+    const announcements = await Announcement.find({ course: courseId, isDeleted: false, districtId, schoolId })
       .populate("teacher", "firstName lastName email")
       .sort({ createdAt: -1 });
 
@@ -187,11 +186,9 @@ export const getAnnouncementsByTeacher = async (req, res) => {
   const { teacherId } = req.params;
   const { course } = req.query; // destructure courseId from query
 
-  console.log(course, "courseId")
-
   try {
     // Build a filter object
-    const filter = { teacher: teacherId, isDeleted: false };
+    const filter = { teacher: teacherId, isDeleted: false, districtId, schoolId };
     if (course) filter.course = course; // add course filter if provided
 
     console.log(filter, "filter")
@@ -213,7 +210,7 @@ export const deleteAnnouncement = async (req, res) => {
 
   try {
     // Find announcement first (don't delete yet)
-    const announcement = await Announcement.findById(id);
+    const announcement = await Announcement.findOne({ _id: id, districtId, schoolId });
     if (!announcement || announcement.isDeleted) {
       return res.status(404).json({ error: "Announcement not found" });
     }
@@ -235,7 +232,7 @@ export const deleteAnnouncement = async (req, res) => {
     }
 
     // Soft delete the announcement
-    await Announcement.findByIdAndUpdate(id, { isDeleted: true });
+    await Announcement.findOneAndUpdate({ _id: id, districtId, schoolId }, { isDeleted: true });
 
     res.status(200).json({ message: "Announcement deleted successfully" });
   } catch (err) {
@@ -250,7 +247,7 @@ export const getAnnouncementsForStudent = async (req, res) => {
 
   try {
     // Get all courses the student is enrolled in
-    const enrollments = await Enrollment.find({ student: studentId }).select("course");
+    const enrollments = await Enrollment.find({ student: studentId, districtId, schoolId }).select("course");
     const courseIds = enrollments.map((e) => e.course);
 
     if (courseIds.length === 0) {
@@ -263,6 +260,8 @@ export const getAnnouncementsForStudent = async (req, res) => {
     const announcements = await Announcement.find({
       course: { $in: courseIds },
       isDeleted: false,
+      districtId,
+      schoolId
     })
       .populate("course", "courseTitle _id thumbnail ")    // More fields if needed
       .populate("teacher", "firstName lastName email role _id")  // full teacher info
@@ -293,6 +292,8 @@ export const getAnnouncementsForParent = async (req, res) => {
     const student = await User.findOne({
       _id: studentId,
       guardianEmails: parentEmail,
+      districtId,
+      schoolId
     });
 
     if (!student) {
@@ -303,7 +304,7 @@ export const getAnnouncementsForParent = async (req, res) => {
     }
 
     // 2. GET STUDENT ENROLLMENTS
-    const enrollments = await Enrollment.find({ student: studentId }).select("course");
+    const enrollments = await Enrollment.find({ student: studentId, districtId, schoolId }).select("course");
     const courseIds = enrollments.map((e) => e.course);
 
     if (courseIds.length === 0) {
@@ -318,8 +319,10 @@ export const getAnnouncementsForParent = async (req, res) => {
     const announcements = await Announcement.find({
       course: { $in: courseIds },
       isDeleted: false,
+      districtId,
+      schoolId
     })
-      .populate("course", "courseTitle _id thumbnail") 
+      .populate("course", "courseTitle _id thumbnail")
       .populate("teacher", "firstName lastName email profileImg _id") // Included profileImg for a better UI
       .sort({ createdAt: -1 });
 
@@ -354,13 +357,13 @@ export const getDeletedAnnouncements = async (req, res) => {
     // If teacher, verify they own the course
     if (userRole === "teacher") {
       const CourseSch = await import("../Models/courses.model.sch.js");
-      const course = await CourseSch.default.findOne({ _id: courseId, createdby: userId });
+      const course = await CourseSch.default.findOne({ _id: courseId, createdby: userId, districtId, schoolId });
       if (!course) {
         return res.status(403).json({ message: "You can only view deleted announcements of your own courses" });
       }
     }
 
-    const deletedAnnouncements = await Announcement.find({ course: courseId, isDeleted: true })
+    const deletedAnnouncements = await Announcement.find({ course: courseId, isDeleted: true, districtId, schoolId })
       .sort({ deletedAt: -1 })
       .populate("teacher", "firstName lastName email");
 
@@ -387,7 +390,7 @@ export const restoreAnnouncement = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-    const announcement = await Announcement.findById(announcementId);
+    const announcement = await Announcement.findOne({ _id: announcementId, districtId, schoolId });
     if (!announcement) {
       return res.status(404).json({ message: "Announcement not found" });
     }
@@ -399,7 +402,7 @@ export const restoreAnnouncement = async (req, res) => {
     // If teacher, verify they own the course
     if (userRole === "teacher") {
       const CourseSch = await import("../Models/courses.model.sch.js");
-      const course = await CourseSch.default.findOne({ _id: announcement.course, createdby: userId });
+      const course = await CourseSch.default.findOne({ _id: announcement.course, createdby: userId, districtId, schoolId });
       if (!course) {
         return res.status(403).json({ message: "You can only restore announcements of your own courses" });
       }

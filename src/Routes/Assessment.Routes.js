@@ -200,74 +200,6 @@ router.post(
  */
 router.get("/stats/:assessmentId", isUser, getAssessmentStats);
 
-/**
- * @swagger
- * /api/assessment/create:
- *   post:
- *     summary: Create a new assessment
- *     tags: [Assessments]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - title
- *               - course
- *               - type
- *             properties:
- *               title:
- *                 type: string
- *                 description: Assessment title
- *               description:
- *                 type: string
- *                 description: Assessment description
- *               course:
- *                 type: string
- *                 description: Course ID
- *               type:
- *                 type: string
- *                 enum: [quiz, assignment, exam, project]
- *                 description: Assessment type
- *               totalPoints:
- *                 type: number
- *                 description: Total points for assessment
- *               dueDate:
- *                 type: string
- *                 format: date-time
- *                 description: Assessment due date
- *               files:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: binary
- *                 description: Assessment files
- *     responses:
- *       201:
- *         description: Assessment created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 message:
- *                   type: string
- *                 data:
- *                   $ref: '#/components/schemas/Assessment'
- *       400:
- *         description: Invalid input data
- *       401:
- *         description: Unauthorized
- */
-router.post("/create", upload.any(), isUser, loginRateLimiter, createAssessment);
-
-// V2 Routes with district and school access control
-router.post("/v2/create", upload.any(), isUser, preventCrossDistrictAccess, loginRateLimiter, createAssessment);
 
 /**
  * @swagger
@@ -295,9 +227,6 @@ router.post("/v2/create", upload.any(), isUser, preventCrossDistrictAccess, logi
  *         description: Unauthorized
  */
 router.get("/allAssessmentByTeacher", isUser, allAssessmentByTeacher);
-
-// V2 Routes with district and school access control
-router.get("/v2/allAssessmentByTeacher", isUser, preventCrossDistrictAccess, addSchoolFilter, allAssessmentByTeacher);
 
 /**
  * @swagger
@@ -334,9 +263,6 @@ router.get("/v2/allAssessmentByTeacher", isUser, preventCrossDistrictAccess, add
  */
 router.get("/getAllassessmentforStudent", isUser, getAllassessmentforStudent);
 
-// V2 Routes with district and school access control
-router.get("/v2/getAllassessmentforStudent", isUser, preventCrossDistrictAccess, addSchoolFilter, getAllassessmentforStudent);
-
 /**
  * @swagger
  * /api/assessment/delete/{id}:
@@ -360,7 +286,7 @@ router.get("/v2/getAllassessmentforStudent", isUser, preventCrossDistrictAccess,
  *       404:
  *         description: Assessment not found
  */
-router.delete("/delete/:id", deleteAssessment);
+router.delete("/delete/:id", isUser, deleteAssessment);
 
 /**
  * @swagger
@@ -406,6 +332,7 @@ router.delete("/delete/:id", deleteAssessment);
  */
 router.put(
   "/uploadFiles/:assessmentId/:fileId",
+  isUser,
   upload.array("files"),
   uploadFiles
 );
@@ -439,7 +366,7 @@ router.put(
  *       404:
  *         description: Assessment or file not found
  */
-router.delete("/deleteFile/:assessmentId/:fileId", deleteFile);
+router.delete("/deleteFile/:assessmentId/:fileId", isUser, deleteFile);
 
 router.get("/v2/:assessmentId/:courseId", isUser, isEnrolledMiddleware, getResultsMiddleware, getAssesmentbyID);
 router.get("/:assessmentId", isUser, getResultsMiddleware, getAssesmentbyID);

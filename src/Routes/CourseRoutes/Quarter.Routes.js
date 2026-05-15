@@ -101,7 +101,7 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
-router.post("/create", createQuarter);
+router.post("/create", isUser, createQuarter);
 
 /**
  * @swagger
@@ -193,7 +193,7 @@ router.post("/create", createQuarter);
  *       401:
  *         description: Unauthorized
  */
-router.get("/get", getQuarter);
+router.get("/get", isUser, getQuarter);
 
 /**
  * @swagger
@@ -262,7 +262,7 @@ router.get("/get", getQuarter);
  *       401:
  *         description: Unauthorized
  */
-router.post("/getquarters", getQuartersofSemester);
+router.post("/getquarters", isUser, getQuartersofSemester);
 
 /**
  * @swagger
@@ -535,7 +535,7 @@ router.get("/get/:semesterId", isUser, getSemesterQuarter);
  *       401:
  *         description: Unauthorized
  */
-router.get(`/getDatesofQuarter/:quarterId`, getDatesofQuarter);
+router.get(`/getDatesofQuarter/:quarterId`, isUser, getDatesofQuarter);
 
 /**
  * @swagger
@@ -619,7 +619,7 @@ router.get(`/getDatesofQuarter/:quarterId`, getDatesofQuarter);
  *       401:
  *         description: Unauthorized
  */
-router.put("/editQuarter/:quarterId", editQuarter);
+router.put("/editQuarter/:quarterId", isUser, editQuarter);
 
 /**
  * @swagger
@@ -690,6 +690,6 @@ router.put("/editQuarter/:quarterId", editQuarter);
  *       401:
  *         description: Unauthorized
  */
-router.post("/getquarters_updated", getQuartersofSemester_Updated);
+router.post("/getquarters_updated", isUser,getQuartersofSemester_Updated);
 
 export default router;

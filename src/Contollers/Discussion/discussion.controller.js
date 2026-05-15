@@ -103,10 +103,13 @@ export const createDiscussion = async (req, res) => {
 
 export const getDiscussionsOfTeacher = async (req, res) => {
   const teacherId = req.user._id;
+  const { districtId, schoolId } = req.user;
   try {
     const discussion = await Discussion.find({
       createdby: teacherId,
       isDeleted: false,
+      districtId,
+      schoolId,
     }).populate({
       path: "course",
       select: "courseTitle thumbnail",
@@ -125,11 +128,15 @@ export const getDiscussionbyId = async (req, res) => {
   const id = req.params.id;
   const userId = req.user._id;
   const { districtId, schoolId } = req.user;
+
+  console.log("districtId in getDiscussionbyId:", districtId)
+  console.log("schoolId in getDiscussionbyId:", schoolId)
+
   try {
     const discussion = await Discussion.findOne({
       _id: id,
-      district: districtId,
-      school: schoolId,
+      districtId,
+      schoolId,
     })
       .populate("course", "courseTitle thumbnail")
       .populate("chapter", "title")
@@ -137,11 +144,9 @@ export const getDiscussionbyId = async (req, res) => {
       .populate("createdby", "firstName middleName lastName profileImg")
       .populate("studentDueDateOverrides.student", "firstName middleName lastName profileImg email")
 
-    if (!discussion || discussion.isDeleted) {
-      return res.status(404).json({ message: "Discussion not found" });
-    }
+    // console.log("discussion in getDiscussionbyId:", discussion)
 
-    if (!discussion) {
+    if (!discussion || discussion.isDeleted) {
       return res.status(404).json({ message: "Discussion not found" });
     }
 
@@ -152,23 +157,29 @@ export const getDiscussionbyId = async (req, res) => {
     const tempDiscussion = { ...discussion.toObject() }
 
     if (override) {
-      console.log("ma chal gaya")
       tempDiscussion.isExtended = true;
       tempDiscussion.extendedDueDate = override.newDueDate;
     }
 
+    console.log("userId in discussion:", userId)
+    console.log("discussion.course in discussion:", discussion.course._id)
+
     const exists = await Enrollment.findOne({
       student: userId,
-      course: discussion.course,
-      district: districtId,
-      school: schoolId,
+      course: discussion.course._id,
+      // districtId,
+      // schoolId,
     });
+
+    console.log("exists in the discussion:", exists)
 
     if (!exists) {
       return res
         .status(404)
         .json({ message: "You are not enrolled in this course" });
     }
+
+    console.log("tempDiscussion in getDiscussionbyId:", tempDiscussion)
 
     res
       .status(200)
@@ -197,8 +208,8 @@ export const discussionforStudent = async (req, res) => {
         { course: { $in: allEnrolledCourseIds } },
       ],
       isDeleted: false,
-      district: districtId,
-      school: schoolId,
+      districtId,
+      schoolId,
     })
       .populate("course", "courseTitle thumbnail")
       .populate("category", "title")
@@ -269,6 +280,7 @@ export const setDueDateForStudentsDiscussion = async (req, res) => {
   try {
     const { discussionId } = req.params;
     const { studentIds, newDueDate } = req.body;
+    const { districtId, schoolId } = req.user;
 
     // 1. Basic Validation
     if (!Array.isArray(studentIds) || studentIds.length === 0) {
@@ -298,7 +310,7 @@ export const setDueDateForStudentsDiscussion = async (req, res) => {
     }
 
     // 3. Find the Discussion
-    const discussion = await Discussion.findById(discussionId);
+    const discussion = await Discussion.findOne({ _id: discussionId, districtId, schoolId });
     if (!discussion) {
       return res.status(404).json({
         success: false,
@@ -321,7 +333,9 @@ export const setDueDateForStudentsDiscussion = async (req, res) => {
       // Check if the student is actually in the course associated with this discussion
       const enrollment = await Enrollment.findOne({
         course: discussion.course,
-        student: studentId
+        student: studentId,
+        districtId,
+        schoolId
       });
 
       // Skip students not enrolled in this specific course
@@ -366,12 +380,13 @@ export const toggleAllowResubmission = async (req, res) => {
   try {
     const { discussionId } = req.params;
     const { allowResubmission } = req.body;
+    const { districtId, schoolId } = req.user;
 
     // Validate and convert the allowResubmission parameter
     const allowResubmissionValue = Boolean(allowResubmission);
 
     // Find the discussion
-    const discussion = await Discussion.findById(discussionId);
+    const discussion = await Discussion.findOne({ _id: discussionId, districtId, schoolId });
     if (!discussion) {
       return res.status(404).json({
         success: false,
@@ -402,6 +417,7 @@ export const getDeletedDiscussions = async (req, res) => {
   const { courseId } = req.params;
   const userId = req.user._id;
   const userRole = req.user.role;
+  const { districtId, schoolId } = req.user;
 
   try {
     // Authorization check: only teachers and admins can view deleted discussions
@@ -412,13 +428,13 @@ export const getDeletedDiscussions = async (req, res) => {
     // If teacher, verify they own the course
     if (userRole === "teacher") {
       const CourseSch = await import("../../Models/courses.model.sch.js");
-      const course = await CourseSch.default.findOne({ _id: courseId, createdby: userId });
+      const course = await CourseSch.default.findOne({ _id: courseId, createdby: userId, districtId, schoolId });
       if (!course) {
         return res.status(403).json({ message: "You can only view deleted discussions of your own courses" });
       }
     }
 
-    const deletedDiscussions = await Discussion.find({ course: courseId, isDeleted: true })
+    const deletedDiscussions = await Discussion.find({ course: courseId, isDeleted: true, districtId, schoolId })
       .sort({ deletedAt: -1 })
       .populate("category", "title")
       .populate("chapter", "title")
@@ -440,6 +456,7 @@ export const softDeleteDiscussion = async (req, res) => {
   const { discussionId } = req.params;
   const userId = req.user._id;
   const userRole = req.user.role;
+  const { districtId, schoolId } = req.user;
 
   try {
     // Authorization check: only teachers and admins can delete discussions
@@ -447,7 +464,7 @@ export const softDeleteDiscussion = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-    const discussion = await Discussion.findById(discussionId);
+    const discussion = await Discussion.findOne({ _id: discussionId, districtId, schoolId });
     if (!discussion) {
       return res.status(404).json({ message: "Discussion not found" });
     }
@@ -462,7 +479,7 @@ export const softDeleteDiscussion = async (req, res) => {
     // If teacher, verify they own the course
     if (userRole === "teacher") {
       const CourseSch = await import("../../Models/courses.model.sch.js");
-      const course = await CourseSch.default.findOne({ _id: discussion.course, createdby: userId });
+      const course = await CourseSch.default.findOne({ _id: discussion.course, createdby: userId, districtId, schoolId });
       if (!course) {
         return res.status(403).json({ message: "You can only delete discussions of your own courses" });
       }
@@ -476,7 +493,7 @@ export const softDeleteDiscussion = async (req, res) => {
     // Soft delete related comments
     const DiscussionComment = await import("../../Models/discussionComment.model.js");
     await DiscussionComment.default.updateMany(
-      { discussion: discussionId }, 
+      { discussion: discussionId, districtId, schoolId },
       { isDeleted: true, deletedAt: new Date() }
     );
 
@@ -491,6 +508,7 @@ export const restoreDiscussion = async (req, res) => {
   const { discussionId } = req.params;
   const userId = req.user._id;
   const userRole = req.user.role;
+  const { districtId, schoolId } = req.user;
 
   try {
     // Authorization check: only teachers and admins can restore discussions
@@ -498,7 +516,7 @@ export const restoreDiscussion = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-    const discussion = await Discussion.findById(discussionId);
+    const discussion = await Discussion.findOne({ _id: discussionId, districtId, schoolId });
     if (!discussion) {
       return res.status(404).json({ message: "Discussion not found" });
     }
@@ -510,7 +528,7 @@ export const restoreDiscussion = async (req, res) => {
     // If teacher, verify they own the course
     if (userRole === "teacher") {
       const CourseSch = await import("../../Models/courses.model.sch.js");
-      const course = await CourseSch.default.findOne({ _id: discussion.course, createdby: userId });
+      const course = await CourseSch.default.findOne({ _id: discussion.course, createdby: userId, districtId, schoolId });
       if (!course) {
         return res.status(403).json({ message: "You can only restore discussions of your own courses" });
       }
@@ -523,7 +541,7 @@ export const restoreDiscussion = async (req, res) => {
 
     // Restore related comments
     const DiscussionComment = await import("../../Models/discussionComment.model.js");
-    await DiscussionComment.default.updateMany({ discussion: discussionId }, { isDeleted: false });
+    await DiscussionComment.default.updateMany({ discussion: discussionId, districtId, schoolId }, { isDeleted: false });
 
     res.status(200).json({ message: "Discussion restored successfully", discussion });
   } catch (error) {

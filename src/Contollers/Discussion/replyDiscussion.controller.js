@@ -3,11 +3,12 @@ import DiscussionReply from "../../Models/replyDiscussion.model.js";
 export const getreplyofComment = async (req, res) => {
   const { commentId } = req.params;
   const { page = 1, limit = 5 } = req.query; // Defaults: page 1, 5 replies per page
+  const { districtId, schoolId } = req.user;
 
   try {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const replies = await DiscussionReply.find({ comment: commentId })
+    const replies = await DiscussionReply.find({ comment: commentId, districtId, schoolId })
       .sort({ createdAt: -1 }) // Most recent replies first
       .skip(skip)
       .limit(parseInt(limit))
@@ -15,6 +16,8 @@ export const getreplyofComment = async (req, res) => {
 
     const totalReplies = await DiscussionReply.countDocuments({
       comment: commentId,
+      districtId,
+      schoolId
     });
 
     res.status(200).json({
@@ -33,6 +36,7 @@ export const sendReplyofComment = async (req, res) => {
   const user = req.user;
   const { commentId } = req.params;
   const { text } = req.body;
+  const { districtId, schoolId } = req.user;
 
   if (!mongoose.Types.ObjectId.isValid(commentId)) {
     return res.status(400).json({ message: "Invalid commentId" });
@@ -44,6 +48,8 @@ export const sendReplyofComment = async (req, res) => {
       role: user.role,
       createdby: user._id,
       comment: commentId,
+      districtId,
+      schoolId,
     });
 
     await newReply.save();
@@ -57,9 +63,10 @@ export const sendReplyofComment = async (req, res) => {
 
 export const getReplyCount = async (req, res) => {
   const { commentId } = req.params;
+  const { districtId, schoolId } = req.user;
 
   try {
-    const replyCount = await DiscussionReply.countDocuments({ comment: commentId });
+    const replyCount = await DiscussionReply.countDocuments({ comment: commentId, districtId, schoolId });
 
     res.status(200).json({
       message: "Total reply count fetched successfully",

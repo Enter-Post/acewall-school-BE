@@ -23,32 +23,22 @@ const ReplyDiscussionSchema = new mongoose.Schema(
       default: Date.now,
     },
     isDeleted: { type: Boolean, default: false },
+    districtId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "District",
+      required: true,
+    },
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      required: true,
+    }
   },
   {
     timestamps: true,
   }
 );
 
-// Virtual fields for district and school - inherited from comment->discussion->course
-ReplyDiscussionSchema.virtual('districtId', {
-  ref: 'DiscussionComment',
-  localField: 'comment',
-  foreignField: '_id',
-  justOne: true,
-  options: { select: 'districtId' }
-});
-
-ReplyDiscussionSchema.virtual('schoolId', {
-  ref: 'DiscussionComment', 
-  localField: 'comment',
-  foreignField: '_id',
-  justOne: true,
-  options: { select: 'schoolId' }
-});
-
-// Ensure virtual fields are included in JSON output
-ReplyDiscussionSchema.set('toJSON', { virtuals: true });
-ReplyDiscussionSchema.set('toObject', { virtuals: true });
 
 const DiscussionReply = mongoose.model("Reply", ReplyDiscussionSchema);
 

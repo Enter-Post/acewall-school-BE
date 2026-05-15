@@ -4,9 +4,10 @@ import { login } from "./auth.controller.js";
 
 export const getCourseComments = async (req, res) => {
   const { id } = req.params;
+  const { districtId, schoolId } = req.user
 
   try {
-    const comments = await Comment.find({ course: id, isDeleted: false }).populate(
+    const comments = await Comment.find({ course: id, isDeleted: false, districtId, schoolId }).populate(
       "createdby",
       "firstName lastName profileImg role"
     );
@@ -31,6 +32,7 @@ export const sendComment = async (req, res) => {
   const { id } = req.params;
   const createdby = req.user._id;
   const { text } = req.body;
+  const { districtId, schoolId } = req.user
 
   try {
     const isExist = await CourseSch.findById(id);
@@ -44,6 +46,8 @@ export const sendComment = async (req, res) => {
       text,
       createdby,
       course: id,
+      districtId,
+      schoolId,
     });
 
     await newComment.save();
@@ -73,8 +77,9 @@ export const sendComment = async (req, res) => {
 
 export const allCommentsofTeacher = async (req, res) => {
   const teacherId = req.user._id;
+  const { districtId, schoolId } = req.user
   try {
-    const TeacherCourse = await CourseSch.find({ createdby: teacherId });
+    const TeacherCourse = await CourseSch.find({ createdby: teacherId, districtId, schoolId });
 
     if (TeacherCourse.length === 0) {
       return res
@@ -84,13 +89,15 @@ export const allCommentsofTeacher = async (req, res) => {
 
     const courseIds = TeacherCourse.map((course) => course._id);
 
-    const comments = await Comment.find({ 
+    const comments = await Comment.find({
       course: { $in: courseIds },
       createdby: { $ne: teacherId },
-      isDeleted: false
+      isDeleted: false,
+      districtId,
+      schoolId
     })
-    .sort({ createdAt: -1 })
-    .populate("createdby", "firstName middleName lastName profileImg");
+      .sort({ createdAt: -1 })
+      .populate("createdby", "firstName middleName lastName profileImg");
 
     if (comments.length === 0) {
       return res.status(404).json({ message: "No comments found" });
@@ -107,18 +114,19 @@ export const allCommentsofTeacher = async (req, res) => {
   }
 };
 
-
-
-
-
 export const deleteComment = async (req, res) => {
   const { courseId, commentId } = req.params;
+  const { districtId, schoolId } = req.user
 
   try {
     // Check if the comment exists
     const comment = await Comment.findById(commentId);
     if (!comment) {
       return res.status(404).json({ message: "Comment not found" });
+    }
+
+    if (districtId !== comment.districtId && schoolId !== comment.schoolId) {
+      return res.status(403).json({ message: "Unauthorized to delete this comment" });
     }
 
     // Check if the comment belongs to the user

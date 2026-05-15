@@ -13,17 +13,18 @@ export const getMyEnrolledCourses = async (req, res) => {
   try {
     const userId = req.user._id;
     const userRole = req.user.role;
+    const { districtId, schoolId } = req.user;
 
     let courses = [];
 
     if (userRole === "teacher" || userRole === "admin") {
       // Teachers see courses they OWN/CREATED
-      courses = await CourseSch.find({ createdby: userId, isDeleted: false })
+      courses = await CourseSch.find({ createdby: userId, isDeleted: false, districtId, schoolId })
         .select("courseTitle courseCode thumbnail")
         .lean();
     } else {
       // Students see courses they are ENROLLED in
-      const enrollments = await Enrollment.find({ student: userId, isDeleted: false })
+      const enrollments = await Enrollment.find({ student: userId, isDeleted: false, districtId, schoolId })
         .populate("course", "courseTitle courseCode thumbnail")
         .lean();
 
@@ -42,13 +43,32 @@ export const getMyEnrolledCourses = async (req, res) => {
 export const enrollment = async (req, res) => {
   const { courseId } = req.params;
   const userId = req.user._id;
+  const { districtId, schoolId } = req.user;
   try {
     const course = await CourseSch.findById(courseId);
+
+    if (districtId && schoolId) {
+      if (
+        course.districtId.toString() !== districtId.toString() ||
+        course.schoolId.toString() !== schoolId.toString()
+      ) {
+        return res
+          .status(403)
+          .json({ message: "You are not authorized to enroll in this course" });
+      }
+    } else {
+      return res
+        .status(403)
+        .json({ message: "You are not authorized to enroll in this course" });
+    }
+
     if (!course) return res.status(404).json({ message: "Course not found" });
 
     const exists = await Enrollment.findOne({
       student: userId,
       course: courseId,
+      districtId,
+      schoolId,
     });
     if (exists)
       return res
@@ -58,6 +78,8 @@ export const enrollment = async (req, res) => {
     const enrollment = await Enrollment.create({
       student: userId,
       course: courseId,
+      districtId,
+      schoolId,
     });
 
     // Track enrollment activity
@@ -74,10 +96,13 @@ export const enrollment = async (req, res) => {
 export const isEnrolled = async (req, res) => {
   const { courseId } = req.params;
   const userId = req.user._id;
+  const { districtId, schoolId } = req.user;
   try {
     const exists = await Enrollment.findOne({
       student: userId,
       course: courseId,
+      districtId,
+      schoolId,
       isDeleted: false,
     });
 
@@ -96,9 +121,10 @@ export const isEnrolled = async (req, res) => {
 export const studenCourses = async (req, res) => {
   const userId = req.user._id;
   const search = req.query.search?.trim(); // Get the search query from the request
+  const { districtId, schoolId } = req.user
 
   try {
-    const filter = { student: userId, isDeleted: false }; // Find enrollments by student ID
+    const filter = { student: userId, isDeleted: false, districtId, schoolId }; // Find enrollments by student ID
 
     // Find enrollments with optional search filter
     let enrolledCourses = await Enrollment.find(filter)
@@ -135,10 +161,13 @@ export const studenCourses = async (req, res) => {
 
 export const studentsEnrolledinCourse = async (req, res) => {
   const { courseId } = req.params;
+  const { districtId, schoolId } = req.user;
   try {
     const enrolledStudents = await Enrollment.find({
       course: courseId,
       isDeleted: false,
+      districtId,
+      schoolId
     })
       .sort({ createdAt: -1 })
       .populate("student", "firstName middleName lastName profileImg");
@@ -151,9 +180,10 @@ export const studentsEnrolledinCourse = async (req, res) => {
 export const unEnrollment = async (req, res) => {
   const { courseId } = req.params;
   const userId = req.user._id;
+  const { districtId, schoolId } = req.user;
   try {
     const enrollment = await Enrollment.findOneAndUpdate(
-      { student: userId, course: courseId },
+      { student: userId, course: courseId, districtId, schoolId },
       { isDeleted: true }
     );
     res.status(200).json(enrollment);
@@ -164,11 +194,15 @@ export const unEnrollment = async (req, res) => {
 
 export const studentCourseDetails = async (req, res) => {
   const { enrollmentId } = req.params;
-
+  const { districtId, schoolId } = req.user;
   try {
     const enrolledData = await Enrollment.aggregate([
       {
-        $match: { _id: new mongoose.Types.ObjectId(enrollmentId) },
+        $match: {
+          _id: new mongoose.Types.ObjectId(enrollmentId),
+          districtId: new mongoose.Types.ObjectId(districtId),
+          schoolId: new mongoose.Types.ObjectId(schoolId)
+        },
       },
       {
         $lookup: {
@@ -326,9 +360,10 @@ export const studentCourseDetails = async (req, res) => {
 export const chapterDetails = async (req, res) => {
   const { chapterId } = req.params;
   const userId = req.user._id;
+  const { districtId, schoolId } = req.user;
 
   try {
-    const chapter = await Chapter.findById(chapterId).populate("course");
+    const chapter = await Chapter.findOne({ _id: chapterId, districtId, schoolId }).populate("course");
     if (!chapter) {
       return res.status(404).json({ message: "Chapter not found" });
     }
@@ -336,6 +371,8 @@ export const chapterDetails = async (req, res) => {
     const isEnrolled = await Enrollment.findOne({
       student: userId,
       course: chapter.course._id,
+      districtId,
+      schoolId
     });
 
     if (!isEnrolled) {
@@ -346,7 +383,11 @@ export const chapterDetails = async (req, res) => {
 
     const chapterData = await Chapter.aggregate([
       {
-        $match: { _id: new mongoose.Types.ObjectId(chapterId) },
+        $match: {
+          _id: new mongoose.Types.ObjectId(chapterId),
+          districtId: new mongoose.Types.ObjectId(districtId),
+          schoolId: new mongoose.Types.ObjectId(schoolId)
+        },
       },
       {
         $lookup: {
@@ -447,9 +488,10 @@ export const chapterDetails = async (req, res) => {
 
 export const chapterDetailsStdPre = async (req, res) => {
   const { chapterId } = req.params;
+  const { districtId, schoolId } = req.user;
 
   try {
-    const chapter = await Chapter.findById(chapterId).populate("course");
+    const chapter = await Chapter.findOne({ _id: chapterId, districtId, schoolId }).populate("course");
 
     if (!chapter) {
       return res.status(404).json({ message: "Chapter not found" });
@@ -457,7 +499,11 @@ export const chapterDetailsStdPre = async (req, res) => {
 
     const chapterData = await Chapter.aggregate([
       {
-        $match: { _id: new mongoose.Types.ObjectId(chapterId) },
+        $match: {
+          _id: new mongoose.Types.ObjectId(chapterId),
+          districtId: new mongoose.Types.ObjectId(districtId),
+          schoolId: new mongoose.Types.ObjectId(schoolId)
+        },
       },
       {
         $lookup: {
@@ -559,9 +605,15 @@ export const chapterDetailsStdPre = async (req, res) => {
 // controller/adminController.js
 export const getStudentEnrolledCourses = async (req, res) => {
   const { id } = req.params;
+  const { districtId, schoolId } = req.user;
 
   try {
-    const enrolledCourses = await Enrollment.find({ student: id, isDeleted: false })
+    const enrolledCourses = await Enrollment.find({
+      student: id,
+      isDeleted: false,
+      districtId: new mongoose.Types.ObjectId(districtId),
+      schoolId: new mongoose.Types.ObjectId(schoolId)
+    })
       .sort({ createdAt: -1 })
       .populate({
         path: "course",
@@ -587,11 +639,14 @@ export const getStudentEnrolledCourses = async (req, res) => {
 export const enrollmentforTeacher = async (req, res) => {
   try {
     const { teacherId, courseId } = req.body;
+    const { districtId, schoolId } = req.user;
 
     const enrollments = await Enrollment.find({
       student: teacherId,
       course: courseId,
       isDeleted: false,
+      districtId,
+      schoolId
     });
     const enrollment = enrollments[0];
     if (enrollment) {
@@ -611,6 +666,7 @@ export const getChildEnrolledCourses = async (req, res) => {
   try {
     const { studentId } = req.params; // The ID of the child
     const parentEmail = req.user.email;
+    const { districtId, schoolId } = req.user;
     const search = req.query.search?.trim();
 
     // 1. AUTHORIZATION CHECK
@@ -619,6 +675,8 @@ export const getChildEnrolledCourses = async (req, res) => {
       _id: studentId,
       guardianEmails: parentEmail,
       role: { $in: ["student", "teacherAsStudent"] },
+      districtId,
+      schoolId
     });
 
     if (!student) {
@@ -631,7 +689,7 @@ export const getChildEnrolledCourses = async (req, res) => {
 
     // 2. FETCH ENROLLMENTS
     // We use the studentId from params instead of req.user._id
-    let enrolledCourses = await Enrollment.find({ student: studentId, isDeleted: false })
+    let enrolledCourses = await Enrollment.find({ student: studentId, isDeleted: false, districtId, schoolId })
       .sort({ createdAt: -1 })
       .populate({
         path: "course",
@@ -671,12 +729,15 @@ export const getChildEnrolledCourses = async (req, res) => {
 export const getParentChildCourseDetails = async (req, res) => {
   const { enrollmentId, studentId } = req.params;
   const parentEmail = req.user.email;
+  const { districtId, schoolId } = req.user;
 
   try {
     // 1. AUTHORIZATION CHECK
     const student = await User.findOne({
       _id: studentId,
       guardianEmails: parentEmail,
+      districtId,
+      schoolId
     });
 
     if (!student) {
@@ -692,6 +753,8 @@ export const getParentChildCourseDetails = async (req, res) => {
         $match: {
           _id: new mongoose.Types.ObjectId(enrollmentId),
           student: new mongoose.Types.ObjectId(studentId),
+          districtId: new mongoose.Types.ObjectId(districtId),
+          schoolId: new mongoose.Types.ObjectId(schoolId)
         },
       },
       {

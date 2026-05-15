@@ -67,7 +67,7 @@ export const verifyDistrictAccess = async (req, res, next) => {
 /**
  * Middleware: Verify user can access the requested school
  * Checks school belongs to user's district
- * For multi-school teachers, checks school is in their schoolIds
+ * For multi-school teachers, checks school is in their schoolId
  */
 export const verifySchoolAccess = async (req, res, next) => {
   try {
@@ -111,15 +111,15 @@ export const verifySchoolAccess = async (req, res, next) => {
 
     // For teachers, check if school is in their assigned schools
     if (req.user.role === ROLES.TEACHER || req.user.role === ROLES.INSTRUCTOR) {
-      const userSchoolIds = req.user.schoolIds || [];
+      const userSchoolId = req.user.schoolId;
       const schoolIdString = targetSchoolId.toString();
       
       // If teacher has specific schools assigned, check access
-      if (userSchoolIds.length > 0 && !userSchoolIds.includes(schoolIdString)) {
+      if (userSchoolId && userSchoolId.toString() !== schoolIdString) {
         return res.status(403).json({
           error: true,
           message: "Access denied: school not assigned to you",
-          assignedSchools: userSchoolIds,
+          assignedSchool: userSchoolId,
         });
       }
     }
@@ -302,8 +302,8 @@ export const canAccessSchool = (req, schoolId, schoolDistrictId) => {
 
   // For teachers, check school assignment
   if (req.user.role === ROLES.TEACHER || req.user.role === ROLES.INSTRUCTOR) {
-    const userSchoolIds = req.user.schoolIds || [];
-    if (userSchoolIds.length > 0 && !userSchoolIds.includes(schoolId.toString())) {
+    const userSchoolId = req.user.schoolId;
+    if (userSchoolId && userSchoolId.toString() !== schoolId.toString()) {
       return false;
     }
   }
@@ -338,15 +338,15 @@ export const restrictToOwnSchool = async (req, res, next) => {
     if (!targetSchoolId) {
       if (req.user.role === ROLES.STUDENT || req.user.role === ROLES.TEACHER_AS_STUDENT) {
         // Students can only see their own school
-        req.schoolFilter = { schoolId: req.user.schoolIds?.[0] };
+        req.schoolFilter = { schoolId: req.user.schoolId };
       } else if (req.user.role === ROLES.DISTRICT_ADMIN) {
         // District admins can see all schools in their district
         req.schoolFilter = {}; // Will be combined with district filter
       } else if (req.user.role === ROLES.TEACHER || req.user.role === ROLES.INSTRUCTOR) {
         // Teachers can see their assigned schools
-        const userSchoolIds = req.user.schoolIds || [];
-        if (userSchoolIds.length > 0) {
-          req.schoolFilter = { schoolId: { $in: userSchoolIds } };
+        const userSchoolId = req.user.schoolId;
+        if (userSchoolId) {
+          req.schoolFilter = { schoolId: userSchoolId };
         } else {
           req.schoolFilter = {};
         }
@@ -373,8 +373,8 @@ export const restrictToOwnSchool = async (req, res, next) => {
 
     // Student: can only access their own school
     if (req.user.role === ROLES.STUDENT || req.user.role === ROLES.TEACHER_AS_STUDENT) {
-      const userSchoolIds = req.user.schoolIds || [];
-      if (!userSchoolIds.includes(targetSchoolId.toString())) {
+      const userSchoolId = req.user.schoolId;
+      if (userSchoolId?.toString() !== targetSchoolId.toString()) {
         return res.status(403).json({
           error: true,
           message: "Access denied: students can only access their own school",
@@ -384,8 +384,8 @@ export const restrictToOwnSchool = async (req, res, next) => {
 
     // Teacher: can only access their assigned schools
     if (req.user.role === ROLES.TEACHER || req.user.role === ROLES.INSTRUCTOR) {
-      const userSchoolIds = req.user.schoolIds || [];
-      if (userSchoolIds.length > 0 && !userSchoolIds.includes(targetSchoolId.toString())) {
+      const userSchoolId = req.user.schoolId;
+      if (userSchoolId && userSchoolId.toString() !== targetSchoolId.toString()) {
         return res.status(403).json({
           error: true,
           message: "Access denied: school not assigned to you",
@@ -522,12 +522,12 @@ export const enforceCourseSchoolCreation = async (req, res, next) => {
       }
 
       // Verify teacher is assigned to this school
-      const userSchoolIds = req.user.schoolIds || [];
-      if (userSchoolIds.length > 0 && !userSchoolIds.includes(schoolId.toString())) {
+      const userSchoolId = req.user.schoolId;
+      if (userSchoolId && userSchoolId.toString() !== schoolId.toString()) {
         return res.status(403).json({
           error: true,
           message: "Cannot create course for school not assigned to you",
-          assignedSchools: userSchoolIds,
+          assignedSchool: userSchoolId,
         });
       }
 
@@ -592,9 +592,9 @@ export const addSchoolFilter = (req, res, next) => {
 
     // Students: only their own school
     if (req.user.role === ROLES.STUDENT || req.user.role === ROLES.TEACHER_AS_STUDENT) {
-      const userSchoolIds = req.user.schoolIds || [];
-      if (userSchoolIds.length > 0) {
-        req.schoolFilter = { schoolId: userSchoolIds[0] };
+      const userSchoolId = req.user.schoolId;
+      if (userSchoolId) {
+        req.schoolFilter = { schoolId: userSchoolId };
       } else {
         req.schoolFilter = { schoolId: null }; // No access if no school assigned
       }
@@ -609,9 +609,9 @@ export const addSchoolFilter = (req, res, next) => {
 
     // Teachers: their assigned schools
     if (req.user.role === ROLES.TEACHER || req.user.role === ROLES.INSTRUCTOR) {
-      const userSchoolIds = req.user.schoolIds || [];
-      if (userSchoolIds.length > 0) {
-        req.schoolFilter = { schoolId: { $in: userSchoolIds } };
+      const userSchoolId = req.user.schoolId;
+      if (userSchoolId) {
+        req.schoolFilter = { schoolId: userSchoolId };
       } else {
         req.schoolFilter = { schoolId: null }; // No access if no schools assigned
       }

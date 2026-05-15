@@ -4,7 +4,7 @@ import Semester from "../../Models/semester.model.js";
 
 export const createSemester = async (req, res) => {
   const { title, startDate, endDate } = req.body;
-  const { districtId, schoolId } = req.user
+  // const { districtId, schoolId } = req.user
   try {
     const newSemester = new Semester({ title, startDate, endDate, districtId, schoolId });
     await newSemester.save();
@@ -37,13 +37,28 @@ export const getSemesterwithQuarter = async (req, res) => {
       {
         $lookup: {
           from: "quarters", // collection name in lowercase plural form
-          localField: "_id",
-          foreignField: "semester",
+          let: { semesterId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$semester", "$$semesterId"] },
+                    { $eq: ["$districtId", new mongoose.Types.ObjectId(districtId)] },
+                    { $eq: ["$schoolId", new mongoose.Types.ObjectId(schoolId)] }
+                  ]
+                }
+              }
+            }
+          ],
           as: "quarters",
         },
       },
       {
-        $match: { districtId, schoolId }
+        $match: {
+          districtId: new mongoose.Types.ObjectId(districtId),
+          schoolId: new mongoose.Types.ObjectId(schoolId)
+        }
       },
       {
         $sort: { startDate: 1 }, // Optional: sort semesters chronologically
@@ -52,7 +67,7 @@ export const getSemesterwithQuarter = async (req, res) => {
 
     res
       .status(200)
-      .json({ message: "Semesters found successfully", semesters });
+      .json({ message: "Semesters found successfullyy", semesters });
   } catch (error) {
     console.error("Error fetching semesters with quarters:", error);
     res.status(500).json({ message: "Internal Server Error" });

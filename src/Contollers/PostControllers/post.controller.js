@@ -5,169 +5,174 @@ import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
 import path from "path";
 export const createPost = async (req, res) => {
-    try {
-        const { text, color, postType, courseId, googleDriveAsset } = req.body;
-        const assets = req.files || [];
-        const author = req.user._id;
+  const { districtId, schoolId } = req.user;
+  try {
+    const { text, color, postType, courseId, googleDriveAsset } = req.body;
+    const assets = req.files || [];
+    const author = req.user._id;
 
-        const uploadedFiles = assets.map(asset => {
-            let fileType = 'file';
-            if (asset.mimetype.startsWith('video/')) fileType = 'videos';
-            else if (asset.mimetype.startsWith('image/')) fileType = 'image';
+    const uploadedFiles = assets.map(asset => {
+      let fileType = 'file';
+      if (asset.mimetype.startsWith('video/')) fileType = 'videos';
+      else if (asset.mimetype.startsWith('image/')) fileType = 'image';
 
-            return {
-                url: `${process.env.ASSET_URL}uploads/${fileType}/${asset.filename}`,
-                fileName: asset.originalname,
-                type: asset.mimetype
-            };
+      return {
+        url: `${process.env.ASSET_URL}uploads/${fileType}/${asset.filename}`,
+        fileName: asset.originalname,
+        type: asset.mimetype
+      };
+    });
+
+    // Handle Google Drive asset if present
+    if (googleDriveAsset) {
+      try {
+        const driveFile = JSON.parse(googleDriveAsset);
+        uploadedFiles.push({
+          url: driveFile.url,
+          fileName: driveFile.filename || driveFile.publicId,
+          type: driveFile.type || `${driveFile.resourceType}/${driveFile.format}`,
+          source: 'google_drive',
+          publicId: driveFile.publicId
         });
-
-        // Handle Google Drive asset if present
-        if (googleDriveAsset) {
-            try {
-                const driveFile = JSON.parse(googleDriveAsset);
-                uploadedFiles.push({
-                    url: driveFile.url,
-                    fileName: driveFile.filename || driveFile.publicId,
-                    type: driveFile.type || `${driveFile.resourceType}/${driveFile.format}`,
-                    source: 'google_drive',
-                    publicId: driveFile.publicId
-                });
-            } catch (err) {
-                console.error("Error parsing Google Drive asset:", err);
-            }
-        }
-
-        const postData = {
-            text,
-            assets: uploadedFiles, // Now correctly structured as an array of objects
-            author,
-            color,
-            postType: postType || "public"
-        };
-
-        // Only add course if postType is course AND courseId is a valid hex string
-        if (postType === "course" && courseId && courseId.length === 24) {
-            postData.course = courseId;
-        }
-
-        const post = new Posts(postData);
-        await post.save();
-
-        res.status(201).json({ message: 'Post created successfully', post });
-    } catch (error) {
-        console.error("SAVING ERROR:", error);
-        res.status(500).json({ 
-            message: 'Internal Server error', 
-            details: error.message 
-        });
+      } catch (err) {
+        console.error("Error parsing Google Drive asset:", err);
+      }
     }
+
+    const postData = {
+      text,
+      assets: uploadedFiles, // Now correctly structured as an array of objects
+      author,
+      color,
+      postType: postType || "public",
+      districtId,
+      schoolId,
+    };
+
+    // Only add course if postType is course AND courseId is a valid hex string
+    if (postType === "course" && courseId && courseId.length === 24) {
+      postData.course = courseId;
+    }
+
+    const post = new Posts(postData);
+    await post.save();
+
+    res.status(201).json({ message: 'Post created successfully', post });
+  } catch (error) {
+    console.error("SAVING ERROR:", error);
+    res.status(500).json({
+      message: 'Internal Server error',
+      details: error.message
+    });
+  }
 }
 export const getPosts = async (req, res) => {
-    try {
-        const userId = req.user._id;
-        const userRole = req.user.role;
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const skip = (page - 1) * limit;
+  try {
+    const userId = req.user._id;
+    const userRole = req.user.role;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const { districtId, schoolId } = req.user
 
-        // 🎯 Get courseId from query params (e.g., /getPosts?courseId=123)
-        const { courseId } = req.query;
+    // 🎯 Get courseId from query params (e.g., /getPosts?courseId=123)
+    const { courseId } = req.query;
 
-        // 1️⃣ Find all courses this user is associated with
-        let myCourseIds = [];
-        if (userRole === "teacher" || userRole === "admin") {
-            const ownedCourses = await CourseSch.find({ createdby: userId }).select("_id");
-            myCourseIds = ownedCourses.map(c => c._id);
-        } else {
-            const enrollments = await Enrollment.find({ student: userId }).select("course");
-            myCourseIds = enrollments.map(e => e.course);
-        }
-
-        // 2️⃣ Construct the Query
-        let query = {};
-
-        if (courseId && courseId !== "all") {
-            // Check if the user has permission to see this specific course
-            const hasAccess = myCourseIds.some(id => id.toString() === courseId);
-            if (!hasAccess) {
-                return res.status(403).json({ message: "Access denied to this course feed" });
-            }
-            query = { postType: "course", course: courseId };
-        } else {
-            // Default: Show all Public posts OR Course posts from user's joined courses
-            query = {
-                $or: [
-                    { postType: "public" },
-                    { postType: "course", course: { $in: myCourseIds } }
-                ]
-            };
-        }
-
-        // 3️⃣ Execute Query
-        query.isDeleted = false;
-        const totalPosts = await Posts.countDocuments(query);
-        const posts = await Posts.find(query)
-            .populate('author', '_id firstName middleName lastName profileImg')
-            // Populate course info so we can show course code/title on the PostCard
-            .populate('course', 'courseTitle courseCode') 
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit);
-
-        const totalPages = Math.ceil(totalPosts / limit);
-
-        res.json({
-            currentPage: page,
-            totalPages,
-            totalPosts,
-            limit,
-            posts,
-        });
-
-    } catch (error) {
-        console.error("Error in getPosts:", error);
-        res.status(500).json({ message: "Internal Server Error" });
+    // 1️⃣ Find all courses this user is associated with
+    let myCourseIds = [];
+    if (userRole === "teacher" || userRole === "admin") {
+      const ownedCourses = await CourseSch.find({ createdby: userId }).select("_id");
+      myCourseIds = ownedCourses.map(c => c._id);
+    } else {
+      const enrollments = await Enrollment.find({ student: userId }).select("course");
+      myCourseIds = enrollments.map(e => e.course);
     }
+
+    // 2️⃣ Construct the Query
+    let query = { districtId, schoolId };
+
+    if (courseId && courseId !== "all") {
+      // Check if the user has permission to see this specific course
+      const hasAccess = myCourseIds.some(id => id.toString() === courseId);
+      if (!hasAccess) {
+        return res.status(403).json({ message: "Access denied to this course feed" });
+      }
+      query.postType = "course";
+      query.course = courseId;
+    } else {
+      // Default: Show all Public posts OR Course posts from user's joined courses
+      query = {
+        $or: [
+          { postType: "public" },
+          { postType: "course", course: { $in: myCourseIds } }
+        ]
+      };
+    }
+
+    // 3️⃣ Execute Query
+    query.isDeleted = false;
+    const totalPosts = await Posts.countDocuments(query);
+    const posts = await Posts.find(query)
+      .populate('author', '_id firstName middleName lastName profileImg')
+      // Populate course info so we can show course code/title on the PostCard
+      .populate('course', 'courseTitle courseCode')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const totalPages = Math.ceil(totalPosts / limit);
+
+    res.json({
+      currentPage: page,
+      totalPages,
+      totalPosts,
+      limit,
+      posts,
+    });
+
+  } catch (error) {
+    console.error("Error in getPosts:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 };
 
-
 export const specificUserPosts = async (req, res) => {
-    const userId = req.params.id;
-    const { includeDeleted } = req.query;
-    try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+  const userId = req.params.id;
+  const { includeDeleted } = req.query;
+  const { districtId, schoolId } = req.user
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
 
-        const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
-        // Build query based on includeDeleted parameter
-        let query = { author: userId };
-        if (includeDeleted !== 'true') {
-            query.isDeleted = false;
-        }
-
-        const totalPosts = await Posts.countDocuments(query);
-
-        const posts = await Posts.find(query)
-            .populate('author', '_id firstName middleName lastName profileImg')
-            .sort({ createdAt: -1 }) // newest first
-            .skip(skip)
-            .limit(limit);
-
-        const totalPages = Math.ceil(totalPosts / limit);
-
-        res.json({
-            currentPage: page,
-            totalPages,
-            totalPosts,
-            limit,
-            posts,
-        });
-    } catch (error) {
-        console.log("Error in specificUserPosts", error);
-        res.status(500).json({ message: "Internal Server Error" });
+    // Build query based on includeDeleted parameter
+    let query = { author: userId, districtId, schoolId };
+    if (includeDeleted !== 'true') {
+      query.isDeleted = false;
     }
+
+    const totalPosts = await Posts.countDocuments(query);
+
+    const posts = await Posts.find(query)
+      .populate('author', '_id firstName middleName lastName profileImg')
+      .sort({ createdAt: -1 }) // newest first
+      .skip(skip)
+      .limit(limit);
+
+    const totalPages = Math.ceil(totalPosts / limit);
+
+    res.json({
+      currentPage: page,
+      totalPages,
+      totalPosts,
+      limit,
+      posts,
+    });
+  } catch (error) {
+    console.log("Error in specificUserPosts", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 }
 
 

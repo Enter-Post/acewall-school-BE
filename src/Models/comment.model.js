@@ -14,30 +14,22 @@ const commentSchema = new mongoose.Schema(
       required: true,
     },
     isDeleted: { type: Boolean, default: false },
+    districtId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "District",
+      required: true, // Optional for backward compatibility
+      index: true,
+    },
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      required: true, // Optional for backward compatibility
+      index: true,
+    },
   },
   { timestamps: true }
 );
 
-// Virtual fields for district and school - inherited from course
-commentSchema.virtual('districtId', {
-  ref: 'CourseInd',
-  localField: 'course',
-  foreignField: '_id',
-  justOne: true,
-  options: { select: 'districtId' }
-});
-
-commentSchema.virtual('schoolId', {
-  ref: 'CourseInd', 
-  localField: 'course',
-  foreignField: '_id',
-  justOne: true,
-  options: { select: 'schoolId' }
-});
-
-// Ensure virtual fields are included in JSON output
-commentSchema.set('toJSON', { virtuals: true });
-commentSchema.set('toObject', { virtuals: true });
 
 const Comment = mongoose.model("Comment", commentSchema);
 

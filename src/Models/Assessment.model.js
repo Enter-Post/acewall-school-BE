@@ -98,30 +98,11 @@ const assessmentSchema = new Schema(
     },
     isDeleted: { type: Boolean, default: false },
     deletedAt: { type: Date, default: null },
+    schoolId: { type: mongoose.Schema.Types.ObjectId, ref: "School", required: true, index: true },
+    districtId: { type: mongoose.Schema.Types.ObjectId, ref: "District", required: true, index: true },
   },
   { timestamps: true }
 );
-
-// Virtual fields for district and school - inherited from course
-assessmentSchema.virtual('districtId', {
-  ref: 'CourseSch',
-  localField: 'course',
-  foreignField: '_id',
-  justOne: true,
-  options: { select: 'districtId' }
-});
-
-assessmentSchema.virtual('schoolId', {
-  ref: 'CourseSch', 
-  localField: 'course',
-  foreignField: '_id',
-  justOne: true,
-  options: { select: 'schoolId' }
-});
-
-// Ensure virtual fields are included in JSON output
-assessmentSchema.set('toJSON', { virtuals: true });
-assessmentSchema.set('toObject', { virtuals: true });
 
 const Assessment = mongoose.model("assessment", assessmentSchema);
 export default Assessment;

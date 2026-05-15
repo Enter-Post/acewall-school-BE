@@ -13,15 +13,16 @@ import DiscussionComment from "../Models/discussionComment.model.js";
 import Discussion from "../Models/discussion.model.js";
 import GPA from "../Models/GPA.model.js";
 
-const getLetterGrade = (gradingScale, percentage) => {
-
-  console.log(gradingScale, "gradingScale");
-
-  const match = gradingScale.find(
-    (range) => percentage >= range.min && percentage <= range.max
+const getLetterGrade = async (percentage, districtId, schoolId) => {
+  const gpaDoc = await GradingScale.findOne({ districtId, schoolId });
+  if (!gpaDoc || !gpaDoc.gpaScale || gpaDoc.gpaScale.length === 0) {
+    throw new Error("Grading scale not found in the database.");
+  }
+  const match = gpaDoc.gpaScale.find(
+    (range) => percentage >= range.minPercentage && percentage <= range.maxPercentage
   );
 
-  return match ? match.grade : "N/A";
+  return match ? match.gpa : "N/A";
 };
 
 // const percentageToGPA = (percentage) => {
@@ -34,9 +35,9 @@ const getLetterGrade = (gradingScale, percentage) => {
 //   return 0.0;
 // };
 
-const percentageToGPA = async (percentage) => {
-  // 1️⃣ Fetch GPA scale from DB (assuming only one GPA scale document)
-  const gpaDoc = await GPA.findOne();
+const percentageToGPA = async (percentage, districtId, schoolId) => {
+  // 1️⃣ Fetch GPA scale from DB
+  const gpaDoc = await GPA.findOne({ districtId, schoolId });
   if (!gpaDoc || !gpaDoc.gpaScale || gpaDoc.gpaScale.length === 0) {
     throw new Error("GPA scale not found in the database.");
   }
@@ -54,15 +55,22 @@ export const getStudentGradebook = async (req, res) => {
   const { courseId, studentId } = req.params;
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
+  const { districtId, schoolId } = req.user;
 
   try {
+    const student = await User.findOne({ _id: studentId, districtId, schoolId }).lean();
+
+    if (!student) {
+      return res.status(404).json({ error: "Student not found" });
+    }
+
     // Fetch grading scale
-    const gradingScaleDoc = await GradingScale.findOne().lean();
+    const gradingScaleDoc = await GradingScale.findOne({ districtId, schoolId }).lean();
     const gradingScale = gradingScaleDoc?.scale || [];
 
     // Categories for the course
-    const categories = await AssessmentCategory.find({ course: courseId });
-    const course = await CourseSch.findById(courseId)
+    const categories = await AssessmentCategory.find({ course: courseId, districtId, schoolId });
+    const course = await CourseSch.findOne({ _id: courseId, districtId, schoolId })
       .lean()
       .select("courseTitle courseDescription thumbnail");
 
@@ -70,6 +78,8 @@ export const getStudentGradebook = async (req, res) => {
     const submissionDocs = await Submission.find({
       studentId,
       graded: true, // Only include graded submissions
+      districtId,
+      schoolId
     }).lean();
 
     const submissionMap = new Map();
@@ -83,6 +93,8 @@ export const getStudentGradebook = async (req, res) => {
     const discussionComments = await DiscussionComment.find({
       createdby: studentId,
       isGraded: true,
+      districtId,
+      schoolId,
     }).lean();
 
     const discussionCommentMap = new Map();
@@ -93,17 +105,21 @@ export const getStudentGradebook = async (req, res) => {
     });
 
     // Fetch only assessments that have GRADED submissions for this course
-    const gradedAssessments = await Assessment.find({ 
+    const gradedAssessments = await Assessment.find({
       course: courseId,
-      _id: { $in: gradedAssessmentIds }
+      _id: { $in: gradedAssessmentIds },
+      districtId,
+      schoolId
     })
       .populate("category semester quarter")
       .lean();
 
     // Fetch only discussions that have graded comments for this course
-    const gradedDiscussions = await Discussion.find({ 
+    const gradedDiscussions = await Discussion.find({
       course: courseId,
-      _id: { $in: gradedDiscussionIds }
+      _id: { $in: gradedDiscussionIds },
+      districtId,
+      schoolId,
     })
       .populate("category semester quarter")
       .lean();
@@ -202,8 +218,8 @@ export const getStudentGradebook = async (req, res) => {
 
         const finalQuarterGrade = parseFloat(quarterWeightedScore.toFixed(2));
         quarterData.grade = finalQuarterGrade;
-        quarterData.gpa = await percentageToGPA(finalQuarterGrade); // DB GPA lookup
-        quarterData.letterGrade = getLetterGrade(gradingScale, finalQuarterGrade);
+        quarterData.gpa = await percentageToGPA(finalQuarterGrade, districtId, schoolId); // DB GPA lookup
+        quarterData.letterGrade = getLetterGrade(gradingScale, finalQuarterGrade, districtId, schoolId);
 
         finalScoreSum += finalQuarterGrade;
         totalQuartersCount++;
@@ -215,14 +231,16 @@ export const getStudentGradebook = async (req, res) => {
       totalQuartersCount > 0
         ? parseFloat((finalScoreSum / totalQuartersCount).toFixed(2))
         : 0;
-    const gpa = await percentageToGPA(finalCoursePercentage); // DB GPA lookup
-    const letterGrade = getLetterGrade(gradingScale, finalCoursePercentage);
+    const gpa = await percentageToGPA(finalCoursePercentage, districtId, schoolId); // DB GPA lookup
+    const letterGrade = getLetterGrade(gradingScale, finalCoursePercentage, districtId, schoolId);
 
     // Fetch semester & quarter titles
     const semesters = await Semester.find({
       _id: { $in: Object.keys(groupedBySemesterQuarter).filter(id => id !== "unknown-semester") },
+      districtId,
+      schoolId
     }).lean();
-    const quarters = await Quarter.find().lean();
+    const quarters = await Quarter.find({ districtId, schoolId }).lean();
 
     const semesterList = Object.entries(groupedBySemesterQuarter).map(
       ([semesterId, semesterData]) => {
@@ -280,21 +298,30 @@ export const getStudentGradeReport = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 5;
   const skip = (page - 1) * limit;
+  const { districtId, schoolId } = req.user
 
   try {
+    const student = await User.findOne({ _id: studentId, districtId, schoolId }).lean();
+
+    if (!student) {
+      return res.status(404).json({ error: "Student not found" });
+    }
+
     /** 1️⃣ Fetch student's assessment submissions */
-    const submissions = await Submission.find({ studentId, graded: true });
+    const submissions = await Submission.find({ studentId, graded: true, districtId, schoolId });
     const assessmentIds = submissions.map(s => s.assessment);
 
     /** 2️⃣ Fetch assessments with course info */
-    const assessments = await Assessment.find({ _id: { $in: assessmentIds } })
+    const assessments = await Assessment.find({ _id: { $in: assessmentIds }, districtId, schoolId })
       .populate("course category semester quarter")
       .lean();
 
     /** 3️⃣ Fetch student's graded discussion comments (any course) */
     const discussionComments = await DiscussionComment.find({
       createdby: studentId,
-      isGraded: true
+      isGraded: true,
+      districtId,
+      schoolId
     })
       .populate({
         path: "discussion",
@@ -356,7 +383,7 @@ export const getStudentGradeReport = async (req, res) => {
     }
 
     /** 7️⃣ FIXED: Fetch single global grading scale */
-    const gradingScaleDocs = await GradingScale.find().lean();
+    const gradingScaleDocs = await GradingScale.find({ districtId, schoolId }).lean();
     const globalGradingScale = gradingScaleDocs.length > 0 ? gradingScaleDocs[0].scale : [];
 
     // Debug log to check the grading scale structure
@@ -391,17 +418,17 @@ export const getStudentGradeReport = async (req, res) => {
       const semesterScores = [];
 
       for (const [semesterId, quarterMap] of semesterMap.entries()) {
-        const semesterDoc = semesterId !== "unknown-semester" ? await Semester.findById(semesterId).lean() : null;
+        const semesterDoc = semesterId !== "unknown-semester" ? await Semester.findOne({ _id: semesterId, districtId, schoolId }).lean() : null;
         const semesterTitle = semesterDoc?.title || "Unknown Semester";
 
         const quarters = [];
         const quarterScores = [];
 
         for (const [quarterId, records] of quarterMap.entries()) {
-          const quarterDoc = quarterId !== "unknown-quarter" ? await Quarter.findById(quarterId).lean() : null;
+          const quarterDoc = quarterId !== "unknown-quarter" ? await Quarter.findOne({ _id: quarterId, districtId, schoolId }).lean() : null;
           const quarterTitle = quarterDoc?.title || "Unknown Quarter";
 
-          const categories = await AssessmentCategory.find({ course: courseId });
+          const categories = await AssessmentCategory.find({ course: courseId, districtId, schoolId });
           const activeCategories = categories
             .map(category => {
               const itemsInCategory = records.filter(r =>
@@ -459,13 +486,13 @@ export const getStudentGradeReport = async (req, res) => {
           }
 
           const finalQuarterGrade = parseFloat(quarterWeightedScore.toFixed(2));
-          const gpa = await percentageToGPA(finalQuarterGrade, courseId);
+          const gpa = await percentageToGPA(finalQuarterGrade, districtId, schoolId);
           totalGPA += gpa;
           totalQuarters++;
           quarterScores.push(finalQuarterGrade);
 
           // ✅ FIXED: Use global grading scale
-          const letterGrade = getLetterGrade(globalGradingScale, finalQuarterGrade);
+          const letterGrade = getLetterGrade(globalGradingScale, finalQuarterGrade, districtId, schoolId);
           quarters.push({
             quarterId,
             quarterTitle,
@@ -481,7 +508,7 @@ export const getStudentGradeReport = async (req, res) => {
             ? parseFloat((quarterScores.reduce((a, b) => a + b, 0) / quarterScores.length).toFixed(2))
             : 0;
         // ✅ FIXED: Use global grading scale
-        const semesterLetterGrade = getLetterGrade(globalGradingScale, semesterPercentage);
+        const semesterLetterGrade = getLetterGrade(globalGradingScale, semesterPercentage, districtId, schoolId);
         semesterScores.push(semesterPercentage);
         semesters.push({
           semesterId,
@@ -497,7 +524,7 @@ export const getStudentGradeReport = async (req, res) => {
           ? parseFloat((semesterScores.reduce((a, b) => a + b, 0) / semesterScores.length).toFixed(2))
           : 0;
       // ✅ FIXED: Use global grading scale
-      const courseLetterGrade = getLetterGrade(globalGradingScale, coursePercentage);
+      const courseLetterGrade = getLetterGrade(globalGradingScale, coursePercentage, districtId, schoolId);
 
       courseGrades.push({
         courseId,
@@ -529,13 +556,14 @@ export const getStudentGradeReport = async (req, res) => {
 
 export const setGradingScale = async (req, res) => {
   const { scale } = req.body;
+  const { districtId, schoolId } = req.user;
 
   if (!Array.isArray(scale) || scale.length === 0) {
     return res.status(400).json({ error: "Scale must be a non-empty array." });
   }
 
   try {
-    const existing = await GradingScale.findOne();
+    const existing = await GradingScale.findOne({ districtId, schoolId });
 
     if (existing) {
       await GradingScale.findOneAndUpdate({ _id: existing._id }, { scale });
@@ -546,7 +574,7 @@ export const setGradingScale = async (req, res) => {
       });
     }
 
-    const newScale = await GradingScale.create({ scale });
+    const newScale = await GradingScale.create({ scale, districtId, schoolId });
 
     res.status(200).json({
       message: "Grading scale saved successfully",
@@ -559,8 +587,9 @@ export const setGradingScale = async (req, res) => {
 };
 
 export const getGradingScale = async (req, res) => {
+  const { districtId, schoolId } = req.user;
   try {
-    const scaleDoc = await GradingScale.findOne();
+    const scaleDoc = await GradingScale.findOne({ districtId, schoolId });
     const scale = scaleDoc?.scale
       ? [...scaleDoc.scale].sort((a, b) => b.max - a.max)
       : null;
@@ -577,7 +606,7 @@ export const getGradingScale = async (req, res) => {
 export const getGradebookForCourse = async (req, res) => {
   const { courseId } = req.params;
   const { page = 1, limit = 10 } = req.query;
-
+  const { districtId, schoolId } = req.user;
   try {
     const gradingScaleDoc = await GradingScale.findOne().lean();
     const gradingScale = gradingScaleDoc?.scale || [];
@@ -664,19 +693,13 @@ export const getGradebookForCourse = async (req, res) => {
       let finalScore = 0;
 
       for (const [semesterId, quarterMap] of semesterMap.entries()) {
-        const semesterDoc =
-          semesterId !== "unknown-semester"
-            ? await Semester.findById(semesterId).lean()
-            : null;
+        const semesterDoc = semesterId !== "unknown-semester" ? await Semester.findOne({ _id: semesterId, districtId, schoolId }).lean() : null;
         const semesterTitle = semesterDoc?.title || "Unknown Semester";
 
         const quarters = [];
 
         for (const [quarterId, records] of quarterMap.entries()) {
-          const quarterDoc =
-            quarterId !== "unknown-quarter"
-              ? await Quarter.findById(quarterId).lean()
-              : null;
+          const quarterDoc = quarterId !== "unknown-quarter" ? await Quarter.findOne({ _id: quarterId, districtId, schoolId }).lean() : null;
           const quarterTitle = quarterDoc?.title || "Unknown Quarter";
 
           const activeCategories = [];
@@ -747,7 +770,7 @@ export const getGradebookForCourse = async (req, res) => {
 
           const finalQuarterGrade = parseFloat(quarterScore.toFixed(2));
           const quarterGPA = await percentageToGPA(finalQuarterGrade);
-          const quarterLetter = getLetterGrade(gradingScale, finalQuarterGrade);
+          const quarterLetter = getLetterGrade(gradingScale, finalQuarterGrade, districtId, schoolId);
 
           finalScore += finalQuarterGrade;
           totalGPA += quarterGPA;
@@ -780,7 +803,7 @@ export const getGradebookForCourse = async (req, res) => {
           ? parseFloat((finalScore / totalQuarters).toFixed(2))
           : 0;
 
-      const letterGrade = getLetterGrade(gradingScale, studentFinalGrade);
+      const letterGrade = getLetterGrade(gradingScale, studentFinalGrade, districtId, schoolId);
 
       gradebook.push({
         studentId,
@@ -807,18 +830,24 @@ export const getGradebookForCourse = async (req, res) => {
 
 export const getTeacherStudentAnalytics = async (req, res) => {
   const { courseId, studentId } = req.params;
+  const { districtId, schoolId } = req.user;
 
   try {
+    const course = await CourseSch.findById(courseId).lean().select("courseTitle");
+
+    if (course.districtId !== districtId || course.schoolId !== schoolId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
     // 1. Fetch Basic Info & Scales
     const gradingScaleDoc = await GradingScale.findOne().lean();
     const gradingScale = gradingScaleDoc?.scale || [];
     const categories = await AssessmentCategory.find({ course: courseId }).lean();
-    const course = await CourseSch.findById(courseId).lean().select("courseTitle");
 
     // 2. Fetch Graded Data (Submissions & Discussions)
     const [submissions, discussionComments] = await Promise.all([
-      Submission.find({ studentId, graded: true }).lean(),
-      DiscussionComment.find({ createdby: studentId, isGraded: true }).lean()
+      Submission.find({ studentId, graded: true, districtId, schoolId }).lean(),
+      DiscussionComment.find({ createdby: studentId, isGraded: true, districtId, schoolId }).lean()
     ]);
 
     const subMap = new Map(submissions.map(s => [s.assessment.toString(), s]));
@@ -874,7 +903,7 @@ export const getTeacherStudentAnalytics = async (req, res) => {
 
     const activeCats = Object.values(categoryStats).filter(c => c.max > 0);
     const totalWeight = activeCats.reduce((sum, c) => sum + c.weight, 0);
-    
+
     let currentOverallAvg = 0;
     activeCats.forEach(cat => {
       const catPerc = (cat.score / cat.max) * 100;
@@ -885,8 +914,8 @@ export const getTeacherStudentAnalytics = async (req, res) => {
     // 6. MOMENTUM & PROJECTION
     const recentWindow = 5;
     const trendItems = allItems.slice(-recentWindow);
-    const recentAvg = trendItems.length > 0 
-      ? trendItems.reduce((acc, item) => acc + item.percentage, 0) / trendItems.length 
+    const recentAvg = trendItems.length > 0
+      ? trendItems.reduce((acc, item) => acc + item.percentage, 0) / trendItems.length
       : 0;
 
     const trendDiff = recentAvg - currentOverallAvg;

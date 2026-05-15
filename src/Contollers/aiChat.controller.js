@@ -495,13 +495,12 @@ async function generateExcel(content, filePath) {
 export const generateContentForTeacher = async (req, res) => {
   try {
     const { command, usedfor, difficulty, bookRefrence } = req.body;
+    const { districtId, schoolId } = req.user;
 
     let bookRef = null;
     if (bookRefrence) {
-      bookRef = await Book.findById(bookRefrence);
+      bookRef = await Book.findOne({ _id: bookRefrence, districtId, schoolId });
     }
-
-    console.log(bookRef, "bookRef")
 
     // 2. Define Context-Specific Instructions
     const sourceContext = bookRef
@@ -623,9 +622,6 @@ export const generateImage = async (req, res) => {
     // Call our utility function
     const result = await model.generateImage({ prompt, aspectRatio, numberOfImages });
 
-    console.log(result, "result from gemini image");
-
-    // Send back the first image (or adjust logic to send an array if result has many)
     res.status(200).json({
       success: true,
       mimeType: result.mimeType,
@@ -642,6 +638,7 @@ export const generateImage = async (req, res) => {
 };
 
 export const uploadBook = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
@@ -674,7 +671,9 @@ export const uploadBook = async (req, res) => {
       subject: req.body.subject,
       rawText: aiExtractedText,
       originalfile: fileUrl,
-      googleFileUri: uploadResult.file.uri
+      googleFileUri: uploadResult.file.uri,
+      districtId,
+      schoolId
     });
 
     res.json({ success: true, bookId: book._id, analysis: aiExtractedText });
@@ -685,8 +684,9 @@ export const uploadBook = async (req, res) => {
 };
 
 export const getAllBooks = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
-    const books = await Book.find().sort({ createdAt: -1 });
+    const books = await Book.find({ districtId, schoolId }).sort({ createdAt: -1 });
     res.status(200).json(books);
   } catch (err) {
     res.status(500).json({ message: "Error fetching books", error: err.message });

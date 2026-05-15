@@ -68,9 +68,10 @@ export const createLesson = async (req, res) => {
 
 export const deleteLesson = async (req, res) => {
   const { lessonId } = req.params;
+  const { districtId, schoolId } = req.user
   try {
     // Find lesson first (don't delete yet)
-    const lesson = await Lesson.findById(lessonId);
+    const lesson = await Lesson.findOne({ _id: lessonId, districtId, schoolId });
     if (!lesson || lesson.isDeleted)
       return res
         .status(404)
@@ -94,7 +95,7 @@ export const deleteLesson = async (req, res) => {
     }
 
     // Soft delete the lesson
-    await Lesson.findByIdAndUpdate(lessonId, {
+    await Lesson.findOneAndUpdate({ _id: lessonId, districtId, schoolId }, {
       isDeleted: true,
       deletedAt: new Date()
     });
@@ -126,6 +127,7 @@ export const getLessons = async (req, res) => {
 export const editLesson = async (req, res) => {
   const { lessonId } = req.params;
   const { title, description, youtubeLinks, otherLink } = req.body;
+  const { districtId, schoolId } = req.user
 
   if (!title || !description) {
     return res
@@ -134,8 +136,8 @@ export const editLesson = async (req, res) => {
   }
 
   try {
-    const updatedLesson = await Lesson.findByIdAndUpdate(
-      lessonId,
+    const updatedLesson = await Lesson.findOneAndUpdate(
+      { _id: lessonId, districtId, schoolId },
       { title, description, youtubeLinks, otherLink },
       { new: true, runValidators: true }
     );
@@ -155,9 +157,10 @@ export const editLesson = async (req, res) => {
 
 export const deleteFile = async (req, res) => {
   const { lessonId, fileId } = req.params;
+  const { districtId, schoolId } = req.user
 
   try {
-    const lesson = await Lesson.findById(lessonId);
+    const lesson = await Lesson.findOne({ _id: lessonId, districtId, schoolId });
     if (!lesson || lesson.isDeleted) {
       return res.status(404).json({ message: "Lesson not found" });
     }
@@ -188,9 +191,10 @@ export const deleteFile = async (req, res) => {
 
 export const getallFilesofLesson = async (req, res) => {
   const { lessonId } = req.params;
+  const { districtId, schoolId } = req.user
 
   try {
-    const lesson = await Lesson.findById(lessonId);
+    const lesson = await Lesson.findOne({ _id: lessonId, districtId, schoolId });
 
     if (!lesson || lesson.isDeleted) {
       return res.status(404).json({ message: "Lesson not found" });
@@ -230,10 +234,11 @@ export const getallFilesofLesson = async (req, res) => {
 
 export const addMoreFiles = async (req, res) => {
   const { lessonId } = req.params;
+  const { districtId, schoolId } = req.user
   const pdfFiles = req.files;
 
   try {
-    const lesson = await Lesson.findById(lessonId);
+    const lesson = await Lesson.findOne({ _id: lessonId, districtId, schoolId });
     if (!lesson || lesson.isDeleted) {
       return res.status(404).json({ message: "Lesson not found" });
     }
@@ -258,6 +263,7 @@ export const addMoreFiles = async (req, res) => {
 
 export const getDeletedLessons = async (req, res) => {
   const { chapterId } = req.params;
+  const { districtId, schoolId } = req.user
   const userId = req.user._id;
   const userRole = req.user.role;
 
@@ -269,7 +275,7 @@ export const getDeletedLessons = async (req, res) => {
 
     // Get the chapter to verify course ownership
     const Chapter = await import("../../Models/chapter.model.sch.js");
-    const chapter = await Chapter.default.findById(chapterId).populate("course");
+    const chapter = await Chapter.default.findOne({ _id: chapterId, districtId, schoolId }).populate("course");
     if (!chapter) {
       return res.status(404).json({ message: "Chapter not found" });
     }
@@ -277,13 +283,13 @@ export const getDeletedLessons = async (req, res) => {
     // If teacher, verify they own the course
     if (userRole === "teacher") {
       const CourseSch = await import("../../Models/courses.model.sch.js");
-      const course = await CourseSch.default.findOne({ _id: chapter.course._id, createdby: userId });
+      const course = await CourseSch.default.findOne({ _id: chapter.course._id, createdby: userId, districtId, schoolId });
       if (!course) {
         return res.status(403).json({ message: "You can only view deleted lessons of your own courses" });
       }
     }
 
-    const deletedLessons = await Lesson.find({ chapter: chapterId, isDeleted: true })
+    const deletedLessons = await Lesson.find({ chapter: chapterId, isDeleted: true, districtId, schoolId })
       .sort({ deletedAt: -1 })
       .populate("chapter", "title");
 
@@ -300,6 +306,7 @@ export const getDeletedLessons = async (req, res) => {
 
 export const restoreLesson = async (req, res) => {
   const { lessonId } = req.params;
+  const { districtId, schoolId } = req.user
   const userId = req.user._id;
   const userRole = req.user.role;
 
@@ -309,7 +316,7 @@ export const restoreLesson = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-    const lesson = await Lesson.findById(lessonId).populate("chapter");
+    const lesson = await Lesson.findOne({ _id: lessonId, districtId, schoolId }).populate("chapter");
     if (!lesson) {
       return res.status(404).json({ message: "Lesson not found" });
     }
@@ -321,9 +328,9 @@ export const restoreLesson = async (req, res) => {
     // If teacher, verify they own the course
     if (userRole === "teacher") {
       const Chapter = await import("../../Models/chapter.model.sch.js");
-      const chapter = await Chapter.default.findById(lesson.chapter._id).populate("course");
+      const chapter = await Chapter.default.findOne({ _id: lesson.chapter._id, districtId, schoolId }).populate("course");
       const CourseSch = await import("../../Models/courses.model.sch.js");
-      const course = await CourseSch.default.findOne({ _id: chapter.course._id, createdby: userId });
+      const course = await CourseSch.default.findOne({ _id: chapter.course._id, createdby: userId, districtId, schoolId });
       if (!course) {
         return res.status(403).json({ message: "You can only restore lessons of your own courses" });
       }

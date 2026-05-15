@@ -27,6 +27,16 @@ const EnrollmentSchema = new mongoose.Schema(
       default: false,
     },
     isDeleted: { type: Boolean, default: false },
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      required: true,
+    },
+    districtId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "District",
+      required: true,
+    },
   },
   { timestamps: true }
 );
