@@ -6,6 +6,7 @@ import Enrollment from "../Models/Enrollement.model.js";
 export const createpage = async (req, res) => {
     const { title, description, googleDriveImage, googleDrivePdf } = req.body;
     const { courseId, type, typeId } = req.params;
+    const { districtId, schoolId } = req.user;
 
     if (!courseId) {
         return res.status(400).json({ message: "Course ID is required." });
@@ -46,7 +47,7 @@ export const createpage = async (req, res) => {
         }
 
         let imageData = null;
-        
+
         // Handle local image
         if (image) {
             const result = await uploadToCloudinary(image.buffer, "page_images");
@@ -57,7 +58,7 @@ export const createpage = async (req, res) => {
                 source: 'local'
             };
         }
-        
+
         // Handle Google Drive image if present
         if (googleDriveImage) {
             try {
@@ -84,6 +85,8 @@ export const createpage = async (req, res) => {
                 lesson: typeId,
                 image: imageData,
                 files: uploadedFiles,
+                districtId,
+                schoolId
             });
 
         } else if (type === "chapter") {
@@ -95,6 +98,8 @@ export const createpage = async (req, res) => {
                 chapter: typeId,
                 image: imageData,
                 files: uploadedFiles,
+                districtId,
+                schoolId
             });
 
         }
@@ -115,11 +120,11 @@ export const createpage = async (req, res) => {
 
 export const getAllPages = async (req, res) => {
     const { courseId, type, typeId } = req.params
-    console.log("Fetching pages with params:", { courseId, type, typeId });
-    
+    const { districtId, schoolId } = req.user;
+
     try {
         let pages;
-        let query = { isDeleted: false };
+        let query = { isDeleted: false, districtId, schoolId };
 
         if (type === "lesson") {
             query.lesson = typeId;
@@ -133,10 +138,8 @@ export const getAllPages = async (req, res) => {
             });
         }
 
-        console.log("Query:", query);
         pages = await Pages.find(query);
-        console.log("Found pages:", pages.length, pages);
-        
+
         if (!pages || pages.length === 0) {
             return res.status(200).json({
                 pages: [],
@@ -184,9 +187,9 @@ export const deletePage = async (req, res) => {
         }
 
         // Soft delete page
-        const deletedPage = await Pages.findByIdAndUpdate(pageId, { 
-            isDeleted: true, 
-            deletedAt: new Date() 
+        const deletedPage = await Pages.findByIdAndUpdate(pageId, {
+            isDeleted: true,
+            deletedAt: new Date()
         });
 
         res.status(200).json({ message: "Page deleted successfully", page: deletedPage });
@@ -279,13 +282,14 @@ export const getStudentPages = async (req, res) => {
     try {
         const studentId = req.user?.id || req.query.studentId;
         const courseId = req.query.courseId;
+        const { districtId, schoolId } = req.user;
 
         if (!studentId) {
             return res.status(400).json({ message: "Student ID is required." });
         }
 
         // Step 1: Get enrolled course IDs
-        const enrollments = await Enrollment.find({ student: studentId }).select("course");
+        const enrollments = await Enrollment.find({ student: studentId, districtId, schoolId }).select("course");
 
         if (enrollments.length === 0) {
             return res.status(404).json({ message: "Student is not enrolled in any courses." });
@@ -308,7 +312,7 @@ export const getStudentPages = async (req, res) => {
         }
 
         // Step 3: Fetch pages
-        const pages = await Pages.find({ ...courseFilter, isDeleted: false })
+        const pages = await Pages.find({ ...courseFilter, isDeleted: false, districtId, schoolId })
             .sort({ createdAt: -1 })
             .populate("course", "courseTitle");
 
@@ -321,8 +325,9 @@ export const getStudentPages = async (req, res) => {
 
 export const ChapterPagesforStudent = async (req, res) => {
     const { chapterId } = req.params
+    const { districtId, schoolId } = req.user;
     try {
-        const pages = await Pages.find({ chapter: chapterId, isDeleted: false })
+        const pages = await Pages.find({ chapter: chapterId, isDeleted: false, districtId, schoolId })
 
         if (!pages) {
             res.status(404).json({
@@ -344,8 +349,10 @@ export const ChapterPagesforStudent = async (req, res) => {
 
 export const lessonPagesforStudent = async (req, res) => {
     const { lessonId } = req.params
+    const { districtId, schoolId } = req.user;
+
     try {
-        const pages = await Pages.find({ lesson: lessonId, isDeleted: false })
+        const pages = await Pages.find({ lesson: lessonId, isDeleted: false, districtId, schoolId })
 
         if (!pages) {
             res.status(404).json({

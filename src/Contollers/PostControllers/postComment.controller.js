@@ -5,6 +5,7 @@ export const sendPostComment = async (req, res) => {
   const userId = req.user._id;
   const { id } = req.params;
   const { text } = req.body;
+  const { districtId, schoolId } = req.user;
 
   try {
     const isExist = await Posts.findById(id);
@@ -19,6 +20,8 @@ export const sendPostComment = async (req, res) => {
       text,
       author: userId,
       post: id,
+      districtId,
+      schoolId,
     });
 
     await newComment.save();
@@ -43,6 +46,7 @@ export const sendPostComment = async (req, res) => {
 
 export const getPostComment = async (req, res) => {
   const { id } = req.params;
+  const { districtId, schoolId } = req.user;
 
   try {
     const page = parseInt(req.query.page) || 1;
@@ -50,14 +54,14 @@ export const getPostComment = async (req, res) => {
     const skip = (page - 1) * limit;
 
     // 🧠 Fetch paginated comments with author details
-    const comments = await PostComments.find({ post: id })
+    const comments = await PostComments.find({ post: id, districtId, schoolId })
       .populate("author", "firstName lastName profileImg")
       .limit(limit)
       .skip(skip)
       .sort({ createdAt: -1 });
 
     // 🧮 Get total comment count for this post
-    const totalComments = await PostComments.countDocuments({ post: id });
+    const totalComments = await PostComments.countDocuments({ post: id, districtId, schoolId });
 
     res.status(200).json({
       message: "Comments fetched successfully",

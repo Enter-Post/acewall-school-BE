@@ -3,7 +3,7 @@ import StandardGrading from "../Models/StandardGrading.model.js";
 export const SetStandardGradingScale = async (req, res) => {
     const { districtId, schoolId } = req.user
     const { scale } = req.body;
-    
+
     if (!Array.isArray(scale) || scale.length === 0) {
         return res.status(400).json({ error: "Scale must be a non-empty array." });
     }
@@ -19,7 +19,7 @@ export const SetStandardGradingScale = async (req, res) => {
             });
         }
 
-        const newScale = await StandardGrading.create({ scale });
+        const newScale = await StandardGrading.create({ scale, districtId, schoolId });
 
         res.status(200).json({
             message: "Standard Grading scale saved successfully",
@@ -32,10 +32,13 @@ export const SetStandardGradingScale = async (req, res) => {
 }
 
 export const getStandardGradingScale = async (req, res) => {
-    console.log("Fetching standard grading scale...");
+    const { districtId, schoolId } = req.user
+
+    console.log("districtId:", districtId)
+    console.log("schoolId:", schoolId)
 
     try {
-        const scaleDoc = await StandardGrading.findOne();
+        const scaleDoc = await StandardGrading.findOne({ districtId, schoolId });
         const scale = scaleDoc?.scale
             ? [...scaleDoc.scale].sort((a, b) => b.max - a.max)
             : null;

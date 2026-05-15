@@ -8,7 +8,9 @@ const GPASchema = new mongoose.Schema(
             minPercentage: { type: Number, required: true },
             maxPercentage: { type: Number, required: true },
         }],
-        isDeleted: { type: Boolean, default: false }
+        isDeleted: { type: Boolean, default: false },
+        districtId: { type: mongoose.Schema.Types.ObjectId, ref: "District", required: true },
+        schoolId: { type: mongoose.Schema.Types.ObjectId, ref: "School", required: true },
     },
     { timestamps: true }
 );

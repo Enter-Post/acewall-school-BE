@@ -15,7 +15,7 @@ export const getAllCategories = async (req, res) => {
       message: "Categories fetched successfully",
     });
   } catch (error) {
-    console.log("error in fetching categories==>", error.message);
+    console.log("error in fetchinggggg categories==>", error.message);
     return res.status(500).json({
       message: "Some this Went Wrong, sorry for inconvenience",
     });

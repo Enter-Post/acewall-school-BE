@@ -64,7 +64,7 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
-router.get("/allTeacher", allTeacher);
+router.get("/allTeacher", isUser, allTeacher);
 
 /**
  * @swagger
@@ -91,7 +91,7 @@ router.get("/allTeacher", allTeacher);
  *       401:
  *         description: Unauthorized
  */
-router.get("/allstudent", allStudent);
+router.get("/allstudent", isUser, allStudent);
 
 /**
  * @swagger
@@ -226,7 +226,7 @@ router.get(
  *       404:
  *         description: Student not found
  */
-router.get("/student-enrolled-courses/:id", getStudentEnrolledCourses);
+router.get("/student-enrolled-courses/:id", isUser, getStudentEnrolledCourses);
 
 /**
  * @swagger

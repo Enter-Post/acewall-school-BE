@@ -217,9 +217,10 @@ export const initiateSignup = async (req, res) => {
   }
 };
 
+
 export const SignupwithoutOTP = async (req, res) => {
   const { firstName, middleName, lastName, role, email, password } = req.body;
-
+  const { districtId, schoolId } = req.user
   try {
     // Validate required fields
     if (!firstName || !lastName || !email || !password || !role) {
@@ -247,6 +248,8 @@ export const SignupwithoutOTP = async (req, res) => {
       role,
       email,
       password: hashedPassword,
+      districtId,
+      schoolId
     });
 
     await newUser.save();
@@ -1289,9 +1292,10 @@ export const allTeacher = async (req, res) => {
     const skip = (page - 1) * limit;
     const search = req.query.search || "";
     const courseId = req.query.courseId || ""; // course filter
+    const { districtId, schoolId } = req.user;
 
     // Base query
-    let query = { role: "teacher" };
+    let query = { role: "teacher", districtId, schoolId };
 
     // Search filter
     if (search) {
@@ -1305,7 +1309,7 @@ export const allTeacher = async (req, res) => {
     // If courseId is provided, filter teachers who created that course
     if (courseId) {
       // Find all teachers who created the selected course
-      const course = await CourseSch.findById(courseId);
+      const course = await CourseSch.findOne({ _id: courseId, districtId, schoolId });
       if (course) {
         query._id = course.createdby; // filter by teacher who created this course
       } else {
@@ -1330,7 +1334,7 @@ export const allTeacher = async (req, res) => {
     const formattedTeachers = await Promise.all(
       teachers.map(async (teacher) => {
         // Get all courses of the teacher
-        const courses = await CourseSch.find({ createdby: teacher._id }).select("_id");
+        const courses = await CourseSch.find({ createdby: teacher._id, districtId, schoolId }).select("_id");
         return {
           name: `${teacher.firstName} ${teacher.lastName}`,
           email: teacher.email,
@@ -1360,9 +1364,10 @@ export const allStudent = async (req, res) => {
     const limit = parseInt(req.query.limit) || 6;
     const skip = (page - 1) * limit;
     const search = req.query.search || ""; // get search term
+    const { districtId, schoolId } = req.user;
 
     // Base query
-    const query = { role: "student" };
+    const query = { role: "student", districtId, schoolId };
 
     // If search provided, add filter (case-insensitive)
     if (search) {
@@ -1404,9 +1409,10 @@ export const allStudent = async (req, res) => {
 export const getStudentById = async (req, res) => {
   try {
     const { id } = req.params;
+    const { districtId, schoolId } = req.user
 
     // Get student/user info
-    const user = await User.findById(id).select(
+    const user = await User.findOne({ _id: id, districtId, schoolId }).select(
       "id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role guardianEmails"
     );
 
@@ -1472,8 +1478,9 @@ export const getStudentById = async (req, res) => {
 
 export const getTeacherById = async (req, res) => {
   const { id } = req.params;
+  const { districtId, schoolId } = req.user
   try {
-    const teacher = await User.findById(id).select(
+    const teacher = await User.findOne({ _id: id, districtId, schoolId }).select(
       " id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role"
     );
     if (!teacher) {
@@ -1481,7 +1488,13 @@ export const getTeacherById = async (req, res) => {
     }
 
     const courses = await CourseSch.aggregate([
-      { $match: { createdby: new mongoose.Types.ObjectId(id) } },
+      {
+        $match: {
+          createdby: new mongoose.Types.ObjectId(id),
+          schoolId: new mongoose.Types.ObjectId(schoolId),
+          districtId: new mongoose.Types.ObjectId(districtId)
+        }
+      },
       { $project: { courseTitle: 1, courseDescription: 1, _id: 1 } },
     ]);
 
@@ -1494,8 +1507,11 @@ export const getTeacherById = async (req, res) => {
 
 export const getUserInfo = async (req, res) => {
   const userId = req.user._id;
+  const { districtId, schoolId } = req.user;
   try {
-    const user = await User.findById(userId).select("-password");
+    const user = await User.findOne({
+      _id: userId,
+    }).select("-password");
     if (!user) {
       return res.status(404).json("User not found");
     }
@@ -1508,9 +1524,10 @@ export const getUserInfo = async (req, res) => {
 export const updateProfileImg = async (req, res) => {
   const userId = req.user._id;
   const file = req.file;
+  const { districtId, schoolId } = req.user
 
   try {
-    const user = await User.findById(userId);
+    const user = await User.findOne({ _id: userId, districtId, schoolId });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }

@@ -43,7 +43,6 @@ const PagesSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    // District and School isolation for new pages
     districtId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "District",
@@ -55,6 +54,7 @@ const PagesSchema = new mongoose.Schema(
       ref: "School",
       required: false, // Optional for backward compatibility
       index: true,
+    },
   },
   { timestamps: true }
 );

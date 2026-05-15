@@ -5,37 +5,28 @@ export const saveAttendance = async (req, res) => {
   try {
     const { courseId, date, records } = req.body;
 
-    // 1. Prepare the date
-    // We normalize to UTC midnight to ensure consistency in the database
     const providedDate = new Date(date);
     providedDate.setUTCHours(0, 0, 0, 0);
 
-    // Note: The "Only Today" check has been removed to allow previous date updates.
-    // If you want to prevent FUTURE dates, you can add:
-    // if (providedDate > new Date()) return res.status(400).json({ message: "Cannot mark future attendance" });
-
-    // 2. Build Bulk Operations
-    // records is now: { studentId: { status: "present", note: "..." } }
     const bulkOps = Object.entries(records).map(([studentId, data]) => {
-      
+
       // Ensure we extract status and note correctly from the object
       const status = typeof data === 'object' ? data.status : data;
       const note = typeof data === 'object' ? data.note : "";
 
       return {
         updateOne: {
-          filter: { 
-            course: courseId, 
-            student: studentId, 
-            date: providedDate 
+          filter: {
+            course: courseId,
+            student: studentId,
+            date: providedDate,
+            districtId,
+            schoolId,
           },
-          update: { 
-            // We use $set to ensure we only update these specific fields
+          update: {
             $set: {
               status: status || "not marked",
-              // We usually don't want the teacher to overwrite the student's note
-              // but we store it here so it's persisted in the record.
-              note: note, 
+              note: note,
               markedBy: req.user._id,
               updatedAt: new Date()
             }
@@ -50,10 +41,10 @@ export const saveAttendance = async (req, res) => {
     }
 
     await Attendance.bulkWrite(bulkOps);
-    
-    res.status(200).json({ 
-      success: true, 
-      message: `Attendance saved for ${providedDate.toISOString().split('T')[0]}!` 
+
+    res.status(200).json({
+      success: true,
+      message: `Attendance saved for ${providedDate.toISOString().split('T')[0]}!`
     });
   } catch (error) {
     console.error("BulkWrite Error:", error);
@@ -66,7 +57,7 @@ export const saveAttendance = async (req, res) => {
 export const getAttendanceByDate = async (req, res) => {
   try {
     const { courseId, date } = req.params;
-
+    const { districtId, schoolId } = req.user
     // Normalize the date to midnight to match the stored records
     const searchDate = new Date(date);
     searchDate.setUTCHours(0, 0, 0, 0);
@@ -75,6 +66,8 @@ export const getAttendanceByDate = async (req, res) => {
       course: courseId,
       date: searchDate,
       isDeleted: false,
+      districtId,
+      schoolId
     });
 
     // Transform array into an object: { studentId: status }
@@ -88,7 +81,7 @@ export const getAttendanceByDate = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      attendance: attendanceMap, 
+      attendance: attendanceMap,
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -101,16 +94,17 @@ export const getAttendanceByDate = async (req, res) => {
 export const getStudentAttendance = async (req, res) => {
   try {
     const studentId = req.user._id;
+    const { districtId, schoolId } = req.user
 
-    const attendance = await Attendance.find({ student: studentId, isDeleted: false })
+    const attendance = await Attendance.find({ student: studentId, isDeleted: false, districtId, schoolId })
       .populate({
         path: "course",
         // 🔹 Added thumbnail here
-        select: "courseTitle thumbnail", 
+        select: "courseTitle thumbnail",
         populate: {
           path: "createdby",
           // 🔹 Added profileImg here
-          select: "firstName lastName profileImg" 
+          select: "firstName lastName profileImg"
         }
       })
       .sort({ date: -1 });
@@ -127,9 +121,10 @@ export const updateAttendanceNote = async (req, res) => {
   try {
     const { attendanceId, note } = req.body;
     const studentId = req.user._id;
+    const { districtId, schoolId } = req.user
 
     const updatedRecord = await Attendance.findOneAndUpdate(
-      { _id: attendanceId, student: studentId }, // Ensure only the student who owns the record can add a note
+      { _id: attendanceId, student: studentId, districtId, schoolId }, // Ensure only the student who owns the record can add a note
       { note },
       { new: true }
     );
@@ -151,6 +146,7 @@ export const getAdminMonthlyAttendance = async (req, res) => {
   try {
     const { courseId } = req.params;
     const { month, year } = req.query; // e.g., month=1, year=2024
+    const { districtId, schoolId } = req.user
 
     if (!month || !year) {
       return res.status(400).json({ message: "Month and Year are required." });
@@ -166,6 +162,8 @@ export const getAdminMonthlyAttendance = async (req, res) => {
         $match: {
           course: new mongoose.Types.ObjectId(courseId),
           date: { $gte: startDate, $lte: endDate },
+          districtId: new mongoose.Types.ObjectId(districtId),
+          schoolId: new mongoose.Types.ObjectId(schoolId),
         },
       },
       // Join with User info to get student names

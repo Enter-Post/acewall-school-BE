@@ -27,26 +27,21 @@ const DiscussionCommentSchema = new mongoose.Schema(
     isGraded: { type: Boolean, default: false },
     allowResubmission: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
+    districtId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "District",
+      required: false, // Optional for backward compatibility
+      index: true,
+    },
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      required: false, // Optional for backward compatibility
+      index: true,
+    },
   },
   { timestamps: true }
 );
-
-// Virtual fields for district and school - inherited from discussion->course
-DiscussionCommentSchema.virtual('districtId', {
-  ref: 'Discussion',
-  localField: 'discussion',
-  foreignField: '_id',
-  justOne: true,
-  options: { select: 'districtId' }
-});
-
-DiscussionCommentSchema.virtual('schoolId', {
-  ref: 'Discussion', 
-  localField: 'discussion',
-  foreignField: '_id',
-  justOne: true,
-  options: { select: 'schoolId' }
-});
 
 // Ensure virtual fields are included in JSON output
 DiscussionCommentSchema.set('toJSON', { virtuals: true });

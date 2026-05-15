@@ -255,6 +255,6 @@ router.get("/get/:commentId", isUser, getreplyofComment);
  *       404:
  *         description: Comment not found
  */
-router.get("/replycount/:commentId", getReplyCount);
+router.get("/replycount/:commentId", isUser, getReplyCount);
 
 export default router;

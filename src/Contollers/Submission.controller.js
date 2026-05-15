@@ -33,6 +33,8 @@ export const submission = async (req, res) => {
     const alreadySubmitted = await Submission.findOne({
       studentId,
       assessment: assessmentId,
+      districtId,
+      schoolId
     });
 
     if (alreadySubmitted) {
@@ -40,14 +42,16 @@ export const submission = async (req, res) => {
         studentId,
         assessment: assessmentId,
         isDeleted: false,
+        districtId,
+        schoolId
       }).sort({ createdAt: -1 }).limit(1);
 
       submissionCount = ++lastSubmission[0].resubmitted.count || 0;
     }
 
-    const assessment = await Assessment.findById(assessmentId);
+    const assessment = await Assessment.findOne({ _id: assessmentId, districtId, schoolId });
 
-    if (alreadySubmitted && !assessment.allowResubmission) {
+    if (alreadySubmitted && assessment && !assessment.allowResubmission) {
       return res.status(300).json({
         message: "You have already submitted this assessment and you are not allowed to resubmit.",
       });
@@ -56,10 +60,10 @@ export const submission = async (req, res) => {
     if (!assessment)
       return res.status(404).json({ message: "Assessment not found" });
 
-    if (assessment.chapter) chapter = await Chapter.findById(assessment.chapter);
-    if (assessment.lesson) lesson = await Lesson.findById(assessment.lesson);
+    if (assessment.chapter) chapter = await Chapter.findOne({ _id: assessment.chapter, districtId, schoolId });
+    if (assessment.lesson) lesson = await Lesson.findOne({ _id: assessment.lesson, districtId, schoolId });
 
-    await CourseSch.findById(assessment.course);
+    await CourseSch.findOne({ _id: assessment.course, districtId, schoolId });
 
     // ✅ Upload files if any
     let answerFiles = [];
@@ -214,6 +218,8 @@ export const submission = async (req, res) => {
       graded,
       allowResubmission: assessment.allowResubmission || false,
       resubmitted: { status: resubmission, count: submissionCount },
+      districtId,
+      schoolId
     });
     await submission.save();
 
@@ -327,7 +333,7 @@ export const submission = async (req, res) => {
       submission,
     });
   } catch (err) {
-    console.error(err); 
+    console.error(err);
     res.status(500).json({
       message: "Error submitting assessment",
       error: err.message,
@@ -337,10 +343,13 @@ export const submission = async (req, res) => {
 
 
 export const getSubmissionsforStudent = async (req, res) => {
+  const { districtId, schoolId } = req.user
   try {
     const submissions = await Submission.find({
       studentId: req.params.studentId,
       isDeleted: false,
+      districtId,
+      schoolId
     })
       .populate("assessment")
       .sort({ submittedAt: -1 });
@@ -356,10 +365,13 @@ export const getSubmissionsforStudent = async (req, res) => {
 export const getSubmissionforAssessmentbyId = async (req, res) => {
   const studentId = req.user._id;
   const { assessmentId } = req.params;
+  const { districtId, schoolId } = req.user
   try {
     const submission = await Submission.findOne({
       studentId,
       assessment: assessmentId,
+      districtId,
+      schoolId
     });
 
     res.status(200).json({ message: "Submission found", submission });
@@ -372,14 +384,23 @@ export const getSubmissionforAssessmentbyId = async (req, res) => {
 
 export const getSubmissionById = async (req, res) => {
   const { submissionId } = req.params;
+  const { districtId, schoolId } = req.user
 
   try {
-    const submission = await Submission.findById(submissionId).populate({
+    const submission = await Submission.findOne({ _id: submissionId, districtId, schoolId }).populate({
       path: "studentId",
       select: "firstName lastName email profileImg",
     });
 
-    const assessment = await Assessment.findById(submission.assessment);
+    if (!submission) {
+      return res.status(404).json({ message: "Submission not found" });
+    }
+
+    const assessment = await Assessment.findOne({ _id: submission.assessment, districtId, schoolId });
+
+    if (!assessment) {
+      return res.status(404).json({ message: "Assessment not found" });
+    }
 
     const questionMap = {};
     assessment.questions.forEach((q) => {
@@ -412,16 +433,19 @@ export const getSubmissionById = async (req, res) => {
 
 export const getSubmissionsofAssessment_forTeacher = async (req, res) => {
   const { assessmentId } = req.params;
+  const { districtId, schoolId } = req.user
 
   try {
     const submissions = await Submission.find({
       assessment: assessmentId,
+      districtId,
+      schoolId
     }).populate({
       path: "studentId",
       select: "firstName lastName email profileImg",
     });
 
-    const assessment = await Assessment.findById(assessmentId);
+    const assessment = await Assessment.findOne({ _id: assessmentId, districtId, schoolId });
     if (!assessment) {
       return res.status(404).json({ message: "Assessment not found" });
     }
@@ -458,55 +482,18 @@ export const getSubmissionsofAssessment_forTeacher = async (req, res) => {
   }
 };
 
-// export const checkbyTeacher = async (req, res) => {
-//   try {
-//     const { answers, feedback } = req.body;
-
-//     const submission = await Submission.findById(req.params.id);
-//     if (!submission)
-//       return res.status(404).json({ message: "Submission not found" });
-
-//     let totalScore = 0;
-
-//     submission.answers = submission.answers.map((a) => {
-//       const updated = answers.find(
-//         (u) => u.questionId === a.questionId.toString()
-//       );
-
-//       if (a.requiresManualCheck && updated) {
-//         a.pointsAwarded = updated.pointsAwarded;
-//         a.isCorrect = undefined; // QA may not have a simple correct/incorrect
-//         a.requiresManualCheck = false;
-//       }
-
-//       totalScore += a.pointsAwarded || 0;
-//       return a;
-//     });
-
-//     submission.totalScore = totalScore;
-//     submission.feedback = feedback || "";
-//     submission.graded = true;
-//     await submission.save();
-
-//     res.json({ message: "Submission graded", submission });
-//   } catch (err) {
-//     res
-//       .status(500)
-//       .json({ message: "Error grading submission", error: err.message });
-//   }
-// };
-
 export const teacherGrading = async (req, res) => {
   const { submissionId } = req.params;
   const manualGrades = req.body;
+  const { districtId, schoolId } = req.user
 
   try {
-    const submission = await Submission.findById(submissionId).populate("studentId");
+    const submission = await Submission.findOne({ _id: submissionId, districtId, schoolId }).populate("studentId");
     if (!submission) {
       return res.status(404).json({ message: "Submission not found" });
     }
 
-    const assessment = await Assessment.findById(submission.assessment);
+    const assessment = await Assessment.findOne({ _id: submission.assessment, districtId, schoolId });
     if (!assessment) {
       return res.status(404).json({ message: "Assessment not found" });
     }
@@ -549,17 +536,19 @@ export const teacherGrading = async (req, res) => {
       submission.studentId,
       assessment.course,
       submission.assessment,
-      "assessment"
+      "assessment",
+      districtId,
+      schoolId
     );
 
     // ✅ Fetch context
     const student = submission.studentId;
-    const course = await CourseSch.findById(assessment.course);
+    const course = await CourseSch.findOne({ _id: assessment.course, districtId, schoolId });
 
     let chapter = null;
     let lesson = null;
-    if (assessment.chapter) chapter = await Chapter.findById(assessment.chapter);
-    if (assessment.lesson) lesson = await Lesson.findById(assessment.lesson);
+    if (assessment.chapter) chapter = await Chapter.findOne({ _id: assessment.chapter, districtId, schoolId });
+    if (assessment.lesson) lesson = await Lesson.findOne({ _id: assessment.lesson, districtId, schoolId });
 
     // ✅ Concept tracking
     const masteredConcept = [];
@@ -706,12 +695,15 @@ export const teacherGrading = async (req, res) => {
 export const getAssessmentSubmissionForParent = async (req, res) => {
   const { assessmentId, studentId } = req.params;
   const parentEmail = req.user.email;
+  const { districtId, schoolId } = req.user;
 
   try {
     // 1. AUTHORIZATION CHECK
     const student = await User.findOne({
       _id: studentId,
       guardianEmails: parentEmail,
+      districtId,
+      schoolId
     });
 
     if (!student) {
@@ -725,6 +717,8 @@ export const getAssessmentSubmissionForParent = async (req, res) => {
     const submission = await Submission.findOne({
       assessment: assessmentId,
       studentId: studentId,
+      districtId,
+      schoolId
     })
       .populate({
         path: "assessment",

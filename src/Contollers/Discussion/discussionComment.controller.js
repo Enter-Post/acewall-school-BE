@@ -5,12 +5,15 @@ import { updateGradebookOnSubmission } from "../../Utiles/updateGradebookOnSubmi
 export const getDiscussionComments = async (req, res) => {
   const { id } = req.params;
   const { page = 1, limit = 5 } = req.query; // Default to page 1, 5 comments per page
+  const { districtId, schoolId } = req.user
 
   try {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const discussionComments = await DiscussionComment.find({
       discussion: id,
+      districtId,
+      schoolId,
     })
       .populate("createdby", "profileImg firstName middleName lastName role")
       .sort({ createdAt: -1 }) // Most recent first
@@ -19,6 +22,8 @@ export const getDiscussionComments = async (req, res) => {
 
     const totalComments = await DiscussionComment.countDocuments({
       discussion: id,
+      districtId,
+      schoolId,
     });
 
     // Add a safe fallback for deleted users
@@ -53,15 +58,21 @@ export const sendDiscussionComment = async (req, res) => {
   const user = req.user;
   const { text } = req.body;
   const { id } = req.params;
+  const { districtId, schoolId } = req.user;
 
   try {
     const existingComments = await DiscussionComment.find({
       createdby: user._id,
       discussion: id,
+      districtId,
+      schoolId,
     });
 
-    const discussion = await Discussion.findById(id).populate('createdby', 'firstName lastName role');
+    const discussion = await Discussion.findOne({ _id: id, districtId, schoolId }).populate('createdby', 'firstName lastName role');
 
+    if (!discussion) {
+      return res.status(404).json({ message: "Discussion not found" });
+    }
 
     if (user.role !== "teacher") {
       if (!discussion.allowResubmission && existingComments.length >= 1) {
@@ -78,7 +89,7 @@ export const sendDiscussionComment = async (req, res) => {
     const now = new Date();
 
     const override = discussion.studentDueDateOverrides.find(
-      o => o.student.toString() === user._id
+      o => o.student.toString() === user._id.toString()
     );
 
     let finalDueDate = dueDateTime;
@@ -103,6 +114,8 @@ export const sendDiscussionComment = async (req, res) => {
       status,
       discussion: id,
       allowResubmission: discussion.allowResubmission,
+      districtId,
+      schoolId,
     });
 
     await newDiscussionComment.save();
@@ -118,9 +131,10 @@ export const sendDiscussionComment = async (req, res) => {
 
 export const deleteComment = async (req, res) => {
   const { id } = req.params;
+  const { districtId, schoolId } = req.user;
   try {
     // Find comment first (don't delete yet)
-    const comment = await DiscussionComment.findById(id);
+    const comment = await DiscussionComment.findOne({ _id: id, districtId, schoolId });
 
     if (!comment) {
       return res.status(404).json({ message: "Comment not found" });
@@ -136,7 +150,7 @@ export const deleteComment = async (req, res) => {
     }
 
     // Soft delete the comment
-    await DiscussionComment.findByIdAndUpdate(id, { isDeleted: true });
+    await DiscussionComment.findOneAndUpdate({ _id: id, districtId, schoolId }, { isDeleted: true });
 
     res.status(200).json({ message: "Comment deleted successfully" });
   } catch (error) {
@@ -148,17 +162,20 @@ export const deleteComment = async (req, res) => {
 export const gradeDiscussionofStd = async (req, res) => {
   const { discID, discussionCommentId } = req.params;
   const { obtainedMarks } = req.body;
+  const { districtId, schoolId } = req.user;
 
   try {
-    const discussion = await Discussion.findById(discID)
+    const discussion = await Discussion.findOne({ _id: discID, districtId, schoolId })
       .populate("semester quarter category");
     if (!discussion) {
       return res.status(404).json({ message: "Discussion not found" });
     }
 
-    const discussionComment = await DiscussionComment.findById(
-      discussionCommentId
-    );
+    const discussionComment = await DiscussionComment.findOne({
+      _id: discussionCommentId,
+      districtId,
+      schoolId
+    });
     if (!discussionComment) {
       return res.status(404).json({ message: "Discussion comment not found" });
     }
@@ -171,6 +188,8 @@ export const gradeDiscussionofStd = async (req, res) => {
       discussion: discID,
       createdby: studentId,
       isGraded: true,
+      districtId,
+      schoolId,
     });
 
     if (!discussion.allowResubmission) {
@@ -192,7 +211,9 @@ export const gradeDiscussionofStd = async (req, res) => {
       studentId,
       discussion.course,     // courseId
       discID,                // itemId
-      "discussion"           // type
+      "discussion",          // type
+      districtId,
+      schoolId
     );
 
     res.status(200).json({ message: "Marks graded successfully" });
@@ -205,13 +226,20 @@ export const gradeDiscussionofStd = async (req, res) => {
 export const isCommentedInDiscussion = async (req, res) => {
   const user = req.user;
   const { id } = req.params;
+  const { districtId, schoolId } = req.user
 
   const existingComments = await DiscussionComment.find({
     createdby: user._id,
     discussion: id,
+    districtId,
+    schoolId
   });
 
-  const discussion = await Discussion.findById(id);
+  const discussion = await Discussion.findOne({ _id: id, districtId, schoolId });
+
+  if (!discussion) {
+    return res.status(404).json({ message: "Discussion not found" });
+  }
 
   // For teachers, always return false (they can always comment)
   if (user.role === "teacher") {

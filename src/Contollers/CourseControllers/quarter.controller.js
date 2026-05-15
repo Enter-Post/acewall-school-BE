@@ -4,12 +4,15 @@ import Semester from "../../Models/semester.model.js";
 
 export const createQuarter = async (req, res) => {
   const { title, startDate, endDate, semester } = req.body;
+  const { districtId, schoolId } = req.user;
   try {
     const newQuarter = new Quarter({
       title,
       startDate,
       endDate,
       semester,
+      districtId,
+      schoolId
     });
     await newQuarter.save();
     res
@@ -22,8 +25,10 @@ export const createQuarter = async (req, res) => {
 };
 
 export const getQuarter = async (req, res) => {
+  const { districtId, schoolId } = req.user;
+
   try {
-    const quarters = await Quarter.find();
+    const quarters = await Quarter.find({ districtId, schoolId });
     res.status(200).json({ message: "Quarters found successfully", quarters });
   } catch (error) {
     console.log("error in the getting quarter", error);
@@ -33,9 +38,10 @@ export const getQuarter = async (req, res) => {
 
 export const getQuartersofSemester = async (req, res) => {
   const { semesters } = req.body;
+  const { districtId, schoolId } = req.user;
 
   try {
-    const quarters = await Quarter.find({ semester: { $in: semesters } }).populate('semester');
+    const quarters = await Quarter.find({ semester: { $in: semesters }, districtId, schoolId }).populate('semester');
     console.log("quarters", quarters);
     res.status(200).json({ message: "Quarters found successfully", quarters });
   } catch (error) {
@@ -46,8 +52,9 @@ export const getQuartersofSemester = async (req, res) => {
 
 export const getSemesterQuarter = async (req, res) => {
   const { semesterId } = req.params;
+  const { districtId, schoolId } = req.user;
 
-  await Quarter.find({ semester: semesterId })
+  await Quarter.find({ semester: semesterId, districtId, schoolId })
     .then((quarters) => {
       res
         .status(200)
@@ -62,10 +69,11 @@ export const getSemesterQuarter = async (req, res) => {
 export const archivedQuarter = async (req, res) => {
   const { quarterId } = req.params;
   const { isArchived } = req.body;
+  const { districtId, schoolId } = req.user;
 
   try {
-    const updatedQuarter = await Quarter.findByIdAndUpdate(
-      quarterId,
+    const updatedQuarter = await Quarter.findOneAndUpdate(
+      { _id: quarterId, districtId, schoolId },
       { isArchived },
       { new: true }
     );
@@ -86,8 +94,10 @@ export const archivedQuarter = async (req, res) => {
 
 export const getDatesofQuarter = async (req, res) => {
   const { quarterId } = req.params;
+  const { districtId, schoolId } = req.user;
+
   try {
-    const quarter = await Quarter.findById(quarterId);
+    const quarter = await Quarter.findOne({ _id: quarterId, districtId, schoolId });
 
     if (!quarter) {
       return res.status(404).json({ message: "Quarter not found" });
@@ -163,13 +173,20 @@ export const editQuarter = async (req, res) => {
 
 export const getQuartersofSemester_Updated = async (req, res) => {
   const { semesters } = req.body;
+  const { districtId, schoolId } = req.user;
 
   try {
     // Ensure ObjectId conversion
     const semesterIds = semesters.map(id => new mongoose.Types.ObjectId(id));
 
     const quarters = await Quarter.aggregate([
-      { $match: { semester: { $in: semesterIds } } },
+      {
+        $match: {
+          semester: { $in: semesterIds },
+          districtId: new mongoose.Types.ObjectId(districtId),
+          schoolId: new mongoose.Types.ObjectId(schoolId)
+        }
+      },
       {
         $group: {
           _id: "$semester",

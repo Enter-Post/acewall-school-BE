@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import { getUserPermissions } from "../middlewares/rbac.middleware.js";
+import mongoose from "mongoose";
 
 export const generateToken = (
   user,
@@ -9,8 +10,6 @@ export const generateToken = (
   deepLinkSupport = false,
   options = { setCookie: true, expiresIn: "1d", purpose: "auth" }
 ) => {
-
-  console.log("deepLinkSupport: ", deepLinkSupport)
 
   // ----------------- Detect portal -----------------
   let host = "";
@@ -41,8 +40,8 @@ export const generateToken = (
     profileImg: user.profileImg,
     deepLinkSupport: deepLinkSupport || false,
     // BCPS RBAC additions
-    districtId: user.districtId || null,
-    schoolId: user.schoolId || "",
+    districtId: new mongoose.Types.ObjectId(user.districtId) || null,
+    schoolId: new mongoose.Types.ObjectId(user.schoolId) || "",
     permissions: permissions,
     authProvider: user.authProvider || "local",
   };

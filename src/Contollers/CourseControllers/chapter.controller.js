@@ -51,17 +51,17 @@ export const getChapterofCourse = async (req, res) => {
 
 export const deleteChapter = async (req, res) => {
   const { chapterId } = req.params;
-  console.log(chapterId, "chapterId");
+  const { districtId, schoolId } = req.user
   try {
     // Find chapter first (don't delete yet)
-    const chapter = await Chapter.findById(chapterId);
+    const chapter = await Chapter.findOne({ _id: chapterId, districtId, schoolId });
     if (!chapter)
       return res
         .status(404)
         .json({ message: "No chapters found for this course" });
 
     // Find all lessons associated with this chapter
-    const lessons = await Lesson.find({ chapter: chapterId });
+    const lessons = await Lesson.find({ chapter: chapterId, districtId, schoolId });
 
     // Delete all lessons and their Cloudinary files
     if (lessons && lessons.length > 0) {
@@ -84,14 +84,14 @@ export const deleteChapter = async (req, res) => {
         }
       }
       // Soft delete all lessons from database
-      await Lesson.updateMany({ chapter: chapterId }, { isDeleted: true });
+      await Lesson.updateMany({ chapter: chapterId, districtId, schoolId }, { isDeleted: true });
     }
 
     // Soft delete the chapter
-    const deletedChapter = await Chapter.findByIdAndUpdate(chapterId, {
+    const deletedChapter = await Chapter.findOneAndUpdate({ _id: chapterId, districtId, schoolId }, {
       isDeleted: true,
       deletedAt: new Date()
-    });
+    }, { new: true });
 
     res.status(200).json({
       message: "Chapter deleted successfully",
@@ -108,7 +108,7 @@ export const getChapterOfQuarter = async (req, res) => {
   const { schoolId, districtId } = req.user
 
   try {
-    const quarter = await Quarter.findById(quarterId);
+    const quarter = await Quarter.findOne({ _id: quarterId, districtId, schoolId });
 
     if (!quarter) {
       return res.status(404).json({ message: "Quarter not found" });
@@ -159,7 +159,11 @@ export const getChapterOfQuarter = async (req, res) => {
           as: "lessons",
           pipeline: [
             {
-              $match: { isDeleted: false },
+              $match: { 
+                isDeleted: false,
+                districtId: new mongoose.Types.ObjectId(districtId),
+                schoolId: new mongoose.Types.ObjectId(schoolId)
+              },
             },
             {
               $lookup: {
@@ -173,6 +177,8 @@ export const getChapterOfQuarter = async (req, res) => {
                           { $eq: ["$lesson", "$$lessonId"] },
                           { $eq: ["$type", "lesson-assessment"] },
                           { $eq: ["$isDeleted", false] },
+                          { $eq: ["$districtId", new mongoose.Types.ObjectId(districtId)] },
+                          { $eq: ["$schoolId", new mongoose.Types.ObjectId(schoolId)] },
                         ],
                       },
                     },
@@ -212,6 +218,8 @@ export const getChapterOfQuarter = async (req, res) => {
                     { $eq: ["$chapter", "$$chapterId"] },
                     { $eq: ["$type", "chapter-assessment"] },
                     { $eq: ["$isDeleted", false] },
+                    { $eq: ["$districtId", new mongoose.Types.ObjectId(districtId)] },
+                    { $eq: ["$schoolId", new mongoose.Types.ObjectId(schoolId)] },
                   ],
                 },
               },
@@ -257,12 +265,15 @@ export const getChapterOfQuarter = async (req, res) => {
 
 export const getChapterwithLessons = async (req, res) => {
   const { chapterId } = req.params;
+  const { districtId, schoolId } = req.user
   try {
     const chapters = await Chapter.aggregate([
       {
         $match: {
           _id: new mongoose.Types.ObjectId(chapterId),
           isDeleted: false,
+          districtId: new mongoose.Types.ObjectId(districtId),
+          schoolId: new mongoose.Types.ObjectId(schoolId),
         },
       },
 
@@ -300,7 +311,11 @@ export const getChapterwithLessons = async (req, res) => {
           as: "lessons",
           pipeline: [
             {
-              $match: { isDeleted: false },
+              $match: { 
+                isDeleted: false,
+                districtId: new mongoose.Types.ObjectId(districtId),
+                schoolId: new mongoose.Types.ObjectId(schoolId)
+              },
             },
             {
               $lookup: {
@@ -313,6 +328,9 @@ export const getChapterwithLessons = async (req, res) => {
                         $and: [
                           { $eq: ["$lesson", "$$lessonId"] },
                           { $eq: ["$type", "lesson-assessment"] },
+                          { $eq: ["$isDeleted", false] },
+                          { $eq: ["$districtId", new mongoose.Types.ObjectId(districtId)] },
+                          { $eq: ["$schoolId", new mongoose.Types.ObjectId(schoolId)] },
                         ],
                       },
                     },
@@ -342,7 +360,6 @@ export const getChapterwithLessons = async (req, res) => {
       {
         $lookup: {
           from: "assessments",
-
           let: { chapterId: "$_id" },
           pipeline: [
             {
@@ -352,6 +369,8 @@ export const getChapterwithLessons = async (req, res) => {
                     { $eq: ["$chapter", "$$chapterId"] },
                     { $eq: ["$type", "chapter-assessment"] },
                     { $eq: ["$isDeleted", false] },
+                    { $eq: ["$districtId", new mongoose.Types.ObjectId(districtId)] },
+                    { $eq: ["$schoolId", new mongoose.Types.ObjectId(schoolId)] },
                   ],
                 },
               },
@@ -395,13 +414,14 @@ export const getChapterwithLessons = async (req, res) => {
 export const editChapter = async (req, res) => {
   const { chapterId } = req.params;
   const { title, description } = req.body;
+  const { districtId, schoolId } = req.user
   try {
-    const chapter = await Chapter.findById(chapterId);
+    const chapter = await Chapter.findOne({ _id: chapterId, districtId, schoolId });
     if (!chapter || chapter.isDeleted) {
       return res.status(404).json({ message: "Chapter not found" });
     }
 
-    const lessons = await Lesson.find({ chapter: chapterId, isDeleted: false });
+    const lessons = await Lesson.find({ chapter: chapterId, isDeleted: false, districtId, schoolId });
     chapter.title = title;
     chapter.description = description;
     chapter.save();
@@ -415,6 +435,7 @@ export const editChapter = async (req, res) => {
 
 export const getDeletedChapters = async (req, res) => {
   const { courseId } = req.params;
+  const { districtId, schoolId } = req.user
   const userId = req.user._id;
   const userRole = req.user.role;
 
@@ -427,13 +448,13 @@ export const getDeletedChapters = async (req, res) => {
     // If teacher, verify they own the course
     if (userRole === "teacher") {
       const CourseSch = await import("../../Models/courses.model.sch.js");
-      const course = await CourseSch.default.findOne({ _id: courseId, createdby: userId });
+      const course = await CourseSch.default.findOne({ _id: courseId, createdby: userId, districtId, schoolId });
       if (!course) {
         return res.status(403).json({ message: "You can only view deleted chapters of your own courses" });
       }
     }
 
-    const deletedChapters = await Chapter.find({ course: courseId, isDeleted: true })
+    const deletedChapters = await Chapter.find({ course: courseId, isDeleted: true, districtId, schoolId })
       .sort({ deletedAt: -1 })
       .populate("quarter", "name startDate endDate")
       .populate("createdby", "firstName lastName");
@@ -453,6 +474,7 @@ export const restoreChapter = async (req, res) => {
   const { chapterId } = req.params;
   const userId = req.user._id;
   const userRole = req.user.role;
+  const { districtId, schoolId } = req.user
 
   try {
     // Authorization check: only teachers and admins can restore chapters
@@ -460,7 +482,7 @@ export const restoreChapter = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-    const chapter = await Chapter.findById(chapterId);
+    const chapter = await Chapter.findOne({ _id: chapterId, districtId, schoolId });
     if (!chapter) {
       return res.status(404).json({ message: "Chapter not found" });
     }
@@ -472,7 +494,7 @@ export const restoreChapter = async (req, res) => {
     // If teacher, verify they own the course
     if (userRole === "teacher") {
       const CourseSch = await import("../../Models/courses.model.sch.js");
-      const course = await CourseSch.default.findOne({ _id: chapter.course, createdby: userId });
+      const course = await CourseSch.default.findOne({ _id: chapter.course, createdby: userId, districtId, schoolId });
       if (!course) {
         return res.status(403).json({ message: "You can only restore chapters of your own courses" });
       }

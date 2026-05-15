@@ -155,7 +155,7 @@ export const getSchoolById = async (req, res) => {
     }
 
     // Check district access
-    if (req.user.role !== ROLES.SUPER_ADMIN && school.districtId !== req.user.districtId) {
+    if (req.user.role !== ROLES.SUPER_ADMIN && school.districtId.toString() !== req.user.districtId.toString()) {
       return res.status(403).json({
         error: true,
         message: "Access denied: school not in your district",

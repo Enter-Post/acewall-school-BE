@@ -5,9 +5,10 @@ import CourseSch from "../Models/courses.model.sch.js";
 
 export const getSingleCourseRating = async (req, res) => {
   const { id } = req.params;
+  const { districtId, schoolId } = req.user
   try {
     // Fetch all ratings for the specified course
-    const ratings = await Rating.find({ course: id });
+    const ratings = await Rating.find({ course: id, districtId, schoolId });
 
     if (!ratings || ratings.length === 0) {
       return res
@@ -30,8 +31,7 @@ export const createRating = async (req, res) => {
   const createdby = req.user?._id;
   const { id } = req.params;
   const { star } = req.body;
-
-  console.log(id, "courseId");
+  const { districtId, schoolId } = req.user
 
   if (!createdby) {
     return res.status(401).json({ message: "User not authenticated" });
@@ -51,7 +51,7 @@ export const createRating = async (req, res) => {
       return res.status(404).json({ message: "Course not found" });
     }
 
-    const existingRating = await Rating.findOne({ course, createdby });
+    const existingRating = await Rating.findOne({ course, createdby, districtId, schoolId });
     if (existingRating) {
       return res
         .status(400)
@@ -63,6 +63,8 @@ export const createRating = async (req, res) => {
       course: id,
       createdby,
       star,
+      districtId,
+      schoolId,
     });
 
     await newRating.save();
@@ -77,6 +79,7 @@ export const createRating = async (req, res) => {
 export const isRatedbyUser = async (req, res) => {
   const userId = req.user._id;
   const { id } = req.params;
+  const { districtId, schoolId } = req.user
 
   // Validate ObjectIds
   if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
@@ -90,12 +93,8 @@ export const isRatedbyUser = async (req, res) => {
   const courseId = new mongoose.Types.ObjectId(id);
   const createdby = new mongoose.Types.ObjectId(userId);
 
-  console.log(courseId, "userId");
-  console.log(createdby, "createdby");
-
   try {
-    const isRated = await Rating.findOne({ course: courseId, createdby });
-    console.log(isRated, "isRated");
+    const isRated = await Rating.findOne({ course: courseId, createdby, districtId, schoolId });
 
     if (!isRated) {
       return res.status(404).json({ rating: false });

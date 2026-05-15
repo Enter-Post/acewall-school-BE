@@ -13,53 +13,75 @@ import Discussion from "../Models/discussion.model.js";
 // ======================================================
 // 🔥 Helper Methods
 // ======================================================
-function getLetterFromScale(percent, gradingScale) {
-    if (!gradingScale || !gradingScale.scale) return "N/A";
+function getLetterFromScale(percent, districtId, schoolId) {
+    return GradingScale.findOne({ districtId, schoolId })
+        .then((gradingScale) => {
+            if (!gradingScale || !gradingScale.scale) return "N/A";
 
-    const match = gradingScale.scale.find(
-        (s) => percent >= s.min && percent <= s.max
-    );
+            const match = gradingScale.scale.find(
+                (s) => percent >= s.min && percent <= s.max
+            );
 
-    if (!match) return "N/A";
+            if (!match) return "N/A";
 
-    // If "letter" is missing, fallback to "grade"
-    return match.letter && match.letter.trim() !== ""
-        ? match.letter
-        : match.grade || "N/A";
+            // If "letter" is missing, fallback to "grade"
+            return match.letter && match.letter.trim() !== ""
+                ? match.letter
+                : match.grade || "N/A";
+        })
+        .catch((err) => {
+            console.error("Error fetching grading scale:", err);
+            return "N/A";
+        });
 }
 
-function getGPAFromScale(percent, gpaScale) {
-    if (!gpaScale || !gpaScale.gpaScale) return 0;
-
-    const match = gpaScale.gpaScale.find(
-        (g) => percent >= g.minPercentage && percent <= g.maxPercentage
-    );
-
-    return match ? match.gpa : 0;
+function getGPAFromScale(percent, districtId, schoolId) {
+    return GPA.findOne({ districtId, schoolId })
+        .then((gpaDoc) => {
+            if (!gpaDoc || !gpaDoc.gpaScale) return 0;
+            const match = gpaDoc.gpaScale.find(
+                (g) => percent >= g.minPercentage && percent <= g.maxPercentage
+            );
+            return match ? match.gpa : 0;
+        })
+        .catch((err) => {
+            console.error("Error fetching GPA scale:", err);
+            return 0;
+        });
 }
 
-function getStandardGrade(percent, standardScale) {
-    if (!standardScale || !standardScale.scale)
+function getStandardGrade(percent, districtId, schoolId) {
+    if (!districtId || !schoolId)
         return { grade: null, remark: null };
 
-    const match = standardScale.scale.find(
-        (s) => percent >= s.minPercentage && percent <= s.maxPercentage
-    );
+    return StandardGrading.findOne({ districtId, schoolId }).then(
+        (standardScale) => {
+            if (!standardScale || !standardScale.scale)
+                return { grade: null, remark: null };
 
-    return match
-        ? { grade: match.points, remark: match.remarks }
-        : { grade: null, remark: null };
+            const match = standardScale.scale.find(
+                (s) => percent >= s.minPercentage && percent <= s.maxPercentage
+            );
+
+            return match
+                ? { grade: match.points, remark: match.remarks }
+                : { grade: null, remark: null };
+        }
+    ).catch((err) => {
+        console.error("Error fetching standard grading scale:", err);
+        return { grade: null, remark: null };
+    });
 }
 
 export const getStudentGradebooksFormatted = async (req, res) => {
     try {
         const studentId = req.user._id;
-
-        const gradingScale = await GradingScale.findOne({});
+        const { districtId, schoolId } = req.user
+        const gradingScale = await GradingScale.findOne({ districtId, schoolId });
         const gpaScale = await GPA.findOne({});
-        const standardScale = await StandardGrading.findOne({});
+        const standardScale = await StandardGrading.findOne({ districtId, schoolId });
 
-        const gradebooks = await Gradebook.find({ studentId });
+        const gradebooks = await Gradebook.find({ studentId, districtId, schoolId });
 
         if (!gradebooks || gradebooks.length === 0) {
             return res.json({
@@ -77,7 +99,7 @@ export const getStudentGradebooksFormatted = async (req, res) => {
 
         const courses = await Promise.all(
             gradebooks.map(async (gb) => {
-                const courseData = await CourseSch.findById(gb.courseId).lean();
+                const courseData = await CourseSch.findById(gb.courseId, districtId, schoolId).lean();
                 const gradingSystem = courseData?.gradingSystem || "normalGrading";
 
                 // ---------------------- SEMESTERS ----------------------
@@ -90,7 +112,7 @@ export const getStudentGradebooksFormatted = async (req, res) => {
                             semesterPercentage,
                             gradingScale
                         );
-                        semDisplay.gpa = getGPAFromScale(semesterPercentage, gpaScale);
+                        semDisplay.gpa = getGPAFromScale(semesterPercentage, gpaScale, districtId, schoolId);
                     } else {
                         semDisplay.standardGrade = getStandardGrade(
                             semesterPercentage,
@@ -212,22 +234,23 @@ export const getStudentGradebooksFormatted = async (req, res) => {
 
 export const getGradebooksOfCourseFormatted = async (req, res) => {
     const courseId = req.params.courseId;
+    const { districtId, schoolId } = req.user
 
     try {
         // Fetch course
-        const course = await CourseSch.findById(courseId);
+        const course = await CourseSch.findOne({ _id: courseId, districtId, schoolId });
         if (!course)
             return res.status(404).json({ message: "Course not found" });
 
         const gradingType = course.gradingSystem;
 
         // Fetch all scales at once
-        const gradingScale = await GradingScale.findOne({});
-        const gpaScale = await GPA.findOne({});
-        const standardScale = await StandardGrading.findOne({});
+        const gradingScale = await GradingScale.findOne({districtId, schoolId});
+        const gpaScale = await GPA.findOne({districtId, schoolId});
+        const standardScale = await StandardGrading.findOne({districtId, schoolId});
 
         // Fetch gradebooks
-        const gradebooks = await Gradebook.find({ courseId })
+        const gradebooks = await Gradebook.find({ courseId, districtId, schoolId })
             .populate("studentId", "firstName lastName");
 
         const formatted = [];
@@ -299,12 +322,12 @@ export const getGradebooksOfCourseFormatted = async (req, res) => {
 
                             ...(gradingType === "normalGrading" && {
                                 grade: qPercent,
-                                gpa: getGPAFromScale(qPercent, gpaScale),
-                                letterGrade: getLetterFromScale(qPercent, gradingScale),
+                                gpa: getGPAFromScale(qPercent, gpaScale, districtId, schoolId),
+                                letterGrade: getLetterFromScale(qPercent, gradingScale, districtId, schoolId),
                             }),
 
                             ...(gradingType === "StandardGrading" && (() => {
-                                const sg = getStandardGrade(qPercent, standardScale);
+                                const sg = getStandardGrade(qPercent, standardScale, districtId, schoolId);
                                 return {
                                     standardGrade: {
                                         grade: qPercent,
@@ -347,7 +370,7 @@ export const getGradebooksOfCourseFormatted = async (req, res) => {
 
 export const getGradebooksOfStudentCourseFormatted = async (req, res) => {
     try {
-        
+
     } catch (error) {
         console.error("Error in getGradebooksOfStudentCourseFormatted", error);
         return res.status(500).json({ error: error.message });
@@ -371,9 +394,9 @@ export const getChildGradebookForParent = async (req, res) => {
         });
 
         if (!student) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "Unauthorized: You do not have access to this student's records." 
+            return res.status(403).json({
+                success: false,
+                message: "Unauthorized: You do not have access to this student's records."
             });
         }
 
@@ -513,7 +536,7 @@ export const getStudentGradebooksFormattedAnalytics = async (req, res) => {
         const courses = await Promise.all(
             gradebooks.map(async (gb) => {
                 const courseId = gb.courseId;
-                
+
                 // 1. Fetch Real-time Category Weights (Same as Teacher API)
                 const [categories, courseData, submissions, discussionComments] = await Promise.all([
                     AssessmentCategory.find({ course: courseId }).lean(),
@@ -571,7 +594,7 @@ export const getStudentGradebooksFormattedAnalytics = async (req, res) => {
 
                 const activeCats = Object.values(categoryStats).filter(c => c.max > 0);
                 const totalActiveWeight = activeCats.reduce((sum, c) => sum + c.weight, 0);
-                
+
                 let coursePercentage = 0;
                 activeCats.forEach(cat => {
                     const catPerc = (cat.score / cat.max) * 100;
@@ -635,9 +658,9 @@ export const getChildCourseAnalyticsForParent = async (req, res) => {
         });
 
         if (!student) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "Unauthorized: Access to this student's analytics is denied." 
+            return res.status(403).json({
+                success: false,
+                message: "Unauthorized: Access to this student's analytics is denied."
             });
         }
 
@@ -704,7 +727,7 @@ export const getChildCourseAnalyticsForParent = async (req, res) => {
 
         const activeCats = Object.values(categoryStats).filter(c => c.max > 0);
         const totalActiveWeight = activeCats.reduce((sum, c) => sum + c.weight, 0);
-        
+
         let currentOverallAvg = 0;
         activeCats.forEach(cat => {
             const catPerc = (cat.score / cat.max) * 100;
@@ -744,10 +767,10 @@ export const getChildCourseAnalyticsForParent = async (req, res) => {
                 overallAverage: currentOverallAvg.toFixed(1),
                 projectedFinalScore: Math.min(100, projectedScore).toFixed(1),
                 sampleSize: trendItems.length,
-                weakestCategory: weakest ? { 
-                    category: weakest.category, 
-                    average: weakest.average.toFixed(1), 
-                    gap: (best.average - weakest.average).toFixed(1) 
+                weakestCategory: weakest ? {
+                    category: weakest.category,
+                    average: weakest.average.toFixed(1),
+                    gap: (best.average - weakest.average).toFixed(1)
                 } : null
             },
             charts: {

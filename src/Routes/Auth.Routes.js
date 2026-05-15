@@ -217,7 +217,7 @@ router.post("/register", initiateSignup);
  *       400:
  *         description: Invalid input data
  */
-router.post("/registerwithoutOTP", SignupwithoutOTP);
+router.post("/registerwithoutOTP", isUser,SignupwithoutOTP);
 
 /**
  * @swagger

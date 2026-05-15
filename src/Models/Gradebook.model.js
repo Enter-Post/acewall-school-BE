@@ -69,29 +69,20 @@ const GradebookSchema = new mongoose.Schema({
     totalAssessments: Number,
 
     lastUpdated: { type: Date, default: Date.now },
-    isDeleted: { type: Boolean, default: false }
+    isDeleted: { type: Boolean, default: false },
+    districtId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "District",
+        required: true,
+        index: true,
+    },
+    schoolId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "School",
+        required: true,
+        index: true
+    },
 });
-
-// Virtual fields for district and school - inherited from course
-GradebookSchema.virtual('districtId', {
-  ref: 'CourseSch',
-  localField: 'courseId',
-  foreignField: '_id',
-  justOne: true,
-  options: { select: 'districtId' }
-});
-
-GradebookSchema.virtual('schoolId', {
-  ref: 'CourseSch', 
-  localField: 'courseId',
-  foreignField: '_id',
-  justOne: true,
-  options: { select: 'schoolId' }
-});
-
-// Ensure virtual fields are included in JSON output
-GradebookSchema.set('toJSON', { virtuals: true });
-GradebookSchema.set('toObject', { virtuals: true });
 
 const Gradebook = mongoose.model("Gradebook", GradebookSchema);
 export default Gradebook;

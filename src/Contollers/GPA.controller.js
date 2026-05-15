@@ -9,7 +9,7 @@ export const setGPAscale = async (req, res) => {
     }
 
     try {
-        const existing = await GPA.findOne();
+        const existing = await GPA.findOne({ districtId, schoolId });
 
         if (existing) {
             await GPA.findOneAndUpdate({ _id: existing._id }, { gpaScale });
@@ -19,11 +19,10 @@ export const setGPAscale = async (req, res) => {
             });
         }
 
-        const newGrade = await GPA.create({ gpaScale });
+        await GPA.create({ gpaScale, districtId, schoolId });
 
         res.status(200).json({
             message: "Grading scale saved successfully",
-            //   grade: newGrade.grade,
         });
     } catch (err) {
         console.error("Error saving GPA:", err);
@@ -34,15 +33,12 @@ export const setGPAscale = async (req, res) => {
 export const getGPAScale = async (req, res) => {
     const { districtId, schoolId } = req.user
     try {
-        const GPADoc = await GPA.findOne();
-
-        console.log(GPADoc, "GPADoc");
+        const GPADoc = await GPA.findOne({ districtId, schoolId });
 
         const grade = GPADoc?.gpaScale
             ? [...GPADoc.gpaScale].sort((a, b) => b.maxPercentage - a.maxPercentage)
             : null;
 
-        console.log(grade, "grade");
         if (!grade) {
             return res.status(404).json({ message: "Grading scale not found" });
         }

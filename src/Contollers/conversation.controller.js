@@ -6,6 +6,7 @@ import CourseSch from "../Models/courses.model.sch.js";
 export const createConversation = async (req, res) => {
   const myId = req.user._id;
   const memeberId = req.body.memberId;
+  const { districtId, schoolId } = req.user
 
   try {
     if (memeberId === myId) {
@@ -16,8 +17,9 @@ export const createConversation = async (req, res) => {
 
     const existingConversation = await Conversation.findOne({
       members: { $all: [myId, memeberId] },
+      districtId,
+      schoolId
     });
-    console.log(existingConversation, "existingConversation");
 
     if (existingConversation) {
       return res.status(200).json({
@@ -28,7 +30,10 @@ export const createConversation = async (req, res) => {
 
     const newConversation = new Conversation({
       members: [myId, memeberId],
+      districtId,
+      schoolId
     });
+
     await newConversation.save();
     res.status(200).json({
       message: "conversation created successfully",
@@ -41,8 +46,9 @@ export const createConversation = async (req, res) => {
 
 export const getMyConversations = async (req, res) => {
   const myId = req.user._id;
+  const { districtId, schoolId } = req.user
   try {
-    const conversations = await Conversation.find({ members: myId }).populate({
+    const conversations = await Conversation.find({ members: myId, districtId, schoolId }).populate({
       path: "members",
       select: "firstName lastName profileImg",
     });
@@ -107,11 +113,16 @@ export const getMyConversations = async (req, res) => {
 
 export const getTeacherforStudent = async (req, res) => {
   const studentId = req.user._id;
+  const { district, schoolId } = req.user
 
   try {
     const teachers = await Enrollment.aggregate([
       {
-        $match: { student: new mongoose.Types.ObjectId(studentId) }
+        $match: {
+          student: new mongoose.Types.ObjectId(studentId),
+          district: new mongoose.Types.ObjectId(district),
+          school: new mongoose.Types.ObjectId(schoolId)
+        }
       },
       {
         $lookup: {
@@ -258,12 +269,15 @@ export const getStudentsByOfTeacher = async (req, res) => {
 export const getTeacherCourses = async (req, res) => {
   try {
     const teacherId = req.user._id;
+    const { districtId, schoolId } = req.user;
 
     const courses = await CourseSch.aggregate([
       // 1️⃣ Match teacher courses
       {
         $match: {
           createdby: new mongoose.Types.ObjectId(teacherId),
+          districtId: new mongoose.Types.ObjectId(districtId),
+          schoolId: new mongoose.Types.ObjectId(schoolId),
         },
       },
 

@@ -116,7 +116,7 @@ class CleverService {
       email,
       cleverId,
       districtId: district,
-      schoolIds: schools || [],
+      schoolId: schools?.[0] || null,
       authProvider: "clever",
       role,
     };

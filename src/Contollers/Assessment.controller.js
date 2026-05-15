@@ -22,7 +22,7 @@ export const sendAssessmentReminder = async (req, res) => {
       return res.status(400).json({ message: "Invalid assessment ID." });
     }
 
-    const assessment = await Assessment.findById(assessmentId)
+    const assessment = await Assessment.findOne({ _id: assessmentId, districtId, schoolId })
       .populate("course", "courseTitle")
       .populate("createdby", "firstName lastName email");
 
@@ -41,6 +41,8 @@ export const sendAssessmentReminder = async (req, res) => {
     const enrollments = await Enrollment.find({
       course: assessment.course._id,
       student: { $ne: assessment.createdby._id },
+      districtId,
+      schoolId
     }).populate("student", "email firstName lastName");
 
     console.log(enrollments, "enrollments");
@@ -191,7 +193,7 @@ export const createAssessment = async (req, res) => {
 
   try {
     const parsedQuestions = JSON.parse(questions || "[]");
-    
+
     // Parse Google Drive files if provided
     let driveFiles = [];
     if (googleDriveFiles) {
@@ -209,11 +211,11 @@ export const createAssessment = async (req, res) => {
           // Preserve existing Google Drive files from question data
           // (sent from frontend in processedQuestions)
           const existingFiles = Array.isArray(q.files) ? q.files : [];
-          
+
           // Initialize files array with existing Google Drive files
           q.files = existingFiles.filter(f => f.source === 'google_drive');
         }
-        
+
         if (!q.type || !["mcq", "truefalse", "qa", "file"].includes(q.type)) {
           throw new Error(`Invalid question type at index ${index}`);
         }
@@ -282,20 +284,20 @@ export const createAssessment = async (req, res) => {
     let finalChapter = chapter;
 
     if (chapter && !course) {
-      const foundChapter = await Chapter.findById(chapter);
+      const foundChapter = await Chapter.findOne({ _id: chapter, districtId, schoolId });
       if (!foundChapter) throw new Error("Chapter not found");
       finalCourse = foundChapter.course;
     }
 
     if (lesson && !chapter) {
-      const foundLesson = await Lesson.findById(lesson).populate("chapter");
+      const foundLesson = await Lesson.findOne({ _id: lesson, districtId, schoolId }).populate("chapter");
       if (!foundLesson) throw new Error("Lesson not found");
 
       if (!foundLesson.chapter)
         throw new Error("Lesson has no associated chapter");
       finalChapter = foundLesson.chapter._id;
 
-      const foundChapter = await Chapter.findById(finalChapter);
+      const foundChapter = await Chapter.findOne({ _id: finalChapter, districtId, schoolId });
       if (!foundChapter) throw new Error("Associated chapter not found");
       finalCourse = foundChapter.course;
     }
@@ -334,6 +336,8 @@ export const createAssessment = async (req, res) => {
       files: uploadedFiles,
       createdby,
       assessmentType,
+      districtId,
+      schoolId
     });
 
     await newAssessment.save();
@@ -353,7 +357,7 @@ export const deleteAssessment = async (req, res) => {
   const { id } = req.params;
   try {
     // Find assessment first (don't delete yet)
-    const assessment = await Assessment.findById(id);
+    const assessment = await Assessment.findOne({ _id: id, districtId, schoolId });
     if (!assessment) {
       return res.status(404).json({ message: "Assessment not found" });
     }
@@ -380,12 +384,12 @@ export const deleteAssessment = async (req, res) => {
     }
 
     // Soft delete associated submissions
-    await Submission.updateMany({ assessment: id }, { isDeleted: true });
+    await Submission.updateMany({ assessment: id, districtId, schoolId }, { isDeleted: true });
 
     // Soft delete the assessment
-    await Assessment.findByIdAndUpdate(id, { 
-      isDeleted: true, 
-      deletedAt: new Date() 
+    await Assessment.findOneAndUpdate({ _id: id, districtId, schoolId }, {
+      isDeleted: true,
+      deletedAt: new Date()
     });
 
     res.status(200).json({ message: "Assessment deleted successfully" });
@@ -400,7 +404,7 @@ export const uploadFiles = async (req, res) => {
   const files = req.files;
   const { id } = req.params;
 
-  const assessment = await Assessment.findById(id);
+  const assessment = await Assessment.findOne({ _id: id, districtId, schoolId });
   if (!assessment) {
     return res.status(404).json({ message: "Assessment not found" });
   }
@@ -423,7 +427,7 @@ export const deleteFile = async (req, res) => {
   const { districtId, schoolId } = req.user
   const { assessmentId, fileId } = req.params;
 
-  const assessment = await Assessment.findById(assessmentId);
+  const assessment = await Assessment.findOne({ _id: assessmentId, districtId, schoolId });
   if (!assessment) {
     return res.status(404).json({ message: "Assessment not found" });
   }
@@ -458,7 +462,7 @@ export const getAssesmentbyID = async (req, res) => {
   try {
     const isAdmin = req.user.role === "admin" || req.user.isAdmin === true;
 
-    const assessment = await Assessment.findById(assessmentId).populate({
+    const assessment = await Assessment.findOne({ _id: assessmentId, districtId, schoolId }).populate({
       path: "category",
       select: "name",
     }).populate("studentDueDateOverrides.student", "firstName middleName lastName email");
@@ -478,6 +482,8 @@ export const getAssesmentbyID = async (req, res) => {
         student: userIdObj,
         course: courseIdObj,
         isDeleted: false,
+        districtId,
+        schoolId
       });
 
       if (!isEnrollment) {
@@ -507,7 +513,7 @@ export const allAssessmentByTeacher = async (req, res) => {
       return res.status(401).json({ error: "Unauthorized. User ID missing." });
     }
 
-    const assessments = await Assessment.find({ createdby, isDeleted: false })
+    const assessments = await Assessment.find({ createdby, isDeleted: false, districtId, schoolId })
       .select(
         "dueDate title description course chapter lesson createdAt category type"
       )
@@ -531,12 +537,15 @@ export const allAssessmentByTeacher = async (req, res) => {
 export const getAllassessmentforStudent = async (req, res, next) => {
   try {
     const studentId = req.user._id;
+    const { districtId, schoolId } = req.user
 
     // 1. Get all ACTIVE enrollments (exclude CANCELLED)
     const allEnrollmentofStudent = await Enrollment.find({
       student: studentId,
       status: { $ne: "CANCELLED" },
       isDeleted: false,
+      districtId,
+      schoolId
     });
 
     const courseIds = allEnrollmentofStudent.map(
@@ -608,7 +617,13 @@ export const getAllassessmentforStudent = async (req, res, next) => {
 
     // 2. Fetch assessments
     const assessments = await Assessment.aggregate([
-      { $match: { course: { $in: courseIds }, isDeleted: false } },
+      {
+        $match: {
+          course: { $in: courseIds }, isDeleted: false,
+          districtId: new mongoose.Types.ObjectId(districtId),
+          schoolId: new mongoose.Types.ObjectId(schoolId)
+        }
+      },
       ...commonLookups,
       {
         $lookup: {
@@ -688,7 +703,7 @@ export const getAllassessmentforStudent = async (req, res, next) => {
 
     // 3. Fetch discussions
     const discussions = await Discussion.aggregate([
-      { $match: { course: { $in: courseIds }, isDeleted: false } },
+      { $match: { course: { $in: courseIds }, isDeleted: false, districtId, schoolId } },
       ...commonLookups,
       {
         $lookup: {
@@ -790,7 +805,7 @@ export const editAssessmentInfo = async (req, res) => {
   const { title, description, category, dueDate } = req.body;
 
   try {
-    const assessment = await Assessment.findById(assessmentId);
+    const assessment = await Assessment.findOne({ _id: assessmentId, districtId, schoolId });
     if (!assessment) {
       return res.status(400).json({ message: "Assessment not found" });
     }
@@ -821,7 +836,7 @@ export const setReminderTime = async (req, res) => {
   const { reminder } = req.body;
 
   try {
-    const assessment = await Assessment.findById(assessmentId);
+    const assessment = await Assessment.findOne({ _id: assessmentId, districtId, schoolId });
 
     if (!assessment) {
       return res.status(400).json({ message: "Assessment not found" });
@@ -843,7 +858,7 @@ export const findReminderTime = async (req, res) => {
   const { districtId, schoolId } = req.user
   const { assessmentId } = req.params;
   try {
-    const assessment = await Assessment.findById(assessmentId);
+    const assessment = await Assessment.findOne({ _id: assessmentId, districtId, schoolId });
 
     if (!assessment) {
       console.log("Assessment not found");
@@ -870,7 +885,14 @@ export const getAssessmentsByCourseForAdmin = async (req, res) => {
   try {
     const assessments = await Assessment.aggregate([
       // Match assessments for the given course
-      { $match: { course: new mongoose.Types.ObjectId(courseId), isDeleted: false } },
+      {
+        $match: {
+          course: new mongoose.Types.ObjectId(courseId),
+          isDeleted: false,
+          districtId: new mongoose.Types.ObjectId(districtId),
+          schoolId: new mongoose.Types.ObjectId(schoolId)
+        }
+      },
 
       // Lookup category
       {
@@ -965,7 +987,7 @@ export const getAssessmentStats = async (req, res) => {
   const { assessmentId } = req.params;
 
   try {
-    const assessment = await Assessment.findById(assessmentId);
+    const assessment = await Assessment.findOne({ _id: assessmentId, districtId, schoolId });
     if (!assessment) {
       return res.status(404).json({ message: "Assessment not found" });
     }
@@ -973,17 +995,21 @@ export const getAssessmentStats = async (req, res) => {
     // 1. Count On-Time Submissions
     const onTimeCount = await Submission.countDocuments({
       assessment: assessmentId,
-      status: "before due date"
+      status: "before due date",
+      districtId,
+      schoolId
     });
 
     // 2. Count Late Submissions
     const lateCount = await Submission.countDocuments({
       assessment: assessmentId,
-      status: "after due date"
+      status: "after due date",
+      districtId,
+      schoolId
     });
 
     // 3. Get total students enrolled in the course
-    const totalEnrolled = await Enrollment.countDocuments({ course: assessment.course });
+    const totalEnrolled = await Enrollment.countDocuments({ course: assessment.course, districtId, schoolId });
 
     const submittedCount = onTimeCount + lateCount;
     const notSubmittedCount = Math.max(0, totalEnrolled - submittedCount);
@@ -1016,6 +1042,8 @@ export const getAllAssessmentForParent = async (req, res) => {
     const student = await User.findOne({
       _id: studentId,
       guardianEmails: parentEmail,
+      districtId,
+      schoolId
     });
 
     if (!student) {
@@ -1028,6 +1056,8 @@ export const getAllAssessmentForParent = async (req, res) => {
     // 2. GET ENROLLMENTS
     const allEnrollmentofStudent = await Enrollment.find({
       student: studentId,
+      districtId,
+      schoolId
     });
 
     const courseIds = allEnrollmentofStudent.map(
@@ -1041,7 +1071,11 @@ export const getAllAssessmentForParent = async (req, res) => {
     // 3. FETCH ASSESSMENTS (Aggregate)
     const assessments = await Assessment.aggregate([
       {
-        $match: { course: { $in: courseIds } },
+        $match: {
+          course: { $in: courseIds },
+          districtId: new mongoose.Types.ObjectId(districtId),
+          schoolId: new mongoose.Types.ObjectId(schoolId)
+        },
       },
       {
         $lookup: {
@@ -1134,7 +1168,11 @@ export const getAllAssessmentForParent = async (req, res) => {
     // 4. FETCH DISCUSSIONS (Aggregate)
     const discussions = await Discussion.aggregate([
       {
-        $match: { course: { $in: courseIds } },
+        $match: {
+          course: { $in: courseIds },
+          districtId: new mongoose.Types.ObjectId(districtId),
+          schoolId: new mongoose.Types.ObjectId(schoolId)
+        },
       },
       {
         $lookup: {
@@ -1250,7 +1288,7 @@ export const setDueDateForStudent = async (req, res) => {
     const { assessmentId } = req.params;
     const { studentIds, newDueDate } = req.body;
 
-    const assessment = await Assessment.findById(assessmentId);
+    const assessment = await Assessment.findOne({ _id: assessmentId, districtId, schoolId });
     if (!assessment) {
       return res.status(404).json({ success: false, message: "Assessment not found" });
     }
@@ -1258,7 +1296,9 @@ export const setDueDateForStudent = async (req, res) => {
     // Check if all students are enrolled in course
     const enrollments = await Enrollment.find({
       course: assessment.course,
-      student: { $in: studentIds }
+      student: { $in: studentIds },
+      districtId,
+      schoolId
     });
 
     if (enrollments.length !== studentIds.length) {
@@ -1308,7 +1348,7 @@ export const settingAllowResubmission = async (req, res) => {
     const { assessmentId } = req.params;
     const { allowResubmission } = req.body;
 
-    const assessment = await Assessment.findById(assessmentId);
+    const assessment = await Assessment.findOne({ _id: assessmentId, districtId, schoolId });
 
     console.log(allowResubmission, "allowResubmission in resubmission setting");
 
@@ -1336,8 +1376,8 @@ export const updateLatePolicy = async (req, res) => {
     const { assessmentId } = req.params;
     const { enabled, strategy, deductionType, deductionValue } = req.body;
 
-    const assessment = await Assessment.findByIdAndUpdate(
-      assessmentId,
+    const assessment = await Assessment.findOneAndUpdate(
+      { _id: assessmentId, districtId, schoolId },
       {
         $set: {
           "lateSubmissionPolicy.enabled": enabled,
@@ -1378,13 +1418,13 @@ export const getDeletedAssessments = async (req, res) => {
     // If teacher, verify they own the course
     if (userRole === "teacher") {
       const CourseSch = await import("../Models/courses.model.sch.js");
-      const course = await CourseSch.default.findOne({ _id: courseId, createdby: userId });
+      const course = await CourseSch.default.findOne({ _id: courseId, createdby: userId, districtId, schoolId });
       if (!course) {
         return res.status(403).json({ message: "You can only view deleted assessments of your own courses" });
       }
     }
 
-    const deletedAssessments = await Assessment.find({ course: courseId, isDeleted: true })
+    const deletedAssessments = await Assessment.find({ course: courseId, isDeleted: true, districtId, schoolId })
       .sort({ deletedAt: -1 })
       .populate("category", "name")
       .populate("chapter", "title")
@@ -1414,7 +1454,7 @@ export const restoreAssessment = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-    const assessment = await Assessment.findById(assessmentId);
+    const assessment = await Assessment.findOne({ _id: assessmentId, districtId, schoolId });
     if (!assessment) {
       return res.status(404).json({ message: "Assessment not found" });
     }
@@ -1426,7 +1466,7 @@ export const restoreAssessment = async (req, res) => {
     // If teacher, verify they own the course
     if (userRole === "teacher") {
       const CourseSch = await import("../Models/courses.model.sch.js");
-      const course = await CourseSch.default.findOne({ _id: assessment.course, createdby: userId });
+      const course = await CourseSch.default.findOne({ _id: assessment.course, createdby: userId, districtId, schoolId });
       if (!course) {
         return res.status(403).json({ message: "You can only restore assessments of your own courses" });
       }
@@ -1438,7 +1478,7 @@ export const restoreAssessment = async (req, res) => {
     await assessment.save();
 
     // Restore related submissions
-    await Submission.updateMany({ assessment: assessmentId }, { isDeleted: false });
+    await Submission.updateMany({ assessment: assessmentId, districtId, schoolId }, { isDeleted: false });
 
     res.status(200).json({ message: "Assessment restored successfully", assessment });
   } catch (error) {

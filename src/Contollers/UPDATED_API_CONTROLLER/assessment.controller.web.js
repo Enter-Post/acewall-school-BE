@@ -24,6 +24,7 @@ export const createAssessment_updated = async (req, res) => {
 
   const files = req.files;
   const createdby = req.user._id;
+  const { schoolId, districtId } = req.user;
 
   try {
     // ✅ Parse questions
@@ -147,6 +148,8 @@ export const createAssessment_updated = async (req, res) => {
       files: uploadedFiles,
       createdby,
       assessmentType,
+      schoolId,
+      districtId,
     });
 
     await newAssessment.save();
