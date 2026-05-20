@@ -9,8 +9,6 @@ import {
 } from "../Contollers/auth.controller.js";
 import { getStudentEnrolledCourses } from "../Contollers/enrollment.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
-import { archivedSemester } from "../Contollers/CourseControllers/semester.controller.js";
-import { archivedQuarter } from "../Contollers/CourseControllers/quarter.controller.js";
 import { getCategoriesforAdmin } from "../Contollers/category.controller.js";
 import {
   getAllCoursesForAdmin,
@@ -295,84 +293,6 @@ router.get("/getStudentById/:id", isUser, getStudentById);
  *         description: Unauthorized
  */
 router.get("/getTeacherById/:id", isUser, getTeacherById);
-
-/**
- * @swagger
- * /api/admin/updateSemArchiveStatus/{semesterId}:
- *   put:
- *     summary: Update semester archive status
- *     tags: [Admin]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: semesterId
- *         required: true
- *         schema:
- *           type: string
- *         description: Semester ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               isArchived:
- *                 type: boolean
- *                 description: Archive status to set
- *     responses:
- *       200:
- *         description: Semester archive status updated
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiResponse'
- *       404:
- *         description: Semester not found
- *       401:
- *         description: Unauthorized
- */
-router.put("/updateSemArchiveStatus/:semesterId", isUser, archivedSemester);
-
-/**
- * @swagger
- * /api/admin/updateQtrArchiveStatus/{quarterId}:
- *   put:
- *     summary: Update quarter archive status
- *     tags: [Admin]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: quarterId
- *         required: true
- *         schema:
- *           type: string
- *         description: Quarter ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               isArchived:
- *                 type: boolean
- *                 description: Archive status to set
- *     responses:
- *       200:
- *         description: Quarter archive status updated
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiResponse'
- *       404:
- *         description: Quarter not found
- *       401:
- *         description: Unauthorized
- */
-router.put("/updateQtrArchiveStatus/:quarterId", isUser, archivedQuarter);
 
 /**
  * @swagger

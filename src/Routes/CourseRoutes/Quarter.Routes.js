@@ -1,7 +1,6 @@
 import express from "express";
 import {
   createQuarter,
-  editQuarter,
   getDatesofQuarter,
   getQuarter,
   getQuartersofSemester,
@@ -536,90 +535,6 @@ router.get("/get/:semesterId", isUser, getSemesterQuarter);
  *         description: Unauthorized
  */
 router.get(`/getDatesofQuarter/:quarterId`, isUser, getDatesofQuarter);
-
-/**
- * @swagger
- * /api/quarter/editQuarter/{quarterId}:
- *   put:
- *     summary: Update quarter details
- *     tags: [Quarter]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: quarterId
- *         required: true
- *         schema:
- *           type: string
- *         description: Quarter ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 description: Updated quarter name
- *               startDate:
- *                 type: string
- *                 format: date
- *                 description: Updated start date (YYYY-MM-DD)
- *               endDate:
- *                 type: string
- *                 format: date
- *                 description: Updated end date (YYYY-MM-DD)
- *               description:
- *                 type: string
- *                 description: Updated quarter description
- *               isActive:
- *                 type: boolean
- *                 description: Updated active status
- *     responses:
- *       200:
- *         description: Quarter updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 message:
- *                   type: string
- *                 data:
- *                   type: object
- *                   properties:
- *                     _id:
- *                       type: string
- *                     name:
- *                       type: string
- *                     startDate:
- *                       type: string
- *                       format: date
- *                     endDate:
- *                       type: string
- *                       format: date
- *                     description:
- *                       type: string
- *                     isActive:
- *                       type: boolean
- *                     updatedAt:
- *                       type: string
- *                       format: date-time
- *       400:
- *         description: Invalid input data
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       404:
- *         description: Quarter not found
- *       401:
- *         description: Unauthorized
- */
-router.put("/editQuarter/:quarterId", isUser, editQuarter);
 
 /**
  * @swagger

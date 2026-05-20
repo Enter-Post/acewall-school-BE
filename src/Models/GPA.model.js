@@ -10,7 +10,6 @@ const GPASchema = new mongoose.Schema(
         }],
         isDeleted: { type: Boolean, default: false },
         districtId: { type: mongoose.Schema.Types.ObjectId, ref: "District", required: true },
-        schoolId: { type: mongoose.Schema.Types.ObjectId, ref: "School", required: true },
     },
     { timestamps: true }
 );

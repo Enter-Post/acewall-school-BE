@@ -8,6 +8,8 @@
 import School from "../Models/school.model.js";
 import { ROLES } from "../modules/rbac/roles.js";
 import * as PERMISSIONS from "../modules/rbac/permissions.js";
+import User from "../Models/user.model.js";
+import CourseSch from "../Models/courses.model.sch.js";
 
 /**
  * Create a new school
@@ -16,7 +18,11 @@ import * as PERMISSIONS from "../modules/rbac/permissions.js";
  */
 export const createSchool = async (req, res) => {
   try {
-    const { name, email, phone, homeAddress, website, districtId, externalIds, settings } = req.body;
+    const { districtId } = req.user
+    const { name, email, phone, homeAddress, website, externalIds, settings } = req.body;
+
+    const file = req.file
+    console.log("file:", file)
 
     // Validate required fields
     if (!name || !email || !phone) {
@@ -91,11 +97,14 @@ export const getSchools = async (req, res) => {
     const { active, search, page = 1, limit = 20 } = req.query;
     // Build query
     let query = { isDeleted: false };
+    const districtId = req.user.districtId;
 
     // Filter by district (except super admin)
     if (req.user.role !== ROLES.SUPER_ADMIN) {
-      query.districtId = req.user.districtId;
+      query.districtId = districtId;
     }
+
+    console.log("query in getSchool: ", query)
 
     // Filter by active status
     if (active !== undefined) {
@@ -110,10 +119,12 @@ export const getSchools = async (req, res) => {
     // Pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const schools = await School.find(query)
+    const schools = await School.find({ districtId: districtId.toString() })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
+
+    console.log("schools in getSchool: ", schools)
 
     const total = await School.countDocuments(query);
 
@@ -383,6 +394,54 @@ export const getSchoolsForDropdown = async (req, res) => {
       error: true,
       message: "Failed to fetch schools",
       details: error.message,
+    });
+  }
+};
+
+
+export const getSchoolStats = async (req, res) => {
+  try {
+    const { schoolId } = req.params;
+
+    // 1. Verify school existence and district access
+    const school = await School.findOne({ _id: schoolId, isDeleted: false });
+
+    if (!school) {
+      return res.status(404).json({
+        error: true,
+        message: "School not found",
+      });
+    }
+
+    // RBAC: Ensure district admin only sees schools in their district
+    if (req.user.role !== ROLES.SUPER_ADMIN && school.districtId.toString() !== req.user.districtId.toString()) {
+      return res.status(403).json({
+        error: true,
+        message: "Access denied: school not in your district",
+      });
+    }
+
+    // 2. Perform concurrent counts for performance
+    const [teacherCount, studentCount, courseCount] = await Promise.all([
+      User.countDocuments({ schoolId: schoolId, role: 'teacher', isDeleted: false }),
+      User.countDocuments({ schoolId: schoolId, role: 'student', isDeleted: false }),
+      CourseSch.countDocuments({ schoolId: schoolId, isDeleted: false })
+    ]);
+
+    // 3. Return data in the structure the UI expects
+    res.status(200).json({
+      success: true,
+      data: {
+        teachers: teacherCount,
+        students: studentCount,
+        courses: courseCount
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching school stats:", error);
+    res.status(500).json({
+      error: true,
+      message: "Failed to fetch school stats",
     });
   }
 };

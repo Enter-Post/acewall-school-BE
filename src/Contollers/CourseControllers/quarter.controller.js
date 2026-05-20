@@ -4,7 +4,7 @@ import Semester from "../../Models/semester.model.js";
 
 export const createQuarter = async (req, res) => {
   const { title, startDate, endDate, semester } = req.body;
-  const { districtId, schoolId } = req.user;
+  const { districtId } = req.user;
   try {
     const newQuarter = new Quarter({
       title,
@@ -12,7 +12,6 @@ export const createQuarter = async (req, res) => {
       endDate,
       semester,
       districtId,
-      schoolId
     });
     await newQuarter.save();
     res
@@ -25,10 +24,10 @@ export const createQuarter = async (req, res) => {
 };
 
 export const getQuarter = async (req, res) => {
-  const { districtId, schoolId } = req.user;
+  const { districtId } = req.user;
 
   try {
-    const quarters = await Quarter.find({ districtId, schoolId });
+    const quarters = await Quarter.find({ districtId });
     res.status(200).json({ message: "Quarters found successfully", quarters });
   } catch (error) {
     console.log("error in the getting quarter", error);
@@ -38,10 +37,10 @@ export const getQuarter = async (req, res) => {
 
 export const getQuartersofSemester = async (req, res) => {
   const { semesters } = req.body;
-  const { districtId, schoolId } = req.user;
+  const { districtId } = req.user;
 
   try {
-    const quarters = await Quarter.find({ semester: { $in: semesters }, districtId, schoolId }).populate('semester');
+    const quarters = await Quarter.find({ semester: { $in: semesters }, districtId }).populate('semester');
     console.log("quarters", quarters);
     res.status(200).json({ message: "Quarters found successfully", quarters });
   } catch (error) {
@@ -52,9 +51,9 @@ export const getQuartersofSemester = async (req, res) => {
 
 export const getSemesterQuarter = async (req, res) => {
   const { semesterId } = req.params;
-  const { districtId, schoolId } = req.user;
+  const { districtId } = req.user;
 
-  await Quarter.find({ semester: semesterId, districtId, schoolId })
+  await Quarter.find({ semester: semesterId, districtId })
     .then((quarters) => {
       res
         .status(200)
@@ -66,38 +65,12 @@ export const getSemesterQuarter = async (req, res) => {
     });
 };
 
-export const archivedQuarter = async (req, res) => {
-  const { quarterId } = req.params;
-  const { isArchived } = req.body;
-  const { districtId, schoolId } = req.user;
-
-  try {
-    const updatedQuarter = await Quarter.findOneAndUpdate(
-      { _id: quarterId, districtId, schoolId },
-      { isArchived },
-      { new: true }
-    );
-
-    if (!updatedQuarter) {
-      return res.status(404).json({ message: "Quarter not found" });
-    }
-
-    res.status(200).json({
-      message: "Quarter archived successfully",
-      updatedQuarter,
-    });
-  } catch (error) {
-    console.log("error in archiving quarter", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
 export const getDatesofQuarter = async (req, res) => {
   const { quarterId } = req.params;
-  const { districtId, schoolId } = req.user;
+  const { districtId, } = req.user;
 
   try {
-    const quarter = await Quarter.findOne({ _id: quarterId, districtId, schoolId });
+    const quarter = await Quarter.findOne({ _id: quarterId, districtId, });
 
     if (!quarter) {
       return res.status(404).json({ message: "Quarter not found" });
@@ -114,66 +87,9 @@ export const getDatesofQuarter = async (req, res) => {
   }
 };
 
-export const editQuarter = async (req, res) => {
-  const { quarterId } = req.params;
-  const { title, startDate, endDate, semester } = req.body;
-
-  try {
-    // 1️⃣ Check if semester exists
-    const semesterDoc = await Semester.findById(semester);
-    if (!semesterDoc) {
-      return res.status(404).json({ success: false, message: "Semester not found" });
-    }
-
-    // 2️⃣ Validate quarter dates are within semester dates
-    if (new Date(startDate) < new Date(semesterDoc.startDate) ||
-      new Date(endDate) > new Date(semesterDoc.endDate)) {
-      return res.status(400).json({
-        success: false,
-        message: `Quarter dates must be between ${semesterDoc.startDate.toDateString()} and ${semesterDoc.endDate.toDateString()}`
-      });
-    }
-
-    // 3️⃣ Check if another quarter with same title exists in the semester (case-insensitive)
-    const existing = await Quarter.findOne({
-      _id: { $ne: quarterId },
-      title: { $regex: new RegExp(`^${title}$`, "i") },
-      semester
-    });
-
-    if (existing) {
-      return res.status(400).json({
-        success: false,
-        message: "Another quarter with the same title already exists in this semester."
-      });
-    }
-
-    // 4️⃣ Update the quarter
-    const updatedQuarter = await Quarter.findByIdAndUpdate(
-      quarterId,
-      { title, startDate, endDate, semester },
-      { new: true }
-    );
-
-    if (!updatedQuarter) {
-      return res.status(404).json({ success: false, message: "Quarter not found" });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Quarter edited successfully",
-      updatedQuarter
-    });
-
-  } catch (error) {
-    console.error("Error editing quarter", error);
-    res.status(500).json({ success: false, message: "Internal Server Error" });
-  }
-};
-
 export const getQuartersofSemester_Updated = async (req, res) => {
   const { semesters } = req.body;
-  const { districtId, schoolId } = req.user;
+  const { districtId } = req.user;
 
   try {
     // Ensure ObjectId conversion
@@ -184,7 +100,6 @@ export const getQuartersofSemester_Updated = async (req, res) => {
         $match: {
           semester: { $in: semesterIds },
           districtId: new mongoose.Types.ObjectId(districtId),
-          schoolId: new mongoose.Types.ObjectId(schoolId)
         }
       },
       {

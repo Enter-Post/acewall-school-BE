@@ -108,7 +108,7 @@ export const getChapterOfQuarter = async (req, res) => {
   const { schoolId, districtId } = req.user
 
   try {
-    const quarter = await Quarter.findOne({ _id: quarterId, districtId, schoolId });
+    const quarter = await Quarter.findOne({ _id: quarterId, districtId });
 
     if (!quarter) {
       return res.status(404).json({ message: "Quarter not found" });
