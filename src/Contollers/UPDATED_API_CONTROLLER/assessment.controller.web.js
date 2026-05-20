@@ -28,15 +28,17 @@ export const createAssessment_updated = async (req, res) => {
   try {
     // ✅ Parse questions
     const parsedQuestions = JSON.parse(questions || "[]");
+
+    console.log("question", parsedQuestions)
     if (!Array.isArray(parsedQuestions) || parsedQuestions.length === 0)
       throw new Error("At least one question is required");
 
     // ✅ Validate & upload question files
     for (let i = 0; i < parsedQuestions.length; i++) {
       const q = parsedQuestions[i];
-      if (q.files && Array.isArray(q.files) && q.files.length > 0) {
+      if (files && Array.isArray(files) && files.length > 0) {
         const uploaded = [];
-        for (const file of q.files) {
+        for (const file of files) {
           const result = await uploadToCloudinary(file.buffer, "assessment_files");
           uploaded.push({
             url: result.secure_url,
@@ -69,11 +71,13 @@ export const createAssessment_updated = async (req, res) => {
       }
     }
 
+
     // ✅ Upload assessment-level attachments
     let uploadedFiles = [];
     if (files && files.length > 0) {
       for (const file of files) {
         const result = await uploadToCloudinary(file.buffer, "assessment_attachments");
+
         uploadedFiles.push({
           url: result.secure_url,
           filename: file.originalname,
