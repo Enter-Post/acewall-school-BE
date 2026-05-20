@@ -30,8 +30,8 @@ const SchCourseSchema = new mongoose.Schema(
       filename: { type: String, default: "" },
       uploadedAt: { type: Date, default: Date.now },
     },
-    teachingPoints: [{ type: String, maxlength: 120, minlength: 1 }],
-    requirements: [{ type: String, maxlength: 120, minlength: 1 }],
+    teachingPoints: [{ type: String, maxlength: 200, minlength: 1 }],
+    requirements: [{ type: String, maxlength: 200, minlength: 1 }],
     createdby: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
