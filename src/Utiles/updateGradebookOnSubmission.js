@@ -10,7 +10,7 @@ import StandardGrading from "../Models/StandardGrading.model.js";
 import GradingScale from "../Models/grading-scale.model.js";
 import GPA from "../Models/GPA.model.js";
 import CourseSch from "../Models/courses.model.sch.js";
- 
+
 /**
  * FAST UPDATE — Only updates the specific assessment/discussion that changed,
  * then recalculates ONLY its quarter + semester + final grade.
@@ -31,7 +31,7 @@ const getLetterGrade = async (gradingScale, percentage) => {
   }
 };
 
-const percentageToGPA = async (courseId,percentage) => {
+const percentageToGPA = async (courseId, percentage) => {
   try {
     // 1️⃣ Fetch GPA scale from DB (assuming only one GPA scale document)
     const gpaDoc = await GPA.findOne();
@@ -52,6 +52,46 @@ const percentageToGPA = async (courseId,percentage) => {
   }
 };
 
+const getStandardPoints = async (courseId, percentage) => {
+  try {
+    const standardGrading = await StandardGrading.findOne({});
+
+    if (!standardGrading || !standardGrading.scale || standardGrading.scale.length === 0) {
+      console.error("Standard grading scale not found in the database.");
+      return 0.0;
+    }
+
+    const match = standardGrading.scale.find(scale =>
+      percentage >= scale.minPercentage && percentage <= scale.maxPercentage
+    );
+
+    return match ? scale.points : 0.0;
+  } catch (error) {
+    console.error("Error getting standard points:", error);
+    return 0.0;
+  }
+};
+
+const getStandardRemarks = async (courseId, percentage) => {
+  try {
+    const standardGrading = await StandardGrading.findOne({});
+
+    if (!standardGrading || !standardGrading.scale || standardGrading.scale.length === 0) {
+      console.error("Standard grading scale not found in the database.");
+      return "N/A";
+    }
+
+    const match = standardGrading.scale.find(scale =>
+      percentage >= scale.minPercentage && percentage <= scale.maxPercentage
+    );
+
+    return match ? scale.remarks : "N/A";
+  } catch (error) {
+    console.error("Error getting standard remarks:", error);
+    return "N/A";
+  }
+};
+
 export async function updateGradebookOnSubmission(studentId, courseId, itemId, type) {
   console.log("=== GRADEBOOK UPDATE STARTED ===");
 
@@ -59,6 +99,8 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
     // 1️⃣ Fetch course & grading system
     const course = await CourseSch.findById(courseId).lean();
     const gradingSystem = course?.gradingSystem || "normalGrading";
+
+    console.log("working 1");
 
     // 2️⃣ Fetch or create gradebook
     let gradebook = await Gradebook.findOne({ studentId, courseId });
@@ -75,6 +117,8 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
         finalRemarks: "N/A",
       });
     }
+
+    console.log("working 2");
 
     // 3️⃣ Load assessment/discussion item
     let item, studentPoints, maxPoints;
@@ -122,6 +166,9 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
       return false;
     }
 
+    console.log("working 3");
+
+
     // 4️⃣ Prepare item object
     const isCourseBased = !item.semester && !item.quarter;
     const newItem = {
@@ -135,6 +182,9 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
     };
 
     const categories = await AssessmentCategory.find({ course: courseId }).lean();
+
+    console.log("working 4");
+
 
     // ================================================================
     // #######################  COURSE-BASED ##########################
@@ -171,6 +221,8 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
         });
       }
 
+      console.log("working 5");
+
       gradebook.finalPercentage = Number(finalPerc.toFixed(2)) || 0;
 
       // Update Letters/GPA
@@ -186,6 +238,8 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
       await gradebook.save();
       return true;
     }
+
+    console.log("working 6");
 
     // ================================================================
     // #################### SEMESTER-BASED GRADEBOOK ##################
@@ -206,6 +260,9 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
       semIndex = gradebook.semesters.length - 1;
     }
 
+    console.log("working 7");
+
+
     const semesterBlock = gradebook.semesters[semIndex];
 
     // Find/Create Quarter
@@ -221,6 +278,8 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
       qIndex = semesterBlock.quarters.length - 1;
     }
 
+    console.log("working 8");
+
     const quarterBlock = semesterBlock.quarters[qIndex];
 
     // UPSERT ITEM with new score
@@ -228,6 +287,8 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
       ...quarterBlock.items.filter((i) => i.itemId.toString() !== itemId.toString()),
       newItem,
     ];
+
+    console.log("working 9");
 
     // ---------- Quarter Calculation ----------
     let quarterPerc = 0;
@@ -252,6 +313,9 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
     }
 
     quarterBlock.gradePercentage = Number(quarterPerc.toFixed(2));
+
+    console.log("working 10");
+
 
     // ---------- Semester Calculation ----------
     const semAvg = semesterBlock.quarters.reduce((sum, q) => sum + q.gradePercentage, 0) / semesterBlock.quarters.length;
