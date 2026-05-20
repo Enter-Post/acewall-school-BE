@@ -31,7 +31,7 @@ const getLetterGrade = async (gradingScale, percentage) => {
   }
 };
 
-const percentageToGPA = async (percentage) => {
+const percentageToGPA = async (courseId,percentage) => {
   try {
     // 1️⃣ Fetch GPA scale from DB (assuming only one GPA scale document)
     const gpaDoc = await GPA.findOne();
@@ -267,10 +267,10 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
       quarterBlock.letterGrade = await getLetterGrade(courseId, quarterPerc);
       semesterBlock.letterGrade = await getLetterGrade(courseId, semesterBlock.gradePercentage);
     } else {
-      gradebook.finalGPA = await getStandardPoints(courseId, gradebook.finalPercentage);
+      gradebook.finalGPA = await percentageToGPA(courseId, gradebook.finalPercentage);
       gradebook.finalRemarks = await getStandardRemarks(courseId, gradebook.finalPercentage);
-      quarterBlock.gpa = await getStandardPoints(courseId, quarterPerc);
-      semesterBlock.gpa = await getStandardPoints(courseId, semesterBlock.gradePercentage);
+      quarterBlock.gpa = await percentageToGPA(courseId, quarterPerc);
+      semesterBlock.gpa = await percentageToGPA(courseId, semesterBlock.gradePercentage);
     }
 
     // 🟢 CRITICAL: Force Mongoose to save nested changes
