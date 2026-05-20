@@ -536,11 +536,11 @@ CONTENT RULES BY TYPE:
   • No bullet points
 
 - If usedfor = "teachingPoints":
-  • Output 1–12 concise bullet points
+  • Output 1–12 concise bullet points and each should be less then 120 characters
   • Each point should be actionable and instructional
 
 - If usedfor = "requirements":
-  • Output 1–12 concise bullet points
+  • Output 1–12 concise bullet points and each should be less then 120 characters
   • Each point should be actionable and instructional  
 
 - If usedfor = "chapterTitle":
