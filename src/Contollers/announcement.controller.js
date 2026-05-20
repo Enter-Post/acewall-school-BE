@@ -156,6 +156,9 @@ export const createAnnouncement = async (req, res) => {
       console.log("Announcement emails sent");
     }
 
+    await announcement.populate("course", "courseTitle _id thumbnail");
+    await announcement.populate("teacher", "firstName lastName email role _id");
+
     res.status(201).json({
       message: "Announcement created and emails sent successfully.",
       announcement,
