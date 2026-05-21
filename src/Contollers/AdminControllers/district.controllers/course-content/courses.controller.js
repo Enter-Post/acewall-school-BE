@@ -1,12 +1,6 @@
 import mongoose from "mongoose";
-import CourseSch from "../../../Models/courses.model.sch.js";
-import Semester from "../../../Models/semester.model.js";
-import Quarter from "../../../Models/quarter.model.js";
-import Chapter from "../../../Models/chapter.model.sch.js";
-import Lesson from "../../../Models/lesson.model.sch.js";
-import Assessment from "../../../Models/Assessment.model.js";
-import Discussion from "../../../Models/discussion.model.js";
-import Pages from "../../../Models/Pages.modal.js";
+import CourseSch from "../../../../Models/courses.model.sch.js";
+
 
 export const getCoursesOfteacher = async (req, res) => {
     const { teacherId, schoolId } = req.params;
@@ -336,26 +330,68 @@ export const getCourseHierarchy = async (req, res) => {
                 }
             },
             {
-                $lookup: {
-                    from: "semesters",
-                    localField: "semester",
-                    foreignField: "_id",
-                    as: "semesters",
-                    pipeline: [{ $match: { isDeleted: false } }]
+                $addFields: {
+                    courseSemesterIds: {
+                        $map: {
+                            input: { $ifNull: ["$semester", []] },
+                            as: "s",
+                            in: {
+                                $convert: {
+                                    input: { $cond: [{ $isNumber: "$$s" }, "$$s", { $ifNull: ["$$s._id", "$$s"] }] },
+                                    to: "objectId",
+                                    onError: { $cond: [{ $isNumber: "$$s" }, "$$s", { $ifNull: ["$$s._id", "$$s"] }] },
+                                    onNull: { $cond: [{ $isNumber: "$$s" }, "$$s", { $ifNull: ["$$s._id", "$$s"] }] }
+                                }
+                            }
+                        }
+                    },
+                    courseQuarterIds: {
+                        $map: {
+                            input: { $ifNull: ["$quarter", []] },
+                            as: "q",
+                            in: {
+                                $convert: {
+                                    input: { $cond: [{ $isNumber: "$$q" }, "$$q", { $ifNull: ["$$q._id", "$$q"] }] },
+                                    to: "objectId",
+                                    onError: { $cond: [{ $isNumber: "$$q" }, "$$q", { $ifNull: ["$$q._id", "$$q"] }] },
+                                    onNull: { $cond: [{ $isNumber: "$$q" }, "$$q", { $ifNull: ["$$q._id", "$$q"] }] }
+                                }
+                            }
+                        }
+                    }
                 }
             },
-            { $unwind: "$semesters" },
             {
                 $lookup: {
-                    from: "quarters",
-                    let: { semesterId: "$semesters._id", courseQuarters: "$quarter" },
+                    from: "semesters",
+                    let: { semesterIds: "$courseSemesterIds" },
                     pipeline: [
                         {
                             $match: {
                                 $expr: {
                                     $and: [
+                                        { $in: ["$_id", "$$semesterIds"] },
+                                        { $eq: ["$isDeleted", false] }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    as: "semesters"
+                }
+            },
+            { $unwind: { path: "$semesters", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "quarters",
+                    let: { semesterId: "$semesters._id", allowedQuarterIds: "$courseQuarterIds" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $in: ["$_id", "$$allowedQuarterIds"] },
                                         { $eq: ["$semester", "$$semesterId"] },
-                                        { $in: ["$_id", "$$courseQuarters"] },
                                         { $eq: ["$isDeleted", false] }
                                     ]
                                 }
@@ -364,11 +400,19 @@ export const getCourseHierarchy = async (req, res) => {
                         {
                             $lookup: {
                                 from: "chapters",
-                                localField: "_id",
-                                foreignField: "quarter",
-                                as: "chapters",
+                                let: { quarterId: "$_id" },
                                 pipeline: [
-                                    { $match: { isDeleted: false } },
+                                    {
+                                        $match: {
+                                            $expr: {
+                                                $and: [
+                                                    { $eq: ["$quarter", "$$quarterId"] },
+                                                    { $eq: ["$course", new mongoose.Types.ObjectId(courseId)] },
+                                                    { $eq: ["$isDeleted", false] }
+                                                ]
+                                            }
+                                        }
+                                    },
                                     // Chapter Assessments
                                     {
                                         $lookup: {
@@ -507,7 +551,8 @@ export const getCourseHierarchy = async (req, res) => {
                                             ]
                                         }
                                     }
-                                ]
+                                ],
+                                as: "chapters"
                             }
                         }
                     ],
