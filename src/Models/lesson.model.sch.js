@@ -6,7 +6,7 @@ const LessonSchema = new mongoose.Schema(
     description: { type: String, required: true },
     pdfFiles: [
       {
-        url: { type: String},
+        url: { type: String },
         public_id: { type: String },
         filename: { type: String },
         type: { type: String },
@@ -16,6 +16,11 @@ const LessonSchema = new mongoose.Schema(
     ],
     youtubeLinks: { type: String },
     otherLink: { type: String },
+    course: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Course",
+      required: true,
+    },
     chapter: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Chapter",

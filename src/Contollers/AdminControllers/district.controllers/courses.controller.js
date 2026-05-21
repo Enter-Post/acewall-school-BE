@@ -1,5 +1,12 @@
 import mongoose from "mongoose";
 import CourseSch from "../../../Models/courses.model.sch.js";
+import Semester from "../../../Models/semester.model.js";
+import Quarter from "../../../Models/quarter.model.js";
+import Chapter from "../../../Models/chapter.model.sch.js";
+import Lesson from "../../../Models/lesson.model.sch.js";
+import Assessment from "../../../Models/Assessment.model.js";
+import Discussion from "../../../Models/discussion.model.js";
+import Pages from "../../../Models/Pages.modal.js";
 
 export const getCoursesOfteacher = async (req, res) => {
     const { teacherId, schoolId } = req.params;
@@ -72,7 +79,7 @@ export const getCourseDetails = async (req, res) => {
             return res.status(400).json({ message: "Missing required parameters" });
         }
 
-        if(req.user.role !== "district_admin") {
+        if (req.user.role !== "district_admin") {
             return res.status(403).json({ message: "Forbidden" });
         }
 
@@ -161,6 +168,37 @@ export const getCourseDetails = async (req, res) => {
                 },
             },
             {
+                $addFields: {
+                    semesterCount: { $size: "$semester" },
+                    quarterCount: { $size: "$quarter" },
+                },
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "createdby",
+                    foreignField: "_id",
+                    as: "createdby",
+                    pipeline: [
+                        {
+                            $project: {
+                                _id: 1,
+                                firstName: 1,
+                                lastName: 1,
+                                email: 1,
+                                profileImg: 1,
+                            },
+                        },
+                    ],
+                },
+            },
+            {
+                $unwind: {
+                    path: "$createdby",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
                 $lookup: {
                     from: "assessments",
                     let: { courseId: "$_id" },
@@ -168,47 +206,98 @@ export const getCourseDetails = async (req, res) => {
                         {
                             $match: {
                                 $expr: {
-                                    $and: [
-                                        { $eq: ["$course", "$$courseId"] },
-                                        { $eq: ["$type", "Course-assessment"] },
-                                    ],
+                                    $eq: ["$course", "$$courseId"],
                                 },
                             },
                         },
-                        {
-                            $lookup: {
-                                from: "assessmentcategories",
-                                localField: "category",
-                                foreignField: "_id",
-                                as: "category",
-                            },
-                        },
-                        {
-                            $unwind: {
-                                path: "$category",
-                                preserveNullAndEmptyArrays: true,
-                            },
-                        },
                     ],
-                    as: "CourseAssessments",
+                    as: "assessmentsCount",
+                },
+            },
+            {
+                $addFields: {
+                    assessmentsCount: { $size: "$assessmentsCount" },
                 },
             },
             {
                 $lookup: {
                     from: "enrollments",
-                    let: { courseId: "$_id" },
-                    pipeline: [
-                        {
-                            $match: { $expr: { $eq: ["$course", "$$courseId"] } },
-                        },
-                        {
-                            $group: {
-                                _id: null,
-                                count: { $sum: 1 },
-                            },
-                        },
-                    ],
+                    localField: "_id",
+                    foreignField: "course",
                     as: "enrollmentsCount",
+                },
+            },
+            {
+                $addFields: {
+                    enrollmentsCount: { $size: "$enrollmentsCount" },
+                },
+            },
+            {
+                $lookup: {
+                    from: "chapters",
+                    localField: "_id",
+                    foreignField: "course",
+                    as: "chapterCount",
+                },
+            },
+            {
+                $addFields: {
+                    chapterCount: { $size: "$chapterCount" },
+                },
+            },
+            {
+                $lookup: {
+                    from: "lessons",
+                    localField: "_id",
+                    foreignField: "course",
+                    as: "lessonsCount",
+                },
+            },
+            {
+                $addFields: {
+                    lessonsCount: { $size: "$lessonsCount" },
+                },
+            },
+            {
+                $lookup: {
+                    from: "discussions",
+                    localField: "_id",
+                    foreignField: "course",
+                    as: "discussionsCount",
+                },
+            },
+            {
+                $addFields: {
+                    discussionsCount: { $size: "$discussionsCount" },
+                },
+            },
+
+            {
+                $lookup: {
+                    from: "pages",
+                    localField: "_id",
+                    foreignField: "course",
+                    as: "pagesCount",
+                },
+            },
+            {
+                $addFields: {
+                    pagesCount: { $size: "$pagesCount" },
+                },
+            },
+
+            {
+                $lookup: {
+                    from: "ratings",
+                    localField: "_id",
+                    foreignField: "course",
+                    as: "ratingsCount",
+                },
+            },
+            {
+                $addFields: {
+                    ratingsCount: { $size: "$ratingsCount" },
+                    starRating: { $avg: "$ratingsCount.star" }
                 },
             },
         ]);
@@ -226,5 +315,224 @@ export const getCourseDetails = async (req, res) => {
         res
             .status(500)
             .json({ message: "Internal Server Error", error: error.message });
+    }
+};
+
+export const getCourseHierarchy = async (req, res) => {
+    const { courseId } = req.params;
+    const { districtId } = req.user;
+
+    try {
+        if (!courseId || !districtId) {
+            return res.status(400).json({ message: "Missing required parameters" });
+        }
+
+        const hierarchy = await CourseSch.aggregate([
+            {
+                $match: {
+                    _id: new mongoose.Types.ObjectId(courseId),
+                    districtId: new mongoose.Types.ObjectId(districtId),
+                    isDeleted: false
+                }
+            },
+            {
+                $lookup: {
+                    from: "semesters",
+                    localField: "semester",
+                    foreignField: "_id",
+                    as: "semesters",
+                    pipeline: [{ $match: { isDeleted: false } }]
+                }
+            },
+            { $unwind: "$semesters" },
+            {
+                $lookup: {
+                    from: "quarters",
+                    let: { semesterId: "$semesters._id", courseQuarters: "$quarter" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$semester", "$$semesterId"] },
+                                        { $in: ["$_id", "$$courseQuarters"] },
+                                        { $eq: ["$isDeleted", false] }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            $lookup: {
+                                from: "chapters",
+                                localField: "_id",
+                                foreignField: "quarter",
+                                as: "chapters",
+                                pipeline: [
+                                    { $match: { isDeleted: false } },
+                                    // Chapter Assessments
+                                    {
+                                        $lookup: {
+                                            from: "assessments",
+                                            let: { chapterId: "$_id" },
+                                            pipeline: [
+                                                {
+                                                    $match: {
+                                                        $expr: {
+                                                            $and: [
+                                                                { $eq: ["$chapter", "$$chapterId"] },
+                                                                { $eq: ["$type", "chapter-assessment"] },
+                                                                { $eq: ["$isDeleted", false] }
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            ],
+                                            as: "assessments"
+                                        }
+                                    },
+                                    // Chapter Discussions
+                                    {
+                                        $lookup: {
+                                            from: "discussions",
+                                            let: { chapterId: "$_id" },
+                                            pipeline: [
+                                                {
+                                                    $match: {
+                                                        $expr: {
+                                                            $and: [
+                                                                { $eq: ["$chapter", "$$chapterId"] },
+                                                                { $eq: ["$type", "chapter"] },
+                                                                { $eq: ["$isDeleted", false] }
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            ],
+                                            as: "discussions"
+                                        }
+                                    },
+                                    // Chapter Pages
+                                    {
+                                        $lookup: {
+                                            from: "pages",
+                                            let: { chapterId: "$_id" },
+                                            pipeline: [
+                                                {
+                                                    $match: {
+                                                        $expr: {
+                                                            $and: [
+                                                                { $eq: ["$chapter", "$$chapterId"] },
+                                                                { $eq: ["$type", "chapter"] },
+                                                                { $eq: ["$isDeleted", false] }
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            ],
+                                            as: "pages"
+                                        }
+                                    },
+                                    // Lessons
+                                    {
+                                        $lookup: {
+                                            from: "lessons",
+                                            localField: "_id",
+                                            foreignField: "chapter",
+                                            as: "lessons",
+                                            pipeline: [
+                                                { $match: { isDeleted: false } },
+                                                // Lesson Assessments
+                                                {
+                                                    $lookup: {
+                                                        from: "assessments",
+                                                        let: { lessonId: "$_id" },
+                                                        pipeline: [
+                                                            {
+                                                                $match: {
+                                                                    $expr: {
+                                                                        $and: [
+                                                                            { $eq: ["$lesson", "$$lessonId"] },
+                                                                            { $eq: ["$type", "lesson-assessment"] },
+                                                                            { $eq: ["$isDeleted", false] }
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            }
+                                                        ],
+                                                        as: "assessments"
+                                                    }
+                                                },
+                                                // Lesson Discussions
+                                                {
+                                                    $lookup: {
+                                                        from: "discussions",
+                                                        let: { lessonId: "$_id" },
+                                                        pipeline: [
+                                                            {
+                                                                $match: {
+                                                                    $expr: {
+                                                                        $and: [
+                                                                            { $eq: ["$lesson", "$$lessonId"] },
+                                                                            { $eq: ["$type", "lesson"] },
+                                                                            { $eq: ["$isDeleted", false] }
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            }
+                                                        ],
+                                                        as: "discussions"
+                                                    }
+                                                },
+                                                // Lesson Pages
+                                                {
+                                                    $lookup: {
+                                                        from: "pages",
+                                                        let: { lessonId: "$_id" },
+                                                        pipeline: [
+                                                            {
+                                                                $match: {
+                                                                    $expr: {
+                                                                        $and: [
+                                                                            { $eq: ["$lesson", "$$lessonId"] },
+                                                                            { $eq: ["$type", "lesson"] },
+                                                                            { $eq: ["$isDeleted", false] }
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            }
+                                                        ],
+                                                        as: "pages"
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ],
+                    as: "semesters.quarters"
+                }
+            },
+            {
+                $group: {
+                    _id: "$_id",
+                    courseTitle: { $first: "$courseTitle" },
+                    semesters: { $push: "$semesters" }
+                }
+            }
+        ]);
+
+        if (!hierarchy || hierarchy.length === 0) {
+            return res.status(404).json({ message: "Course hierarchy not found" });
+        }
+
+        res.status(200).json({
+            message: "Course hierarchy fetched successfully",
+            hierarchy: hierarchy[0]
+        });
+    } catch (error) {
+        console.error("Error in getCourseHierarchy:", error);
+        res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };
