@@ -12,15 +12,23 @@ import {
   getValidAccessToken,
   createOAuth2Client,
 } from "./googleDrive.controller.js";
+import fs from "fs";
+import path from "path";
+import os from "os";
+import { validateFileSecurity } from "../middlewares/fileSecurity.middleware.js";
+import { scanMalware } from "../middlewares/antivirus.middleware.js";
+import { sanitizeImages } from "../middlewares/imageSanitizer.middleware.js";
 
 const cloudinaryV2 = cloudinary.v2;
 
 const getResourceType = (mimeType) => {
-  if (!mimeType) return "auto";
+  if (!mimeType) return "raw"; // Hardened: never use auto
   if (mimeType.startsWith("video/")) return "video";
   if (mimeType.startsWith("image/")) return "image";
-  if (mimeType === "application/pdf" || mimeType.includes("document") || mimeType.includes("msword") || mimeType.includes("officedocument")) return "raw";
-  return "auto";
+  
+  // Default anything else (PDFs, Word docs, unknown types, HTML) to raw
+  // This guarantees Content-Disposition: attachment, preventing XSS
+  return "raw";
 };
 
 const generatePublicId = (fileName) => {
@@ -54,6 +62,29 @@ const uploadStreamToCloudinary = (fileStream, fileName, mimeType) => {
   });
 };
 
+const runSecurityPipeline = async (tempFilePath, originalname, mimetype, size) => {
+  return new Promise((resolve, reject) => {
+    const mockFile = { path: tempFilePath, originalname, mimetype, size };
+    const mockReq = { file: mockFile };
+    const mockRes = {
+      status: (code) => ({
+        json: (data) => reject(new Error(`Security block [${code}]: ${data.message || data.error}`))
+      })
+    };
+
+    validateFileSecurity(mockReq, mockRes, (err) => {
+      if (err) return reject(err);
+      scanMalware(mockReq, mockRes, (err2) => {
+        if (err2) return reject(err2);
+        sanitizeImages(mockReq, mockRes, (err3) => {
+          if (err3) return reject(err3);
+          resolve(mockReq.file);
+        });
+      });
+    });
+  });
+};
+
 export const uploadFromGoogleDrive = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
   const { fileId, fileName, mimeType } = req.body;
@@ -78,11 +109,38 @@ export const uploadFromGoogleDrive = asyncHandler(async (req, res) => {
     { responseType: "stream", timeout: 300000 }
   );
 
+  const tempFilePath = path.join(os.tmpdir(), `gd_${Date.now()}_${fileId}`);
+  const writer = fs.createWriteStream(tempFilePath);
+  response.data.pipe(writer);
+
+  await new Promise((resolve, reject) => {
+    writer.on("finish", resolve);
+    writer.on("error", reject);
+  });
+
+  let secureFile;
+  try {
+    secureFile = await runSecurityPipeline(
+      tempFilePath,
+      fileMetadata.data.name || fileName || "untitled",
+      fileMetadata.data.mimeType || mimeType,
+      fileSize
+    );
+  } catch (secError) {
+    if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+    throw new ValidationError(secError.message, "SEC_001");
+  }
+
+  const secureStream = fs.createReadStream(secureFile.path);
+
   const uploadResult = await uploadStreamToCloudinary(
-    response.data,
-    fileMetadata.data.name || fileName || "untitled",
-    fileMetadata.data.mimeType || mimeType
+    secureStream,
+    secureFile.originalname,
+    secureFile.mimetype
   );
+
+  if (fs.existsSync(secureFile.path)) fs.unlinkSync(secureFile.path);
+  if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
 
   return res.status(200).json({
     success: true,
@@ -143,11 +201,38 @@ export const uploadMultipleFromGoogleDrive = asyncHandler(async (req, res) => {
         { responseType: "stream" }
       );
 
+      const tempFilePath = path.join(os.tmpdir(), `gd_multi_${Date.now()}_${file.fileId}`);
+      const writer = fs.createWriteStream(tempFilePath);
+      response.data.pipe(writer);
+
+      await new Promise((resolve, reject) => {
+        writer.on("finish", resolve);
+        writer.on("error", reject);
+      });
+
+      let secureFile;
+      try {
+        secureFile = await runSecurityPipeline(
+          tempFilePath,
+          fileMetadata.data.name || file.fileName || "untitled",
+          fileMetadata.data.mimeType || file.mimeType,
+          fileSize
+        );
+      } catch (secError) {
+        if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+        throw new Error(secError.message);
+      }
+
+      const secureStream = fs.createReadStream(secureFile.path);
+
       const uploadResult = await uploadStreamToCloudinary(
-        response.data,
-        fileMetadata.data.name || file.fileName || "untitled",
-        fileMetadata.data.mimeType || file.mimeType
+        secureStream,
+        secureFile.originalname,
+        secureFile.mimetype
       );
+
+      if (fs.existsSync(secureFile.path)) fs.unlinkSync(secureFile.path);
+      if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
 
       results.push({
         url: uploadResult.secure_url,

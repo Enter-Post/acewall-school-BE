@@ -11,13 +11,29 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export const uploadToCloudinary = async (fileBuffer, folder = "") => {
+import { fileTypeFromBuffer } from 'file-type';
+
+export const uploadToCloudinary = async (fileBuffer, folder = "", resourceType = null) => {
   try {
+    // Hardening: Strict resource_type detection from magic bytes
+    let finalResourceType = "raw"; // Default safest
+    if (resourceType) {
+      finalResourceType = resourceType;
+    } else {
+      const type = await fileTypeFromBuffer(fileBuffer);
+      if (type) {
+        if (type.mime.startsWith('image/')) finalResourceType = 'image';
+        else if (type.mime.startsWith('video/')) finalResourceType = 'video';
+      }
+    }
+
     const result = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder,
-          resource_type: "auto",
+          resource_type: finalResourceType,
+          // If it's a raw file, Cloudinary will force Content-Disposition attachment, preventing XSS
+          format: finalResourceType === 'raw' ? undefined : undefined // raw ignores format conversions anyway
         },
         (error, result) => {
           if (result) {
