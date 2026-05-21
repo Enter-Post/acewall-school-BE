@@ -31,8 +31,8 @@ const SchCourseSchema = new mongoose.Schema(
       uploadedAt: { type: Date, default: Date.now },
       source: { type: String, default: "local" },
     },
-    teachingPoints: [{ type: String, maxlength: 120, minlength: 1 }],
-    requirements: [{ type: String, maxlength: 120, minlength: 1 }],
+    teachingPoints: [{ type: String, maxlength: 200, minlength: 1 }],
+    requirements: [{ type: String, maxlength: 200, minlength: 1 }],
     createdby: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

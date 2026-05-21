@@ -36,9 +36,13 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({
+const rawUpload = multer({
   storage,
-  limits: { fileSize: FILE_SIZE_LIMIT },
+  limits: { 
+    fileSize: FILE_SIZE_LIMIT,
+    files: 10,
+    fields: 50
+  },
 
   fileFilter: (req, file, cb) => {
     if (
@@ -52,5 +56,17 @@ const upload = multer({
     }
   },
 });
+
+import { validateFileSecurity } from "../middlewares/fileSecurity.middleware.js";
+import { sanitizeImages } from "../middlewares/imageSanitizer.middleware.js";
+import { scanMalware } from "../middlewares/antivirus.middleware.js";
+import { uploadRateLimiter } from "../middlewares/rateLimiter.middleware.js";
+
+const upload = {
+  single: (fieldName) => [uploadRateLimiter, rawUpload.single(fieldName), validateFileSecurity, scanMalware, sanitizeImages],
+  array: (fieldName, maxCount) => [uploadRateLimiter, rawUpload.array(fieldName, maxCount), validateFileSecurity, scanMalware, sanitizeImages],
+  fields: (fields) => [uploadRateLimiter, rawUpload.fields(fields), validateFileSecurity, scanMalware, sanitizeImages],
+  any: () => [uploadRateLimiter, rawUpload.any(), validateFileSecurity, scanMalware, sanitizeImages],
+};
 
 export { upload };

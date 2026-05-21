@@ -10,6 +10,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import session from "express-session";
 import passport from "passport";
+import { secureFileServe } from "./middlewares/secureFileServe.middleware.js";
 import swaggerUi from 'swagger-ui-express';
 import { specs } from './config/swagger.js';
 import { connectDB } from "./lib/connectDB.js";
@@ -128,7 +129,7 @@ app.get("/jwks.json", async (req, res) => {
   }
 });
 
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.get("/uploads/:folder/:file", secureFileServe);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -149,7 +150,6 @@ app.use(
   }),
 );
 
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Required for SAML POST data
 app.use(cookieParser());
