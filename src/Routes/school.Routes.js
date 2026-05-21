@@ -22,9 +22,11 @@ import {
   deleteSchool,
   syncSchoolExternalId,
   getSchoolsForDropdown,
+  getSchoolStats,
 } from "../Contollers/school.controller.js";
 import * as PERMISSIONS from "../modules/rbac/permissions.js";
 import { ROLES } from "../modules/rbac/roles.js";
+import { upload } from "../lib/DSmulter.config.js";
 
 const router = express.Router();
 
@@ -78,8 +80,9 @@ const router = express.Router();
  *         description: School with email already exists
  */
 router.post(
-  "/",
+  "/create",
   isUser,
+  upload.single("schoolLogo"),
   requirePermission(PERMISSIONS.SCHOOL_CREATE),
   enforceDistrictCreation,
   createSchool
@@ -300,5 +303,7 @@ router.patch(
   verifySchoolAccess,
   syncSchoolExternalId
 );
+
+router.get("/:schoolId/stats", isUser, getSchoolStats);
 
 export default router;

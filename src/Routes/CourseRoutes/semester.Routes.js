@@ -1,5 +1,5 @@
 import express from "express";
-import { createSemester, editSemester, getSemester, getSemesterwithQuarter, selectingNewSemesterwithQuarter } from "../../Contollers/CourseControllers/semester.controller.js";
+import { createSemester, getSemester, getSemesterwithQuarter, selectingNewSemesterwithQuarter } from "../../Contollers/CourseControllers/semester.controller.js";
 import { isUser } from "../../middlewares/Auth.Middleware.js";
 
 const router = express.Router();
@@ -343,93 +343,5 @@ router.get("/getSemesterwithQuarter", isUser, getSemesterwithQuarter);
  */
 router.post("/selectingNewSemesterwithQuarter/:courseId", isUser, selectingNewSemesterwithQuarter);
 
-/**
- * @swagger
- * /api/semester/editSemester/{semesterId}:
- *   put:
- *     summary: Update semester details
- *     tags: [Semester]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: semesterId
- *         required: true
- *         schema:
- *           type: string
- *         description: Semester ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 description: Updated semester name
- *               year:
- *                 type: integer
- *                 description: Updated academic year
- *               startDate:
- *                 type: string
- *                 format: date
- *                 description: Updated start date (YYYY-MM-DD)
- *               endDate:
- *                 type: string
- *                 format: date
- *                 description: Updated end date (YYYY-MM-DD)
- *               description:
- *                 type: string
- *                 description: Updated semester description
- *               isActive:
- *                 type: boolean
- *                 description: Updated active status
- *     responses:
- *       200:
- *         description: Semester updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 message:
- *                   type: string
- *                 data:
- *                   type: object
- *                   properties:
- *                     _id:
- *                       type: string
- *                     name:
- *                       type: string
- *                     year:
- *                       type: integer
- *                     startDate:
- *                       type: string
- *                       format: date
- *                     endDate:
- *                       type: string
- *                       format: date
- *                     description:
- *                       type: string
- *                     isActive:
- *                       type: boolean
- *                     updatedAt:
- *                       type: string
- *                       format: date-time
- *       400:
- *         description: Invalid input data
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       404:
- *         description: Semester not found
- *       401:
- *         description: Unauthorized
- */
-router.put("/editSemester/:semesterId", isUser, editSemester);
 
 export default router;

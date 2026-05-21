@@ -16,12 +16,6 @@ const StanderdgradingScaleSchema = new mongoose.Schema({
         required: true,
         index: true,
     },
-    schoolId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "School",
-        required: true,
-        index: true
-    },
     isDeleted: { type: Boolean, default: false }
 });
 

@@ -18,7 +18,7 @@ import {
   getDeletedAssessments,
   restoreAssessment,
 } from "../Contollers/Assessment.controller.js";
-import { upload } from "../lib/multer.config.js";
+import { upload, safeAnyUpload } from "../lib/multer.config.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { getResultsMiddleware } from "../middlewares/isSubmitted.middleware.js";
 import { loginRateLimiter } from "../middlewares/rateLimiter.middleware.js";
@@ -509,6 +509,7 @@ router.get("/assessmentforTeacher/:assessmentId", isUser, getAssesmentbyID);
  *               - title
  *               - course
  *               - type
+
  *             properties:
  *               title:
  *                 type: string
@@ -555,7 +556,7 @@ router.get("/assessmentforTeacher/:assessmentId", isUser, getAssesmentbyID);
  *       401:
  *         description: Unauthorized
  */
-router.post("/createAssessment/updated", upload.any(), isUser, loginRateLimiter, createAssessment_updated);
+router.post("/createAssessment/updated", safeAnyUpload, isUser, loginRateLimiter, createAssessment_updated);
 router.put(`/setDueDateForStudent/:assessmentId`, isUser, setDueDateForStudent);
 router.put("/setAllowResubmission/:assessmentId", isUser, settingAllowResubmission);
 router.put("/updateLatePolicy/:assessmentId", isUser, updateLatePolicy);

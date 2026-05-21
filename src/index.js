@@ -10,6 +10,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import session from "express-session";
 import passport from "passport";
+import { secureFileServe } from "./middlewares/secureFileServe.middleware.js";
 import swaggerUi from 'swagger-ui-express';
 import { specs } from './config/swagger.js';
 import { connectDB } from "./lib/connectDB.js";
@@ -67,6 +68,12 @@ import { requestLogger, errorLogger } from "./middlewares/activityLog.middleware
 import activityLogRoutes from "./Routes/activityLog.Routes.js";
 import schoolRoutes from "./Routes/school.Routes.js";
 import districtRoutes from "./Routes/District.Routes.js";
+import districtAuthRoutes from "./Routes/AdminRoutes/districtRoutes/districtauth.routes.js";
+import gradesRoutes from "./Routes/AdminRoutes/districtRoutes/districtgrade.routes.js";
+import gradingPeriodRoutes from "./Routes/AdminRoutes/districtRoutes/gradingPeriod.routes.js";
+import disCourseRoutes from "./Routes/AdminRoutes/districtRoutes/course-content/courses.routes.js";
+import contentRoutes from "./Routes/AdminRoutes/districtRoutes/course-content/content.routes.js";
+
 import { importSPKI, exportJWK } from "jose";
 import fs from "fs";
 
@@ -122,7 +129,7 @@ app.get("/jwks.json", async (req, res) => {
   }
 });
 
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.get("/uploads/:folder/:file", secureFileServe);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -143,7 +150,6 @@ app.use(
   }),
 );
 
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Required for SAML POST data
 app.use(cookieParser());
@@ -251,6 +257,11 @@ app.use("/api/lti", ltiRoutes);
 app.use("/api/schools", schoolRoutes);
 app.use("/api/districts", districtRoutes);
 
+app.use("/api/admin/district/users", districtAuthRoutes);
+app.use("/api/admin/district/grades", gradesRoutes);
+app.use("/api/admin/district/gradingPeriod", gradingPeriodRoutes);
+app.use("/api/admin/district/courses", disCourseRoutes);
+app.use("/api/admin/district/courses/content", contentRoutes);
 
 // Swagger API Documentation
 app.use('/api/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {

@@ -587,9 +587,9 @@ export const setGradingScale = async (req, res) => {
 };
 
 export const getGradingScale = async (req, res) => {
-  const { districtId, schoolId } = req.user;
+  const { districtId } = req.user;
   try {
-    const scaleDoc = await GradingScale.findOne({ districtId, schoolId });
+    const scaleDoc = await GradingScale.findOne({ districtId });
     const scale = scaleDoc?.scale
       ? [...scaleDoc.scale].sort((a, b) => b.max - a.max)
       : null;

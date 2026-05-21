@@ -30,14 +30,14 @@ export const getRecieverSocketId = (userId) => {
 };
 
 io.on("connection", (socket) => {
-  console.log(`User connected: ${socket.id}`);
+  // console.log(`User connected: ${socket.id}`);
 
   const userId = socket.handshake.query.userId;
 
   if (userId) {
     // Map user ID to socket ID
     userSocketMap[userId] = socket.id;
-    console.log(`User ${userId} connected with socket ${socket.id}`);
+    // console.log(`User ${userId} connected with socket ${socket.id}`);
 
     // Broadcast online users to all clients
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
@@ -45,7 +45,7 @@ io.on("connection", (socket) => {
 
   // Handle disconnection
   socket.on("disconnect", () => {
-    console.log(`User disconnected: ${socket.id}`);
+    // console.log(`User disconnected: ${socket.id}`);
 
     // Find and remove the user from userSocketMap
     const disconnectedUserId = Object.keys(userSocketMap).find(
@@ -53,7 +53,7 @@ io.on("connection", (socket) => {
     );
 
     if (disconnectedUserId) {
-      console.log(`User ${disconnectedUserId} disconnected`);
+      // console.log(`User ${disconnectedUserId} disconnected`);
       delete userSocketMap[disconnectedUserId];
 
       // Clean up typing indicators for this user
@@ -71,7 +71,7 @@ io.on("connection", (socket) => {
 
 // For debugging
 setInterval(() => {
-  console.log("Current online users:", Object.keys(userSocketMap).length);
+  // console.log("Current online users:", Object.keys(userSocketMap).length);
 }, 60000); // Log every minute
 
 export { app, server, io };

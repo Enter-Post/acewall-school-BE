@@ -1,4 +1,5 @@
 import { uploadToCloudinary } from "../../lib/cloudinary-course.config.js";
+import Chapter from "../../Models/chapter.model.sch.js";
 import Lesson from "../../Models/lesson.model.sch.js";
 import { v2 as cloudinary } from "cloudinary";
 
@@ -9,6 +10,8 @@ export const createLesson = async (req, res) => {
   const pdfFiles = req.files;
 
   try {
+    const chapterCreated = await Chapter.findById(chapter);
+
     let uploadedFiles = [];
 
     // Handle local PDF files
@@ -52,6 +55,7 @@ export const createLesson = async (req, res) => {
       otherLink,
       pdfFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined, // If no PDF files, set as undefined
       chapter,
+      course: chapterCreated.course,
       schoolId,
       districtId,
       createdby,

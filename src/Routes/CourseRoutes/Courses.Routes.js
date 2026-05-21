@@ -408,7 +408,7 @@ router.put(`/archive/:courseId`, isUser, archivedCourse);
  *       500:
  *         description: Server error
  */
-router.get("/all", getAllCoursesSch);
+router.get("/all", isUser, getAllCoursesSch);
 
 /**
  * @swagger

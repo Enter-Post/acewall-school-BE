@@ -4,9 +4,9 @@ import Semester from "../../Models/semester.model.js";
 
 export const createSemester = async (req, res) => {
   const { title, startDate, endDate } = req.body;
-  // const { districtId, schoolId } = req.user
+  const { districtId } = req.user
   try {
-    const newSemester = new Semester({ title, startDate, endDate, districtId, schoolId });
+    const newSemester = new Semester({ title, startDate, endDate, districtId });
     await newSemester.save();
     res
       .status(201)
@@ -18,9 +18,9 @@ export const createSemester = async (req, res) => {
 };
 
 export const getSemester = async (req, res) => {
-  const { districtId, schoolId } = req.user
+  const { districtId } = req.user
   try {
-    const semesters = await Semester.find({ districtId, schoolId });
+    const semesters = await Semester.find({ districtId });
     res
       .status(200)
       .json({ message: "Semesters found successfully", semesters });
@@ -31,7 +31,7 @@ export const getSemester = async (req, res) => {
 };
 
 export const getSemesterwithQuarter = async (req, res) => {
-  const { districtId, schoolId } = req.user
+  const { districtId } = req.user
   try {
     const semesters = await Semester.aggregate([
       {
@@ -44,8 +44,7 @@ export const getSemesterwithQuarter = async (req, res) => {
                 $expr: {
                   $and: [
                     { $eq: ["$semester", "$$semesterId"] },
-                    { $eq: ["$districtId", new mongoose.Types.ObjectId(districtId)] },
-                    { $eq: ["$schoolId", new mongoose.Types.ObjectId(schoolId)] }
+                    { $eq: ["$districtId", new mongoose.Types.ObjectId(districtId)] }
                   ]
                 }
               }
@@ -56,8 +55,7 @@ export const getSemesterwithQuarter = async (req, res) => {
       },
       {
         $match: {
-          districtId: new mongoose.Types.ObjectId(districtId),
-          schoolId: new mongoose.Types.ObjectId(schoolId)
+          districtId: new mongoose.Types.ObjectId(districtId)
         }
       },
       {
@@ -118,69 +116,6 @@ export const selectingNewSemesterwithQuarter = async (req, res) => {
     });
   } catch (error) {
     console.log("error in SelectingNewSemesterwithQuarter", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
-export const archivedSemester = async (req, res) => {
-  const { isArchived } = req.body;
-  const { semesterId } = req.params;
-  try {
-    const semesters = await Semester.findByIdAndUpdate(
-      semesterId,
-      {
-        isArchived,
-      },
-      {
-        new: true,
-      }
-    );
-    res
-      .status(200)
-      .json({ message: "Semesters found successfully", semesters });
-  } catch (error) {
-    console.log("error in getting semester", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
-
-export const editSemester = async (req, res) => {
-  const { semesterId } = req.params;
-  const { title, startDate, endDate } = req.body;
-
-  try {
-    // Check for another semester in the same course with the same title (case-insensitive)
-    const existingSemester = await Semester.findOne({
-      _id: { $ne: semesterId }, // exclude the one being edited
-      title: { $regex: new RegExp(`^${title}$`, "i") }, // case-insensitive match
-    });
-
-    if (existingSemester) {
-      return res.status(400).json({
-        success: false,
-        message: "Another semester with the same title already exists in this course."
-      });
-    }
-
-    // Update semester
-    const updatedSemester = await Semester.findByIdAndUpdate(
-      semesterId,
-      { title, startDate, endDate },
-      { new: true }
-    );
-
-    if (!updatedSemester) {
-      return res.status(404).json({ message: "Semester not found" });
-    }
-
-    res.status(200).json({
-      message: "Semester updated successfully",
-      updatedSemester
-    });
-
-  } catch (error) {
-    console.log("error in editing semester", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };

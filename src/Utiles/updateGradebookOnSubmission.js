@@ -16,12 +16,11 @@ import CourseSch from "../Models/courses.model.sch.js";
  * then recalculates ONLY its quarter + semester + final grade.
  */
 
-const getLetterGrade = async (gradingScale, percentage, districtId, schoolId) => {
+const getLetterGrade = async (gradingScale, percentage, districtId) => {
   try {
     // Make sure to await the promise returned by find() method
     const match = await GradingScale.findOne({
       districtId,
-      schoolId,
       scale: {
         $elemMatch: {
           min: { $lte: percentage },
@@ -37,10 +36,10 @@ const getLetterGrade = async (gradingScale, percentage, districtId, schoolId) =>
   }
 };
 
-const percentageToGPA = async (percentage, districtId, schoolId) => {
+const percentageToGPA = async (percentage, districtId ) => {
   try {
     // 1️⃣ Fetch GPA scale from DB
-    const gpaDoc = await GPA.findOne({ districtId, schoolId });
+    const gpaDoc = await GPA.findOne({ districtId });
     if (!gpaDoc || !gpaDoc.gpaScale || gpaDoc.gpaScale.length === 0) {
       console.error("GPA scale not found in the database.");
       return 0.0;
@@ -58,11 +57,10 @@ const percentageToGPA = async (percentage, districtId, schoolId) => {
   }
 };
 
-const getStandardPoints = async (courseId, percentage, districtId, schoolId) => {
+const getStandardPoints = async (courseId, percentage, districtId) => {
   try {
     const standardGrading = await StandardGrading.findOne({
       districtId,
-      schoolId,
       isDeleted: false
     });
 
@@ -82,11 +80,10 @@ const getStandardPoints = async (courseId, percentage, districtId, schoolId) => 
   }
 };
 
-const getStandardRemarks = async (courseId, percentage, districtId, schoolId) => {
+const getStandardRemarks = async (courseId, percentage, districtId) => {
   try {
     const standardGrading = await StandardGrading.findOne({
       districtId,
-      schoolId,
       isDeleted: false
     });
 
@@ -252,7 +249,7 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
     // Find/Create Semester
     let semIndex = gradebook.semesters.findIndex((s) => s.semesterId.toString() === semesterId);
     if (semIndex === -1) {
-      const semDoc = await Semester.findOne({ _id: semesterId, districtId, schoolId }).lean();
+      const semDoc = await Semester.findOne({ _id: semesterId, districtId }).lean();
       gradebook.semesters.push({
         semesterId,
         semesterTitle: semDoc?.title || "Unknown Semester",
@@ -267,7 +264,7 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
     // Find/Create Quarter
     let qIndex = semesterBlock.quarters.findIndex((q) => q.quarterId.toString() === quarterId);
     if (qIndex === -1) {
-      const quarterDoc = await Quarter.findOne({ _id: quarterId, districtId, schoolId }).lean();
+      const quarterDoc = await Quarter.findOne({ _id: quarterId, districtId }).lean();
       semesterBlock.quarters.push({
         quarterId,
         quarterTitle: quarterDoc?.title || "Unknown Quarter",
@@ -319,14 +316,14 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
 
     // ---------- Update Final Grades/GPA ----------
     if (gradingSystem === "normalGrading") {
-      gradebook.finalLetterGrade = await getLetterGrade(courseId, gradebook.finalPercentage, districtId, schoolId);
-      quarterBlock.letterGrade = await getLetterGrade(courseId, quarterPerc, districtId, schoolId);
-      semesterBlock.letterGrade = await getLetterGrade(courseId, semesterBlock.gradePercentage, districtId, schoolId);
+      gradebook.finalLetterGrade = await getLetterGrade(courseId, gradebook.finalPercentage, districtId);
+      quarterBlock.letterGrade = await getLetterGrade(courseId, quarterPerc, districtId);
+      semesterBlock.letterGrade = await getLetterGrade(courseId, semesterBlock.gradePercentage, districtId);
     } else {
-      gradebook.finalGPA = await getStandardPoints(courseId, gradebook.finalPercentage, districtId, schoolId);
-      gradebook.finalRemarks = await getStandardRemarks(courseId, gradebook.finalPercentage, districtId, schoolId);
-      quarterBlock.gpa = await getStandardPoints(courseId, quarterPerc, districtId, schoolId);
-      semesterBlock.gpa = await getStandardPoints(courseId, semesterBlock.gradePercentage, districtId, schoolId);
+      gradebook.finalGPA = await getStandardPoints(courseId, gradebook.finalPercentage, districtId);
+      gradebook.finalRemarks = await getStandardRemarks(courseId, gradebook.finalPercentage, districtId);
+      quarterBlock.gpa = await getStandardPoints(courseId, quarterPerc, districtId);
+      semesterBlock.gpa = await getStandardPoints(courseId, semesterBlock.gradePercentage, districtId);
     }
 
     // 🟢 CRITICAL: Force Mongoose to save nested changes

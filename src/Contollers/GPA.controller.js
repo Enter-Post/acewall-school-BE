@@ -1,39 +1,9 @@
 import GPA from "../Models/GPA.model.js"
 
-export const setGPAscale = async (req, res) => {
-    const { districtId, schoolId } = req.user
-    const { gpaScale } = req.body;
-
-    if (!Array.isArray(gpaScale) || gpaScale.length === 0) {
-        return res.status(400).json({ error: "Scale must be a non-empty array." });
-    }
-
-    try {
-        const existing = await GPA.findOne({ districtId, schoolId });
-
-        if (existing) {
-            await GPA.findOneAndUpdate({ _id: existing._id }, { gpaScale });
-
-            return res.status(200).json({
-                message: "Grading scale updated successfully",
-            });
-        }
-
-        await GPA.create({ gpaScale, districtId, schoolId });
-
-        res.status(200).json({
-            message: "Grading scale saved successfully",
-        });
-    } catch (err) {
-        console.error("Error saving GPA:", err);
-        res.status(500).json({ error: "Internal server error" });
-    }
-};
-
 export const getGPAScale = async (req, res) => {
-    const { districtId, schoolId } = req.user
+    const { districtId } = req.user
     try {
-        const GPADoc = await GPA.findOne({ districtId, schoolId });
+        const GPADoc = await GPA.findOne({ districtId });
 
         const grade = GPADoc?.gpaScale
             ? [...GPADoc.gpaScale].sort((a, b) => b.maxPercentage - a.maxPercentage)
