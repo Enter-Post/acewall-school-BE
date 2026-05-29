@@ -103,14 +103,18 @@ export const getPosts = async (req, res) => {
       // Default: Show all Public posts OR Course posts from user's joined courses
       query = {
         $or: [
-          { postType: "public" },
-          { postType: "course", course: { $in: myCourseIds } }
+          { postType: "public", districtId, schoolId },
+          { postType: "course", course: { $in: myCourseIds }, districtId, schoolId }
         ]
       };
     }
 
+
+
     // 3️⃣ Execute Query
     query.isDeleted = false;
+
+    console.log("Query:", query)
     const totalPosts = await Posts.countDocuments(query);
     const posts = await Posts.find(query)
       .populate('author', '_id firstName middleName lastName profileImg')

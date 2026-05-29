@@ -36,7 +36,7 @@ const getLetterGrade = async (gradingScale, percentage, districtId) => {
   }
 };
 
-const percentageToGPA = async (percentage, districtId ) => {
+const percentageToGPA = async (percentage, districtId) => {
   try {
     // 1️⃣ Fetch GPA scale from DB
     const gpaDoc = await GPA.findOne({ districtId });
@@ -110,12 +110,14 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
     const gradingSystem = course?.gradingSystem || "normalGrading";
 
     // 2️⃣ Fetch or create gradebook
-    let gradebook = await Gradebook.findOne({ studentId, courseId });
+    let gradebook = await Gradebook.findOne({ studentId, courseId, districtId, schoolId });
 
     if (!gradebook) {
       gradebook = new Gradebook({
         studentId,
         courseId,
+        districtId,
+        schoolId,
         semesters: [],
         courseItems: [],
         finalPercentage: 0,
@@ -170,7 +172,6 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
 
       studentPoints = Number(comment.marksObtained) || 0;
       maxPoints = Number(item.totalMarks) || 0;
-
     } else {
       return false;
     }
@@ -188,6 +189,7 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
     };
 
     const categories = await AssessmentCategory.find({ course: courseId, districtId, schoolId }).lean();
+
 
     // ================================================================
     // #######################  COURSE-BASED ##########################
@@ -276,6 +278,7 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
 
     const quarterBlock = semesterBlock.quarters[qIndex];
 
+
     // UPSERT ITEM with new score
     quarterBlock.items = [
       ...quarterBlock.items.filter((i) => i.itemId.toString() !== itemId.toString()),
@@ -326,9 +329,11 @@ export async function updateGradebookOnSubmission(studentId, courseId, itemId, t
       semesterBlock.gpa = await getStandardPoints(courseId, semesterBlock.gradePercentage, districtId);
     }
 
+
     // 🟢 CRITICAL: Force Mongoose to save nested changes
     gradebook.markModified('semesters');
     gradebook.markModified('finalPercentage');
+
 
     await gradebook.save();
     console.log("=== GRADEBOOK UPDATED SUCCESSFULLY ===");

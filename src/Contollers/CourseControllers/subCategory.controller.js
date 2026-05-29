@@ -105,6 +105,8 @@ export const updateSubCategory = async (req, res) => {
       _id: { $ne: id },
       title: { $regex: new RegExp("^" + title + "$", "i") },
       category,
+      districtId,
+      schoolId
     });
 
     if (existing) {

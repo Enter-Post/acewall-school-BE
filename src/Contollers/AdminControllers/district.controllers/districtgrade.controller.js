@@ -65,7 +65,7 @@ export const setStandardGradingScale = async (req, res) => {
         return res.status(400).json({ error: "Scale must be a non-empty array." });
     }
     try {
-        const existing = await StandardGrading.findOne();
+        const existing = await StandardGrading.findOne({ districtId });
 
         if (existing) {
             await StandardGrading.findOneAndUpdate({ _id: existing._id }, { scale });

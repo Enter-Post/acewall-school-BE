@@ -2,8 +2,8 @@ import mongoose from "mongoose";
 
 export const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI,  {
-      dbName: "District-dev", // 👈 FORCE database here
+    await mongoose.connect(process.env.MONGODB_URI, {
+      dbName: "District-QA",
     });
     console.log("DB connected succcesfully");
   } catch (error) {

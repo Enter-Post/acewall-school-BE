@@ -4,10 +4,10 @@ import mongoose from "mongoose";
 const StanderdgradingScaleSchema = new mongoose.Schema({
     scale: [
         {
-            points: Number, // e.g., A, B+, C
-            remarks: String, // e.g., Excellent, Good, Average
-            minPercentage: Number, // minimum percentage
-            maxPercentage: Number, // maximum percentage
+            points: { type: Number, required: true }, // e.g., A, B+, C
+            remarks: { type: String, required: true }, // e.g., Excellent, Good, Average
+            minPercentage: { type: Number, required: true }, // minimum percentage
+            maxPercentage: { type: Number, required: true }, // maximum percentage
         },
     ],
     districtId: {
