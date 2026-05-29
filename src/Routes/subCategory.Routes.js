@@ -291,7 +291,7 @@ router.delete("/delete/:id", deleteSubcategory);
  *       401:
  *         description: Unauthorized
  */
-router.put("/subcategory/:id", updateSubCategory);
+router.put("/subcategory/:id", isUser, updateSubCategory);
 
 /**
  * @swagger
@@ -380,6 +380,6 @@ router.put("/subcategory/:id", updateSubCategory);
  *       401:
  *         description: Unauthorized
  */
-router.get("/getSubcategoryWithCategory/:id", isUser,getSubcategoruWithcategory);
+router.get("/getSubcategoryWithCategory/:id", isUser, getSubcategoruWithcategory);
 
 export default router;

@@ -14,6 +14,6 @@ export const getStandardGradingScale = async (req, res) => {
         return res.status(201).json({ message: "Standard Grading scale found", scale });
     } catch (err) {
         console.error("Error fetching grading scale:", err);
-        return null;
+        return res.status(500).json({ message: "Internal server error" });
     }
 };

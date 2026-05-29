@@ -13,64 +13,57 @@ import Discussion from "../Models/discussion.model.js";
 // ======================================================
 // 🔥 Helper Methods
 // ======================================================
-function getLetterFromScale(percent, districtId) {
-    return GradingScale.findOne({ districtId })
-        .then((gradingScale) => {
-            if (!gradingScale || !gradingScale.scale) return "N/A";
+function getLetterFromScale(percent, gradingScale) {
+    try {
+        if (!gradingScale || !gradingScale.scale) return "N/A";
 
-            const match = gradingScale.scale.find(
-                (s) => percent >= s.min && percent <= s.max
-            );
+        const match = gradingScale.scale.find(
+            (s) => percent >= s.min && percent <= s.max
+        );
 
-            if (!match) return "N/A";
+        if (!match) return "N/A";
 
-            // If "letter" is missing, fallback to "grade"
-            return match.letter && match.letter.trim() !== ""
-                ? match.letter
-                : match.grade || "N/A";
-        })
-        .catch((err) => {
-            console.error("Error fetching grading scale:", err);
-            return "N/A";
-        });
+        return match.letter && match.letter.trim() !== ""
+            ? match.letter
+            : match.grade || "N/A";
+    }
+    catch (err) {
+        console.error("Error fetching grading scale:", err);
+        return "N/A";
+    }
 }
 
-function getGPAFromScale(percent, districtId) {
-    return GPA.findOne({ districtId })
-        .then((gpaDoc) => {
-            if (!gpaDoc || !gpaDoc.gpaScale) return 0;
-            const match = gpaDoc.gpaScale.find(
-                (g) => percent >= g.minPercentage && percent <= g.maxPercentage
-            );
-            return match ? match.gpa : 0;
-        })
-        .catch((err) => {
-            console.error("Error fetching GPA scale:", err);
-            return 0;
-        });
+function getGPAFromScale(percent, gpaScale) {
+    try {
+        if (!gpaScale || !gpaScale.gpaScale) return 0;
+
+        const match = gpaScale.gpaScale.find(
+            (g) => percent >= g.minPercentage && percent <= g.maxPercentage
+        );
+        return match ? match.gpa : 0;
+    }
+    catch (err) {
+        console.error("Error fetching GPA scale:", err);
+        return 0;
+    }
 }
 
-function getStandardGrade(percent, districtId) {
-    if (!districtId)
-        return { grade: null, remark: null };
+function getStandardGrade(percent, standardScale) {
+    try {
+        if (!standardScale || !standardScale.scale) return { grade: null, remark: null };
 
-    return StandardGrading.findOne({ districtId }).then(
-        (standardScale) => {
-            if (!standardScale || !standardScale.scale)
-                return { grade: null, remark: null };
+        const match = standardScale.scale.find(
+            (s) => percent >= s.minPercentage && percent <= s.maxPercentage
+        );
 
-            const match = standardScale.scale.find(
-                (s) => percent >= s.minPercentage && percent <= s.maxPercentage
-            );
-
-            return match
-                ? { grade: match.points, remark: match.remarks }
-                : { grade: null, remark: null };
-        }
-    ).catch((err) => {
+        return match
+            ? { grade: match.points, remark: match.remarks }
+            : { grade: null, remark: null };
+    }
+    catch (err) {
         console.error("Error fetching standard grading scale:", err);
         return { grade: null, remark: null };
-    });
+    }
 }
 
 export const getStudentGradebooksFormatted = async (req, res) => {
@@ -78,7 +71,7 @@ export const getStudentGradebooksFormatted = async (req, res) => {
         const studentId = req.user._id;
         const { districtId, schoolId } = req.user
         const gradingScale = await GradingScale.findOne({ districtId });
-        const gpaScale = await GPA.findOne({});
+        const gpaScale = await GPA.findOne({ districtId });
         const standardScale = await StandardGrading.findOne({ districtId });
 
         const gradebooks = await Gradebook.find({ studentId, districtId, schoolId });
@@ -99,7 +92,7 @@ export const getStudentGradebooksFormatted = async (req, res) => {
 
         const courses = await Promise.all(
             gradebooks.map(async (gb) => {
-                const courseData = await CourseSch.findById(gb.courseId, districtId, schoolId).lean();
+                const courseData = await CourseSch.findOne({ _id: gb.courseId, districtId, schoolId }).lean();
                 const gradingSystem = courseData?.gradingSystem || "normalGrading";
 
                 // ---------------------- SEMESTERS ----------------------
@@ -112,7 +105,7 @@ export const getStudentGradebooksFormatted = async (req, res) => {
                             semesterPercentage,
                             gradingScale
                         );
-                        semDisplay.gpa = getGPAFromScale(semesterPercentage, gpaScale, districtId);
+                        semDisplay.gpa = getGPAFromScale(semesterPercentage, gpaScale);
                     } else {
                         semDisplay.standardGrade = getStandardGrade(
                             semesterPercentage,
@@ -245,9 +238,9 @@ export const getGradebooksOfCourseFormatted = async (req, res) => {
         const gradingType = course.gradingSystem;
 
         // Fetch all scales at once
-        const gradingScale = await GradingScale.findOne({districtId});
-        const gpaScale = await GPA.findOne({districtId});
-        const standardScale = await StandardGrading.findOne({districtId});
+        const gradingScale = await GradingScale.findOne({ districtId });
+        const gpaScale = await GPA.findOne({ districtId });
+        const standardScale = await StandardGrading.findOne({ districtId });
 
         // Fetch gradebooks
         const gradebooks = await Gradebook.find({ courseId, districtId, schoolId })
@@ -322,12 +315,12 @@ export const getGradebooksOfCourseFormatted = async (req, res) => {
 
                             ...(gradingType === "normalGrading" && {
                                 grade: qPercent,
-                                gpa: getGPAFromScale(qPercent, gpaScale, districtId),
-                                letterGrade: getLetterFromScale(qPercent, gradingScale, districtId),
+                                gpa: getGPAFromScale(qPercent, gpaScale),
+                                letterGrade: getLetterFromScale(qPercent, gradingScale),
                             }),
 
                             ...(gradingType === "StandardGrading" && (() => {
-                                const sg = getStandardGrade(qPercent, standardScale, districtId);
+                                const sg = getStandardGrade(qPercent, standardScale);
                                 return {
                                     standardGrade: {
                                         grade: qPercent,

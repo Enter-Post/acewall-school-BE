@@ -1,4 +1,5 @@
 import User from "../../../Models/user.model.js";
+import School from "../../../Models/School.model.js";
 import bcrypt from "bcrypt";
 
 export const districtSignup = async (req, res) => {
@@ -97,6 +98,47 @@ export const getDistrictUsers = async (req, res) => {
 
     } catch (error) {
         console.error("Fetch users error:", error.message);
+        res.status(500).json({ message: "Internal server error." });
+    }
+};
+
+export const getDistrictDashboardStats = async (req, res) => {
+    const { districtId } = req.user;
+
+    try {
+        if (req.user.role !== 'district_admin') {
+            return res.status(403).json({ message: "Forbidden. Access restricted to district admins." });
+        }
+
+        const [
+            totalSchools,
+            totalStudents,
+            totalTeachers,
+            totalAdmins
+        ] = await Promise.all([
+            School.countDocuments({ districtId, isDeleted: false }),
+            User.countDocuments({ districtId, role: "student", isDeleted: false }),
+            User.countDocuments({ districtId, role: "teacher", isDeleted: false }),
+            User.countDocuments({ districtId, role: "admin", isDeleted: false })
+        ]);
+
+        const recentSchools = await School.find({ districtId, isDeleted: false })
+            .sort({ createdAt: -1 })
+            .limit(4)
+            .select("name address email phone active createdAt");
+
+        res.status(200).json({
+            success: true,
+            stats: {
+                totalSchools,
+                totalStudents,
+                totalTeachers,
+                totalAdmins
+            },
+            recentSchools
+        });
+    } catch (error) {
+        console.error("Fetch dashboard stats error:", error.message);
         res.status(500).json({ message: "Internal server error." });
     }
 };

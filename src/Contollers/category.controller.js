@@ -27,6 +27,10 @@ export const createCategory = async (req, res) => {
   const { districtId, schoolId } = req.user
 
   try {
+
+    console.log("schoolId:", schoolId)
+    console.log("districtId:", districtId)
+
     if (!title || !districtId || !schoolId) {
       return res.status(400).json({
         error: true,
@@ -34,11 +38,11 @@ export const createCategory = async (req, res) => {
       });
     }
 
-    const isExist = await Category.find({ title });
-    if (isExist.length > 0) {
+    const isExist = await Category.findOne({ title, districtId, schoolId });
+    if (isExist) {
       return res.status(400).json({
         error: true,
-        message: "Category already exist",
+        message: "Category with this name already exist",
       });
     }
 
@@ -113,8 +117,16 @@ export const deleteCategory = async (req, res) => {
 
 export const getCategoriesforAdmin = async (req, res) => {
   const { districtId, schoolId } = req.user
+
   try {
     const categories = await Category.aggregate([
+      {
+        $match: {
+          isDeleted: false,
+          districtId: new mongoose.Types.ObjectId(districtId),
+          schoolId: new mongoose.Types.ObjectId(schoolId)
+        }
+      },
       {
         $lookup: {
           from: "subcategories",
@@ -124,6 +136,7 @@ export const getCategoriesforAdmin = async (req, res) => {
         },
       },
     ])
+
     return res.status(200).json({
       categories,
       message: "Categories fetched successfully",

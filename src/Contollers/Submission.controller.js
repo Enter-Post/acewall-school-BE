@@ -260,7 +260,9 @@ export const submission = async (req, res) => {
       submission.studentId,
       assessment.course,
       submission.assessment,
-      "assessment"
+      "assessment",
+      districtId,
+      schoolId
     );
 
     // ✅ Email Notification Logic
