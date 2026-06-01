@@ -5,7 +5,7 @@
  * Super admin can manage all schools
  */
 
-import School from "../Models/school.model.js";
+import School from "../Models/School.model.js";
 import { ROLES } from "../modules/rbac/roles.js";
 import * as PERMISSIONS from "../modules/rbac/permissions.js";
 import User from "../Models/user.model.js";

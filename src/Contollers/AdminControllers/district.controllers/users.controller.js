@@ -6,10 +6,17 @@ import Enrollment from "../../../Models/Enrollement.model.js";
 
 export const getTeacherById = async (req, res) => {
     const { id } = req.params;
-    const { districtId } = req.user
-    const { schoolId } = req.params
+    const { schoolId } = req.query;
+    let districtId;
+    const user = req.user
 
     try {
+        if (user.role == "super_admin") {
+            districtId = req.query.districtId;
+        } else {
+            districtId = user.districtId;
+        }
+
         const teacher = await User.findOne({ _id: id, districtId, schoolId }).select(
             " id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role"
         );
@@ -37,8 +44,16 @@ export const getTeacherById = async (req, res) => {
 
 export const getAdminById = async (req, res) => {
     const { id } = req.params;
-    const { districtId } = req.user;
+    let districtId;
+    const user = req.user
+
     try {
+        if (user.role == "super_admin") {
+            districtId = req.query.districtId;
+        } else {
+            districtId = user.districtId;
+        }
+
         const admin = await User.findOne({ _id: id, districtId }).select(
             " id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role"
         );
@@ -55,10 +70,17 @@ export const getAdminById = async (req, res) => {
 
 export const getStudentById = async (req, res) => {
     const { id } = req.params;
-    const { districtId } = req.user;
-    const { schoolId } = req.params;
+    const { schoolId } = req.query;
+    let districtId;
+    const user = req.user
 
     try {
+        if (user.role == "super_admin") {
+            districtId = req.query.districtId;
+        } else {
+            districtId = user.districtId;
+        }
+
         const student = await User.findOne({ _id: id, districtId, schoolId }).select(
             "_id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role"
         );
@@ -115,7 +137,7 @@ export const getStudentById = async (req, res) => {
 
 export const updateUser = async (req, res) => {
     const userId = req.params.id;
-    const { districtId } = req.user;
+    const districtId = req.user.districtId || req.body.districtId;
     const schoolId = req.params.schoolId || req.body.schoolId || req.body.school;
     const { role } = req.body;
 
@@ -170,5 +192,25 @@ export const updateUser = async (req, res) => {
     } catch (err) {
         console.error("Update Error:", err);
         res.status(500).json({ message: "Update failed", error: err.message });
+    }
+};
+
+export const getDistrictAdmins = async (req, res) => {
+    const { districtId } = req.params;
+    try {
+        const admins = await User.find({
+            role: "district_admin",
+            districtId: new mongoose.Types.ObjectId(districtId)
+        }).select(
+            " id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role"
+        );
+        if (!admins) {
+            return res.status(404).json({ message: "Admins not found." });
+        }
+
+        res.status(200).json({ data: admins });
+    } catch (error) {
+        console.error("Error fetching admin by ID:", error);
+        res.status(500).json({ message: "Internal Server Error" });
     }
 };

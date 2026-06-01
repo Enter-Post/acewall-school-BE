@@ -185,8 +185,6 @@ export const requirePermission = (...permissions) => {
       req.user.hasPermission = (perm) => userPermissions.includes(perm);
       req.user.permissions = userPermissions;
 
-      console.log("userPermissions:", userPermissions);
-
       next();
     } catch (error) {
       console.error("Error in requirePermission middleware:", error);
