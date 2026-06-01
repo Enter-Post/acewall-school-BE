@@ -8,7 +8,7 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import CourseSch from "../Models/courses.model.sch.js";
-import School from "../Models/school.model.js";
+import School from "../Models/School.model.js";
 import District from "../Models/district.model.js";
 
 dotenv.config();

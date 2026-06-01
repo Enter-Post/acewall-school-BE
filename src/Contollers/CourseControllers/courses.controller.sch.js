@@ -17,7 +17,7 @@ import Discussion from "../../Models/discussion.model.js";
 import Quarter from "../../Models/quarter.model.js";
 import { ZoomMeeting } from "../../Models/ZoomMeeting.model.js";
 import CourseShare from "../../Models/CourseShare.model.js";
-import School from "../../Models/school.model.js";
+import School from "../../Models/School.model.js";
 import { ROLES } from "../../modules/rbac/roles.js";
 import { processCourseImport } from "./courseShare.service.js";
 

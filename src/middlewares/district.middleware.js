@@ -4,7 +4,7 @@
  */
 
 import { ROLES, isAdminRole } from "../modules/rbac/roles.js";
-import School from "../Models/school.model.js";
+import School from "../Models/School.model.js";
 import mongoose from "mongoose";
 
 /**

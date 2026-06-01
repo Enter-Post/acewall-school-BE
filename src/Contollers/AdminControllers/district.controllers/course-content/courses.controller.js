@@ -5,9 +5,18 @@ import CourseSch from "../../../../Models/courses.model.sch.js";
 export const getCoursesOfteacher = async (req, res) => {
     const { teacherId, schoolId } = req.params;
     const { search, page = 1, limit = 10 } = req.query;
-    const { districtId } = req.user
+    // const { districtId } = req.user
+    let districtId;
+    const user = req.user
 
     try {
+
+        if (user.role == "super_admin") {
+            districtId = req.query.districtId
+        } else if (user.role == "district_admin") {
+            districtId = user.districtId
+        }
+
         const query = {
             $and: [
                 { createdby: teacherId, districtId, schoolId },
