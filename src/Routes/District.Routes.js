@@ -8,7 +8,7 @@ import {
     deleteDistrict,
     getSchoolsByDistrict,
     getSuperAdminDashboardStats,
-} from "../Contollers/SuperAdminControllers/district.controller.js";
+} from "../Contollers/AdminControllers/SuperAdminControllers/district.controller.js";
 
 const router = express.Router();
 
@@ -18,6 +18,6 @@ router.post("/", isUser, createDistrict);
 router.get("/:id", isUser, getDistrictById);
 router.get("/:id/schools", isUser, getSchoolsByDistrict);
 router.put("/:id", isUser, updateDistrict);
-router.delete("/:id", isUser, deleteDistrict);
+router.put("/delete/:id", isUser, deleteDistrict);
 
 export default router;

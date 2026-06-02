@@ -22,6 +22,6 @@ router.get("/student/:id", isUser, getStudentById)
 router.get("/admin/:id", isUser, getAdminById)
 
 //update user
-router.put("/updateuser/:id/:schoolId", isUser, updateUser)
+router.put("/updateuser/:id", isUser, updateUser)
 
 export default router

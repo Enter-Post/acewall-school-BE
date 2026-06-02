@@ -73,6 +73,8 @@ import gradesRoutes from "./Routes/AdminRoutes/districtRoutes/districtgrade.rout
 import gradingPeriodRoutes from "./Routes/AdminRoutes/districtRoutes/gradingPeriod.routes.js";
 import disCourseRoutes from "./Routes/AdminRoutes/districtRoutes/course-content/courses.routes.js";
 import contentRoutes from "./Routes/AdminRoutes/districtRoutes/course-content/content.routes.js";
+import superAdminAuthRoutes from "./Routes/AdminRoutes/SuperAdminRoutes/auth.routes.js";
+import adminAuthRoutes from "./Routes/AdminRoutes/auth.routes.js"
 
 import { importSPKI, exportJWK } from "jose";
 import fs from "fs";
@@ -262,6 +264,8 @@ app.use("/api/admin/district/grades", gradesRoutes);
 app.use("/api/admin/district/gradingPeriod", gradingPeriodRoutes);
 app.use("/api/admin/district/courses", disCourseRoutes);
 app.use("/api/admin/district/courses/content", contentRoutes);
+app.use("/api/admin/superadmin/auth", superAdminAuthRoutes);
+app.use("/api/admin/auth", adminAuthRoutes)
 
 // Swagger API Documentation
 app.use('/api/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
