@@ -31,9 +31,9 @@ const DistrictSchema = new mongoose.Schema(
       type: String,
     },
 
-    active: {
+    isDeleted: {
       type: Boolean,
-      default: true,
+      default: false,
     },
 
     // 🔌 ALL external system configuration lives here

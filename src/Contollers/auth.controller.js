@@ -165,7 +165,7 @@ export const initiateSignup = async (req, res) => {
       secure: true, // true for 465, false for 587
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: "bwcmdhpgjffsyjoy",
       },
     });
     await transporter.sendMail({
@@ -306,7 +306,7 @@ export const resendOTP = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: "bwcmdhpgjffsyjoy",
       },
     });
 
@@ -489,7 +489,7 @@ export const verifyPhoneOtp = async (req, res) => {
         secure: true,
         auth: {
           user: "support@acewallscholars.org",
-          pass: "dackrjjdvfezbule",
+          pass: "bwcmdhpgjffsyjoy",
         },
       });
 
@@ -785,7 +785,7 @@ export const createGuardianAcc = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: "bwcmdhpgjffsyjoy",
       },
     });
 
@@ -874,7 +874,7 @@ export const loginGuardianAcc = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: "bwcmdhpgjffsyjoy",
       },
     });
 
@@ -1012,7 +1012,7 @@ export const forgetPassword = async (req, res) => {
       secure: true, // true for 465, false for 587
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: "bwcmdhpgjffsyjoy",
       },
     });
 
@@ -1123,10 +1123,14 @@ export const resetPassword = async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     // Update user password
-    await User.updateOne({ email }, { password: hashedPassword });
+    const result = await User.updateOne({ email }, { password: hashedPassword });
 
     // Clean up the OTP record
     await OTP.deleteOne({ email });
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     return res.status(200).json({
       message: "Password updated successfully",
@@ -1717,7 +1721,7 @@ export const updatePasswordOTP = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: "bwcmdhpgjffsyjoy",
       },
     });
 
@@ -1857,7 +1861,7 @@ export const updateEmailOTP = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: "bwcmdhpgjffsyjoy",
       },
     });
 
@@ -1992,7 +1996,7 @@ export const updateEmailOTPById = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: "bwcmdhpgjffsyjoy",
       },
     });
 
@@ -2145,7 +2149,7 @@ export const updatePasswordOTPById = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: "bwcmdhpgjffsyjoy",
       },
     });
 

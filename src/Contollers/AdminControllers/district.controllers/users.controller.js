@@ -54,6 +54,8 @@ export const getAdminById = async (req, res) => {
             districtId = user.districtId;
         }
 
+        console.log("districtId in get admin:", districtId)
+
         const admin = await User.findOne({ _id: id, districtId }).select(
             " id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role"
         );
@@ -137,9 +139,16 @@ export const getStudentById = async (req, res) => {
 
 export const updateUser = async (req, res) => {
     const userId = req.params.id;
-    const districtId = req.user.districtId || req.body.districtId;
-    const schoolId = req.params.schoolId || req.body.schoolId || req.body.school;
+    let districtId;
+    const schoolId = req.params.schoolId
     const { role } = req.body;
+    const user = req.user
+
+    if (user.role === "super_admin") {
+        districtId = req.query.districtId;
+    } else {
+        districtId = user.districtId;
+    }
 
     try {
         let updatedFields = { ...req.body };
@@ -155,22 +164,22 @@ export const updateUser = async (req, res) => {
         }
 
         if (role === "admin") {
-            const admin = await User.findOne({ _id: userId, districtId });
+            const query = { _id: userId, districtId };
+            if (schoolId) query.schoolId = schoolId;
+            const admin = await User.findOne(query);
             if (!admin) {
                 return res.status(404).json({ message: "Admin not found." });
             }
         }
         else if (role === "teacher") {
-            const query = { _id: userId, districtId };
-            if (schoolId) query.schoolId = schoolId;
+            const query = { _id: userId, districtId, schoolId };
             const teacher = await User.findOne(query);
             if (!teacher) {
                 return res.status(404).json({ message: "Teacher not found." });
             }
         }
         else if (role === "student") {
-            const query = { _id: userId, districtId };
-            if (schoolId) query.schoolId = schoolId;
+            const query = { _id: userId, districtId, schoolId };
             const student = await User.findOne(query);
             if (!student) {
                 return res.status(404).json({ message: "Student not found." });
@@ -178,6 +187,8 @@ export const updateUser = async (req, res) => {
         }
 
         let updateQuery = { $set: updatedFields };
+        console.log("updateQuery: ", updateQuery)
+
         if (Object.keys(unsetFields).length > 0) {
             updateQuery.$unset = unsetFields;
         }
@@ -214,3 +225,4 @@ export const getDistrictAdmins = async (req, res) => {
         res.status(500).json({ message: "Internal Server Error" });
     }
 };
+

@@ -35,11 +35,6 @@ const SchoolSchema = new mongoose.Schema(
       type: String,
     },
 
-    active: {
-      type: Boolean,
-      default: true,
-    },
-
     isDeleted: {
       type: Boolean,
       default: false,

@@ -1,6 +1,6 @@
-import District from "../../Models/district.model.js";
-import School from "../../Models/School.model.js";
-import User from "../../Models/user.model.js";
+import District from "../../../Models/district.model.js";
+import School from "../../../Models/School.model.js";
+import User from "../../../Models/user.model.js";
 
 // @desc    Get all districts
 // @route   GET /districts
@@ -109,7 +109,7 @@ export const deleteDistrict = async (req, res) => {
       return res.status(404).json({ message: "District not found" });
     }
 
-    district.active = false;
+    district.isDeleted = true;
     await district.save();
 
     res.status(200).json({ message: "District deactivated successfully" });
@@ -142,11 +142,11 @@ export const getSuperAdminDashboardStats = async (req, res) => {
       studentsCount,
       adminsCount
     ] = await Promise.all([
-      District.countDocuments({ active: true }),
-      School.countDocuments(),
-      User.countDocuments({ role: "teacher" }),
-      User.countDocuments({ role: "student" }),
-      User.countDocuments({ role: { $in: ["admin", "district_admin"] } })
+      District.countDocuments({ isDeleted: false }),
+      School.countDocuments({ isDeleted: false, status: 'Active' }),
+      User.countDocuments({ role: "teacher", isDeleted: false }),
+      User.countDocuments({ role: "student", isDeleted: false }),
+      User.countDocuments({ role: { $in: ["admin", "district_admin"] }, isDeleted: false })
     ]);
 
     res.status(200).json({

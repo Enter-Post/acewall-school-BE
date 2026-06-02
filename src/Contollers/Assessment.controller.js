@@ -63,7 +63,7 @@ export const sendAssessmentReminder = async (req, res) => {
       secure: true,
       auth: {
         user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        pass: "bwcmdhpgjffsyjoy",
       },
     });
 
