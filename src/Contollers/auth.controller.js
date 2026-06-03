@@ -19,6 +19,8 @@ import OPT from "../Models/opt.model.js";
 import GuardianAcc from "../Models/guardianAcc.model.js";
 import LoginActivity from "../Models/userActivity.model.js";
 import { trackLogin, trackLogout } from "../Utiles/businessLogger.js";
+import District from "../Models/district.model.js";
+import School from "../Models/School.model.js";
 
 export const bulkSignup = async (req, res) => {
   try {
@@ -707,6 +709,10 @@ export const login = async (req, res) => {
     }
 
     const user = await User.findOne({ email: email.toLowerCase().trim() });
+
+    const district = await District.findById(user.districtId);
+    const school = await School.findById(user.schoolId);
+
     if (!user) {
       return res.status(400).json({
         error: true,
@@ -720,6 +726,28 @@ export const login = async (req, res) => {
         error: true,
         message: "Invalid Credentials",
       });
+    }
+
+    if (user.role === "district_admin" && district.isDeleted) {
+      return res.status(400).json({
+        error: true,
+        message: "District is not Active",
+      });
+    }
+
+    if (user.role === "admin" || user.role === "student" || user.role === "teacher" || user.role === "teacher_as_student") {
+      if (school.isDeleted) {
+        return res.status(400).json({
+          error: true,
+          message: "School is not Active",
+        });
+      }
+      if (district.isDeleted) {
+        return res.status(400).json({
+          error: true,
+          message: "District is not Active",
+        });
+      }
     }
 
     if (user.role === "student") {

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import mongoosePaginate from "mongoose-paginate-v2";
 
 const DistrictSchema = new mongoose.Schema(
   {
@@ -79,6 +80,8 @@ const DistrictSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+DistrictSchema.plugin(mongoosePaginate);
 
 const District =
   mongoose.models.District || mongoose.model("District", DistrictSchema);

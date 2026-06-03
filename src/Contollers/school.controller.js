@@ -156,7 +156,7 @@ export const getSchoolById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const school = await School.findOne({ _id: id, isDeleted: false });
+    const school = await School.findOne({ _id: id });
 
     if (!school) {
       return res.status(404).json({
@@ -404,7 +404,7 @@ export const getSchoolStats = async (req, res) => {
     const { schoolId } = req.params;
 
     // 1. Verify school existence and district access
-    const school = await School.findOne({ _id: schoolId, isDeleted: false });
+    const school = await School.findOne({ _id: schoolId });
 
     if (!school) {
       return res.status(404).json({
