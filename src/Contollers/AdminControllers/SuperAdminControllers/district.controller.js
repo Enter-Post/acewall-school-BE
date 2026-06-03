@@ -7,10 +7,41 @@ import User from "../../../Models/user.model.js";
 // @access  Private (Super Admin)
 export const getAllDistricts = async (req, res) => {
   try {
-    const districts = await District.find().sort({ createdAt: -1 });
-    res.status(200).json(districts);
+    const { page = 1, limit = 10, search = "", isDeleted } = req.query;
+
+    const filter = {};
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { code: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    // Handle active/inactive filtering
+    if (isDeleted) {
+      filter.isDeleted = isDeleted === "true";
+    }
+
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sort: { createdAt: -1 }
+    };
+
+    const result = await District.paginate(filter, options);
+
+    // Return consistent response structure
+    res.status(200).json({
+      districts: result.docs,
+      currentPage: result.page,
+      totalPages: result.totalPages,
+      totalDistricts: result.totalDocs,
+      hasPrevPage: result.hasPrevPage,
+      hasNextPage: result.hasNextPage
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error fetching districts:", error);
+    res.status(500).json({ message: "Failed to fetch districts", error: error.message });
   }
 };
 
@@ -101,18 +132,34 @@ export const updateDistrict = async (req, res) => {
 // @desc    Delete (soft delete) a district
 // @route   DELETE /districts/:id
 // @access  Private (Super Admin)
-export const deleteDistrict = async (req, res) => {
+export const changeIsDelete = async (req, res) => {
   try {
-    const district = await District.findById(req.params.id);
+    const { status, type = "district" } = req.body;
+    let Model;
 
-    if (!district) {
-      return res.status(404).json({ message: "District not found" });
+    switch (type.toLowerCase()) {
+      case "school":
+        Model = School;
+        break;
+      case "district":
+        Model = District;
+        break;
+      // Add other models here as needed
+      default:
+        return res.status(400).json({ message: "Invalid entity type provided" });
     }
 
-    district.isDeleted = true;
-    await district.save();
+    const entity = await Model.findById(req.params.id);
 
-    res.status(200).json({ message: "District deactivated successfully" });
+    if (!entity) {
+      return res.status(404).json({ message: `${type.charAt(0).toUpperCase() + type.slice(1)} not found` });
+    }
+
+    entity.isDeleted = status;
+    await entity.save();
+
+    const entityName = type.charAt(0).toUpperCase() + type.slice(1);
+    res.status(200).json({ message: status ? `${entityName} deactivated successfully` : `${entityName} activated successfully` });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -123,8 +170,41 @@ export const deleteDistrict = async (req, res) => {
 // @access  Private (Super Admin)
 export const getSchoolsByDistrict = async (req, res) => {
   try {
-    const schools = await School.find({ districtId: req.params.id }).sort({ createdAt: -1 });
-    res.status(200).json(schools);
+    const { page = 1, limit = 9, search = "", isDeleted } = req.query;
+
+    const filter = { districtId: req.params.id };
+
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    if (isDeleted) {
+      filter.isDeleted = isDeleted === "true";
+    }
+
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    const [schools, totalDocs] = await Promise.all([
+      School.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNumber),
+      School.countDocuments(filter)
+    ]);
+
+    const totalPages = Math.ceil(totalDocs / limitNumber);
+
+    res.status(200).json({
+      schools,
+      currentPage: pageNumber,
+      totalPages,
+      totalSchools: totalDocs,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -142,11 +222,11 @@ export const getSuperAdminDashboardStats = async (req, res) => {
       studentsCount,
       adminsCount
     ] = await Promise.all([
-      District.countDocuments({ isDeleted: false }),
-      School.countDocuments({ isDeleted: false, status: 'Active' }),
-      User.countDocuments({ role: "teacher", isDeleted: false }),
-      User.countDocuments({ role: "student", isDeleted: false }),
-      User.countDocuments({ role: { $in: ["admin", "district_admin"] }, isDeleted: false })
+      District.countDocuments({}),
+      School.countDocuments({}),
+      User.countDocuments({ role: "teacher" }),
+      User.countDocuments({ role: "student" }),
+      User.countDocuments({ role: { $in: ["admin", "district_admin"] } })
     ]);
 
     res.status(200).json({

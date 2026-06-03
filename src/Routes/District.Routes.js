@@ -5,7 +5,7 @@ import {
     getDistrictById,
     createDistrict,
     updateDistrict,
-    deleteDistrict,
+    changeIsDelete,
     getSchoolsByDistrict,
     getSuperAdminDashboardStats,
 } from "../Contollers/AdminControllers/SuperAdminControllers/district.controller.js";
@@ -18,6 +18,6 @@ router.post("/", isUser, createDistrict);
 router.get("/:id", isUser, getDistrictById);
 router.get("/:id/schools", isUser, getSchoolsByDistrict);
 router.put("/:id", isUser, updateDistrict);
-router.put("/delete/:id", isUser, deleteDistrict);
+router.put("/change-status/:id", isUser, changeIsDelete);
 
 export default router;
