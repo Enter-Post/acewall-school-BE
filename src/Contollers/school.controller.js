@@ -10,6 +10,7 @@ import { ROLES } from "../modules/rbac/roles.js";
 import * as PERMISSIONS from "../modules/rbac/permissions.js";
 import User from "../Models/user.model.js";
 import CourseSch from "../Models/courses.model.sch.js";
+import mongoose from "mongoose";
 
 /**
  * Create a new school
@@ -94,37 +95,43 @@ export const createSchool = async (req, res) => {
  */
 export const getSchools = async (req, res) => {
   try {
-    const { active, search, page = 1, limit = 20 } = req.query;
+    const { search, page = 1, limit = 20, isDeleted } = req.query;
     // Build query
-    let query = { isDeleted: false };
+    let query = { isDeleted: isDeleted };
     const districtId = req.user.districtId;
 
     // Filter by district (except super admin)
     if (req.user.role !== ROLES.SUPER_ADMIN) {
-      query.districtId = districtId;
+      query.districtId = new mongoose.Types.ObjectId(districtId);
     }
 
-    console.log("query in getSchool: ", query)
-
-    // Filter by active status
-    if (active !== undefined) {
-      query.active = active === "true";
-    }
-
-    // Search by name
+    // Search by name, phone, address, and isDeleted
     if (search) {
-      query.name = { $regex: search, $options: "i" };
+      const searchRegex = { $regex: search, $options: "i" };
+      const searchConditions = [
+        { name: searchRegex },
+        { phone: searchRegex },
+        { homeAddress: searchRegex }
+      ];
+
+      if (search.toLowerCase() === "true" || search.toLowerCase() === "false") {
+        const isDel = search.toLowerCase() === "true";
+        searchConditions.push({ isDeleted: isDel });
+        if (isDel) {
+          delete query.isDeleted; // Allow searching for deleted schools
+        }
+      }
+
+      query.$or = searchConditions;
     }
 
     // Pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const schools = await School.find({ districtId: districtId.toString() })
+    const schools = await School.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
-
-    console.log("schools in getSchool: ", schools)
 
     const total = await School.countDocuments(query);
 

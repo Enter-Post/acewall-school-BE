@@ -62,8 +62,8 @@ export const sendAssessmentReminder = async (req, res) => {
       port: process.env.MAIL_PORT || 465,
       secure: true,
       auth: {
-        user: "support@acewallscholars.org",
-        pass: "bwcmdhpgjffsyjoy",
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
     });
 

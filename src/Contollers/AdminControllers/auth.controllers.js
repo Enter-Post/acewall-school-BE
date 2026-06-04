@@ -28,8 +28,8 @@ export const adminForgetPassword = async (req, res) => {
             port: 465,
             secure: true, // true for 465, false for 587
             auth: {
-                user: "support@acewallscholars.org",
-                pass: "bwcmdhpgjffsyjoy",
+                user: process.env.MAIL_USER,
+                pass: process.env.MAIL_PASS,
             },
         });
 

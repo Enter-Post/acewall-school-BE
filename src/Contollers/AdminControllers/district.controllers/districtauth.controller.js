@@ -179,13 +179,13 @@ export const getDistrictDashboardStats = async (req, res) => {
             totalTeachers,
             totalAdmins
         ] = await Promise.all([
-            School.countDocuments({ districtId, isDeleted: false }),
-            User.countDocuments({ districtId, role: "student", isDeleted: false }),
-            User.countDocuments({ districtId, role: "teacher", isDeleted: false }),
-            User.countDocuments({ districtId, role: "admin", isDeleted: false })
+            School.countDocuments({ districtId }),
+            User.countDocuments({ districtId, role: "student" }),
+            User.countDocuments({ districtId, role: "teacher" }),
+            User.countDocuments({ districtId, role: "admin" })
         ]);
 
-        const recentSchools = await School.find({ districtId, isDeleted: false })
+        const recentSchools = await School.find({ districtId })
             .sort({ createdAt: -1 })
             .limit(4)
             .select("name address email phone active createdAt");
