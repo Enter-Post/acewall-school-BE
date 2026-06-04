@@ -1,44 +1,44 @@
 import nodemailer from "nodemailer";
 
 export const sendSchoolcontactmail = async (req, res) => {
-    try {
-        const {
-            organization,
-            contactPerson,
-            contactNumber,
-            contactEmail,
-            teachers,
-            students,
-            schoolSize,
-            address,
-        } = req.body;
+  try {
+    const {
+      organization,
+      contactPerson,
+      contactNumber,
+      contactEmail,
+      teachers,
+      students,
+      schoolSize,
+      address,
+    } = req.body;
 
-        // Transporter setup (replace with your SMTP)
-        const transporter = nodemailer.createTransport({
-            host: "smtp.gmail.com",
-            port: process.env.MAIL_PORT,
-            secure: true,
-            auth: {
-                user: "support@acewallscholars.org",
-                pass: "dackrjjdvfezbule",
-            },
-        });
+    // Transporter setup (replace with your SMTP)
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: process.env.MAIL_PORT,
+      secure: true,
+      auth: {
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
+      },
+    });
 
-        // test connection
-        transporter.verify((error, success) => {
-            if (error) {
-                console.error("SMTP Error:", error);
-            } else {
-                console.log("SMTP Connected:", success);
-            }
-        });
+    // test connection
+    transporter.verify((error, success) => {
+      if (error) {
+        console.error("SMTP Error:", error);
+      } else {
+        console.log("SMTP Connected:", success);
+      }
+    });
 
-        // Mail options
-        const mailOptions = {
-            from: `"Acewall Scholars Contact" <support@acewallscholars.org>`, // sender address
-            to: ["support@acewallscholars.org", "programs@acewallscholars.org"],
-            subject: `New Contact Submission from ${organization}`,
-            html: `
+    // Mail options
+    const mailOptions = {
+      from: `"Acewall Scholars Contact" <support@acewallscholars.org>`, // sender address
+      to: ["support@acewallscholars.org", "programs@acewallscholars.org"],
+      subject: `New Contact Submission from ${organization}`,
+      html: `
   <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
     <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
       
@@ -74,15 +74,15 @@ export const sendSchoolcontactmail = async (req, res) => {
     </div>
   </div>
   `,
-        };
+    };
 
 
-        // Send email
-        await transporter.sendMail(mailOptions);
+    // Send email
+    await transporter.sendMail(mailOptions);
 
-        res.json({ success: true, message: "Email sent successfully!" });
-    } catch (error) {
-        console.log("error in sending contact mail", error);
-        res.status(500).json({ message: "Internal Server Error" })
-    }
+    res.json({ success: true, message: "Email sent successfully!" });
+  } catch (error) {
+    console.log("error in sending contact mail", error);
+    res.status(500).json({ message: "Internal Server Error" })
+  }
 }

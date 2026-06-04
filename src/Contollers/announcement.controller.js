@@ -34,9 +34,9 @@ export const createAnnouncement = async (req, res) => {
     // Process links
     const linkArray = links
       ? links
-          .split(",")
-          .map((l) => l.trim())
-          .filter((l) => l.length > 0)
+        .split(",")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0)
       : [];
 
     // Upload attachments to Cloudinary
@@ -99,8 +99,8 @@ export const createAnnouncement = async (req, res) => {
         port: 465,
         secure: true,
         auth: {
-          user: "support@acewallscholars.org",
-          pass: "dackrjjdvfezbule",
+          user: process.env.MAIL_USER,
+          pass: process.env.MAIL_PASS,
         },
       });
 
@@ -125,22 +125,19 @@ export const createAnnouncement = async (req, res) => {
                 <h1 style="color: #fff; margin: 0; font-size: 20px;">New Announcement</h1>
               </div>
               <div style="padding: 20px; color: #333;">
-                <p style="font-size: 16px;">There’s a new announcement for your course <strong>${
-                  course.courseTitle
-                }</strong>:</p>
+                <p style="font-size: 16px;">There’s a new announcement for your course <strong>${course.courseTitle
+          }</strong>:</p>
                 <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #28a745;">
                   <p style="font-size: 16px; margin: 0;">${message}</p>
                 </div>
-                ${
-                  linkArray.length
-                    ? `<p>Links:<br>${linkArray
-                        .map((l) => `<a href="${l}" target="_blank">${l}</a>`)
-                        .join("<br>")}</p>`
-                    : ""
-                }
-                <p style="font-size: 14px; margin-top: 10px;"><em>From: ${
-                  teacher.firstName
-                } ${teacher.lastName}</em></p>
+                ${linkArray.length
+            ? `<p>Links:<br>${linkArray
+              .map((l) => `<a href="${l}" target="_blank">${l}</a>`)
+              .join("<br>")}</p>`
+            : ""
+          }
+                <p style="font-size: 14px; margin-top: 10px;"><em>From: ${teacher.firstName
+          } ${teacher.lastName}</em></p>
               </div>
               <div style="background: #f0f4f8; color: #555; text-align: center; padding: 15px; font-size: 12px;">
                 <p style="margin: 0;">Acewall Scholars © ${new Date().getFullYear()}</p>
@@ -293,7 +290,7 @@ export const getAnnouncementsForParent = async (req, res) => {
     const announcements = await Announcement.find({
       course: { $in: courseIds },
     })
-      .populate("course", "courseTitle _id thumbnail") 
+      .populate("course", "courseTitle _id thumbnail")
       .populate("teacher", "firstName lastName email profileImg _id") // Included profileImg for a better UI
       .sort({ createdAt: -1 });
 

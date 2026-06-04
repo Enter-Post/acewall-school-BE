@@ -221,8 +221,8 @@ export const submission = async (req, res) => {
         port: 465,
         secure: true,
         auth: {
-          user: "support@acewallscholars.org",
-          pass: "dackrjjdvfezbule",
+          user: process.env.MAIL_USER,
+          pass: process.env.MAIL_PASS,
         },
       });
 
@@ -270,7 +270,7 @@ export const submission = async (req, res) => {
       submission,
     });
   } catch (err) {
-    console.error(err); 
+    console.error(err);
     res.status(500).json({
       message: "Error submitting assessment",
       error: err.message,
@@ -536,8 +536,8 @@ export const teacherGrading = async (req, res) => {
         port: 465,
         secure: true,
         auth: {
-          user: "support@acewallscholars.org",
-          pass: "dackrjjdvfezbule",
+          user: process.env.MAIL_USER,
+          pass: process.env.MAIL_PASS,
         },
       });
 

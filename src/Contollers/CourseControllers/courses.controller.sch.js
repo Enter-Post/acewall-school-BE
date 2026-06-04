@@ -134,9 +134,8 @@ export const toggleAllCoursesComments = async (req, res) => {
     const result = await CourseSch.updateMany({}, { commentsEnabled: enable });
 
     res.status(200).json({
-      message: `Comments & Ratings ${
-        enable ? "enabled" : "disabled"
-      } for all courses`,
+      message: `Comments & Ratings ${enable ? "enabled" : "disabled"
+        } for all courses`,
       commentsEnabled: enable,
       modifiedCount: result.modifiedCount, // optional: how many courses were updated
     });
@@ -163,9 +162,8 @@ export const toggleCourseComments = async (req, res) => {
     await course.save();
 
     res.status(200).json({
-      message: `Comments & Ratings ${
-        enable ? "enabled" : "disabled"
-      } successfully`,
+      message: `Comments & Ratings ${enable ? "enabled" : "disabled"
+        } successfully`,
       commentsEnabled: enable,
     });
     console.log(enable);
@@ -269,15 +267,14 @@ export const createCourseSch = async (req, res) => {
       port: 465,
       secure: true,
       auth: {
-        user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
     });
 
     const mailOptions = {
-      from: `"${
-        process.env.MAIL_FROM_NAME || "Acewall Scholars Team"
-      }" <support@acewallscholars.org>`,
+      from: `"${process.env.MAIL_FROM_NAME || "Acewall Scholars Team"
+        }" <support@acewallscholars.org>`,
       to: teacher.email,
       subject: `Course Created Successfully: ${courseTitle}`,
       html: `
@@ -298,13 +295,11 @@ export const createCourseSch = async (req, res) => {
 
           <!-- Body -->
           <div style="padding: 20px; color: #333;">
-            <p style="font-size: 16px;">Hi, ${teacher.firstName} ${
-              teacher.lastName
-            },</p>
+            <p style="font-size: 16px;">Hi, ${teacher.firstName} ${teacher.lastName
+        },</p>
 
-            <p style="font-size: 16px;">Your course <strong>${
-              course.courseTitle
-            }</strong> has been successfully created.</p>
+            <p style="font-size: 16px;">Your course <strong>${course.courseTitle
+        }</strong> has been successfully created.</p>
 
             <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #007bff;">
               <p style="font-size: 16px; margin: 0;">
@@ -1092,31 +1087,31 @@ export const getallcoursesforteacher = async (req, res) => {
       // Apply student name search if provided (partial match)
       ...(studentName
         ? [
-            {
-              $match: {
-                $or: [
-                  {
-                    "studentDetails.firstName": {
-                      $regex: studentName,
-                      $options: "i",
-                    },
+          {
+            $match: {
+              $or: [
+                {
+                  "studentDetails.firstName": {
+                    $regex: studentName,
+                    $options: "i",
                   },
-                  {
-                    "studentDetails.middleName": {
-                      $regex: studentName,
-                      $options: "i",
-                    },
+                },
+                {
+                  "studentDetails.middleName": {
+                    $regex: studentName,
+                    $options: "i",
                   },
-                  {
-                    "studentDetails.lastName": {
-                      $regex: studentName,
-                      $options: "i",
-                    },
+                },
+                {
+                  "studentDetails.lastName": {
+                    $regex: studentName,
+                    $options: "i",
                   },
-                ],
-              },
+                },
+              ],
             },
-          ]
+          },
+        ]
         : []),
 
       // Group by student
@@ -1521,8 +1516,8 @@ export const getUserCoursesforFilter = async (req, res) => {
 
     const searchFilter = search
       ? {
-          courseTitle: { $regex: search, $options: "i" },
-        }
+        courseTitle: { $regex: search, $options: "i" },
+      }
       : {};
 
     let courses = [];
@@ -1611,11 +1606,11 @@ export const getUserCoursesforFilter = async (req, res) => {
         {
           $match: search
             ? {
-                "course.courseTitle": {
-                  $regex: search,
-                  $options: "i",
-                },
-              }
+              "course.courseTitle": {
+                $regex: search,
+                $options: "i",
+              },
+            }
             : {},
         },
 

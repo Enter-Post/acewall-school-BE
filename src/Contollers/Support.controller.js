@@ -15,16 +15,16 @@ export const sendSupportMail = async (req, res) => {
       port: 465,
       secure: true, // true for 465, false for 587
       auth: {
-        user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
     });
 
-   const mailOptions = {
-  from: `"Support Inquiry" <support@acewallscholars.org>`,
-  to: "support@acewallscholars.org",
-  subject: "New Support Request",
-  html: `
+    const mailOptions = {
+      from: `"Support Inquiry" <support@acewallscholars.org>`,
+      to: "support@acewallscholars.org",
+      subject: "New Support Request",
+      html: `
     <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
       <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
         
@@ -51,7 +51,7 @@ export const sendSupportMail = async (req, res) => {
       </div>
     </div>
   `,
-};
+    };
 
 
     await transporter.sendMail(mailOptions);
@@ -81,16 +81,16 @@ export const sendContactMail = async (req, res) => {
       port: 465,
       secure: true,
       auth: {
-        user: "support@acewallscholars.org",
-        pass: "dackrjjdvfezbule",
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
     });
 
-   const mailOptions = {
-  from: `"Contact Form" <support@acewallscholars.org>`,
-  to: "support@acewallscholars.org",
-  subject: `Contact Us: ${subject}`,
-  html: `
+    const mailOptions = {
+      from: `"Contact Form" <support@acewallscholars.org>`,
+      to: "support@acewallscholars.org",
+      subject: `Contact Us: ${subject}`,
+      html: `
     <div style="font-family: Arial, sans-serif; background-color: #f4f7fb; padding: 20px;">
       <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
         
@@ -119,7 +119,7 @@ export const sendContactMail = async (req, res) => {
       </div>
     </div>
   `,
-};
+    };
 
 
     await transporter.sendMail(mailOptions);
