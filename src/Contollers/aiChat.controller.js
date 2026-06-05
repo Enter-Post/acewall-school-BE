@@ -6,6 +6,19 @@ import { Document, Packer, Paragraph, TextRun } from "docx";
 import ExcelJS from "exceljs";
 import path from "path";
 import Book from "../Models/books.model.js";
+import { 
+  sanitizeText, 
+  sanitizeConversationContext, 
+  checkHighRiskPII, 
+  sanitizeAIPrompt,
+  generatePIIAuditLog 
+} from "../Utiles/piiSanitizer.js";
+import { getSafeFileForAI } from "../Utiles/filePIIScanner.js";
+import { 
+  retrieveLocalContext, 
+  buildRAGPrompt, 
+} from "../Utiles/ragService.js";
+import { logApiCall } from "../services/activityLog.service.js";
 
 export const getChatHistory = async (req, res) => {
   const { districtId, schoolId } = req.user
@@ -22,13 +35,84 @@ export const getChatHistory = async (req, res) => {
 };
 
 export const askAIupdated = async (req, res) => {
-  const { districtId, schoolId } = req.user
+  const { districtId, schoolId } = req.user;
   const userId = req.user._id;
 
   try {
     const { question, difficulty, context } = req.body;
     const file = req.file;
 
+    // --------------------------------------------------
+    // FERPA COMPLIANCE: PII Detection & Sanitization
+    // --------------------------------------------------
+    
+    // Step 1: Check for high-risk PII in question (SSN, student ID, mother's maiden name)
+    const highRiskCheck = checkHighRiskPII(question);
+    if (highRiskCheck.shouldBlock) {
+      // Log the blocked attempt for audit
+      await logApiCall({
+        method: req.method,
+        route: req.originalUrl,
+        userId,
+        statusCode: 400,
+        responseTime: 0,
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+        metadata: {
+          event: "pii_blocked",
+          detectedTypes: highRiskCheck.detectedTypes,
+          reason: "High-risk PII detected in question",
+        },
+      });
+
+      return res.status(400).json({
+        success: false,
+        error: "FERPA_COMPLIANCE",
+        message: "Your question contains sensitive information that cannot be processed. Please remove personal identifiers and try again.",
+        detectedTypes: highRiskCheck.detectedTypes,
+      });
+    }
+
+    // Step 2: Sanitize the question text
+    const { sanitizedText: sanitizedQuestion, report: questionSanitizationReport } = 
+      sanitizeText(question, { redact: true });
+
+    // Step 3: Scan uploaded file for PII (if file provided)
+    let fileSafeToSend = true;
+    let fileSanitizationReport = null;
+    
+    if (file) {
+      const fileScanResult = await getSafeFileForAI(file.path, file.mimetype, userId);
+      
+      if (!fileScanResult.canSend) {
+        // Log the blocked file upload
+        await logApiCall({
+          method: req.method,
+          route: req.originalUrl,
+          userId,
+          statusCode: 400,
+          responseTime: 0,
+          ipAddress: req.ip,
+          userAgent: req.headers["user-agent"],
+          metadata: {
+            event: "file_pii_blocked",
+            filename: file.originalname,
+            reason: fileScanResult.reason,
+          },
+        });
+
+        return res.status(400).json({
+          success: false,
+          error: "FERPA_COMPLIANCE",
+          message: fileScanResult.reason,
+          filename: file.originalname,
+        });
+      }
+      
+      fileSanitizationReport = fileScanResult.auditLog;
+    }
+
+    // Step 4: Sanitize conversation context (chat history)
     let conversationContext = "";
     let shouldUseContext = false;
 
@@ -37,14 +121,25 @@ export const askAIupdated = async (req, res) => {
     if (context) {
       const messageContext = await AIChat.findById(context);
       if (messageContext) {
-        conversationContext += `Student: ${messageContext.question}\n`;
-        conversationContext += `Tutor: ${messageContext.answer}\n`;
+        const sanitizedContext = sanitizeConversationContext(messageContext);
+        conversationContext += `Student: ${sanitizedContext.question.text || sanitizedContext.question}\n`;
+        conversationContext += `Tutor: ${sanitizedContext.answer.text || sanitizedContext.answer}\n`;
         shouldUseContext = true;
       }
     }
 
     // --------------------------------------------------
-    // 1️⃣ Detect assessment file (AI-based)
+    // FERPA COMPLIANCE: RAG with Local Knowledge Base
+    // --------------------------------------------------
+    
+    // Retrieve relevant educational content from local knowledge base
+    const localContext = await retrieveLocalContext(sanitizedQuestion, {
+      districtId,
+      schoolId,
+    });
+
+    // --------------------------------------------------
+    // 1️⃣ Detect assessment file (AI-based) - WITH SANITIZATION
     // --------------------------------------------------
     let isAssessmentFile = false;
 
@@ -61,7 +156,7 @@ Is the uploaded file a graded academic assessment
 Reply "no" for notes, slides, textbooks, study material.
 
 Question:
-"${question}"
+"${sanitizedQuestion}"
 `;
 
       const assessmentCheck = await model.generateContent({
@@ -86,7 +181,7 @@ Question:
     }
 
     // --------------------------------------------------
-    // 2️⃣ Detect student intent (answer vs understanding)
+    // 2️⃣ Detect student intent (answer vs understanding) - WITH SANITIZATION
     // --------------------------------------------------
     let isAnswerSeeking = false;
 
@@ -98,7 +193,7 @@ Answer = wants solution, final answer, solving.
 Understanding = wants explanation, concept clarity.
 
 Student message:
-"${question}"
+"${sanitizedQuestion}"
 `;
 
       const intentCheck = await model.generateContent(intentPrompt);
@@ -107,8 +202,7 @@ Student message:
     }
 
     // --------------------------------------------------
-    // 3️⃣ Detect file generation intent (PRESERVED)
-    // Block ONLY if cheating attempt
+    // 3️⃣ Detect file generation intent (WITH SANITIZATION)
     // --------------------------------------------------
     let requestedFileType = "none";
 
@@ -118,14 +212,14 @@ Analyze this user message.
 Reply ONLY one word: "pdf", "word", "excel", or "none".
 
 User message:
-"${question}"
+"${sanitizedQuestion}"
 `;
       const fileTypeCheck = await model.generateContent(fileGenerationPrompt);
       requestedFileType = fileTypeCheck.response.text().trim().toLowerCase();
     }
 
     // --------------------------------------------------
-    // 4️⃣ PROMPTS
+    // 4️⃣ PROMPTS (WITH RAG CONTEXT)
     // --------------------------------------------------
     const blockAssessmentPrompt = `
 You are EduMentor, an AI tutor inside an LMS.
@@ -148,23 +242,25 @@ Explain concepts ONLY to help understanding.
 Do NOT solve or give final answers.
 
 Question:
-"${question}"
+"${sanitizedQuestion}"
 `;
 
-    let normalPrompt = `
-You are EduMentor, an AI tutor inside an LMS.
-Answer clearly in plain English.
+    // Build RAG-enhanced prompt for normal questions
+    let normalPrompt = buildRAGPrompt(sanitizedQuestion, localContext, {
+      difficulty,
+      includeContext: localContext.hasContext,
+    });
 
-Previous conversation:
-${conversationContext}
-
-Question:
-"${question}"
-Difficulty: ${difficulty}
-`;
+    // Add conversation context if available
+    if (shouldUseContext) {
+      normalPrompt = normalPrompt.replace(
+        "STUDENT QUESTION:",
+        `PREVIOUS CONVERSATION:\n${conversationContext}\n\nSTUDENT QUESTION:`
+      );
+    }
 
     // --------------------------------------------------
-    // 5️⃣ File generation instructions (UNCHANGED)
+    // 5️⃣ File generation instructions (WITH SANITIZATION)
     // --------------------------------------------------
     if (requestedFileType !== "none") {
       const fileInstruction = `
@@ -173,15 +269,10 @@ Provide ONLY a brief 2–3 sentence summary in chat.
 The full content will be generated in the file.
 `;
 
-      normalPrompt = `
-You are EduMentor, an AI tutor inside an LMS.
-
-${fileInstruction}
-
-Question:
-"${question}"
-Difficulty: ${difficulty}
-`;
+      normalPrompt = buildRAGPrompt(sanitizedQuestion, localContext, {
+        difficulty,
+        includeContext: localContext.hasContext,
+      }).replace("STUDENT QUESTION:", `${fileInstruction}\n\nSTUDENT QUESTION:`);
     }
 
     // --------------------------------------------------
@@ -198,9 +289,23 @@ Difficulty: ${difficulty}
     }
 
     // --------------------------------------------------
-    // 7️⃣ Gemini input
+    // 7️⃣ Sanitize final prompt before sending to AI
     // --------------------------------------------------
-    const parts = [{ text: finalPromptText }];
+    const { sanitizedPrompt: finalSanitizedPrompt, blocked: promptBlocked } = 
+      sanitizeAIPrompt(finalPromptText);
+
+    if (promptBlocked) {
+      return res.status(400).json({
+        success: false,
+        error: "FERPA_COMPLIANCE",
+        message: "Unable to process request due to sensitive information in prompt.",
+      });
+    }
+
+    // --------------------------------------------------
+    // 8️⃣ Gemini input (WITH SANITIZED PROMPT)
+    // --------------------------------------------------
+    const parts = [{ text: finalSanitizedPrompt }];
 
     if (file) {
       const buffer = fs.readFileSync(file.path);
@@ -220,23 +325,22 @@ Difficulty: ${difficulty}
     let fileContent = answer;
 
     // --------------------------------------------------
-    // 8️⃣ Generate full content for files (PRESERVED)
+    // 9️⃣ Generate full content for files (WITH SANITIZATION)
     // --------------------------------------------------
     if (requestedFileType !== "none") {
-      const detailedPrompt = `
-Provide comprehensive educational content for:
-"${question}"
-
-Include explanations, examples, and structure.
-Format for a ${requestedFileType.toUpperCase()} document.
-`;
+      const detailedPrompt = buildRAGPrompt(sanitizedQuestion, localContext, {
+        includeContext: localContext.hasContext,
+      }).replace(
+        "STUDENT QUESTION:",
+        `Provide comprehensive educational content for:\n"${sanitizedQuestion}"\n\nInclude explanations, examples, and structure.\nFormat for a ${requestedFileType.toUpperCase()} document.`
+      );
 
       const detailedResponse = await model.generateContent(detailedPrompt);
       fileContent = detailedResponse.response.text();
     }
 
     // --------------------------------------------------
-    // 9️⃣ Generate file (PRESERVED)
+    // 🔟 Generate file (PRESERVED)
     // --------------------------------------------------
     let generatedFileUrl = null;
     let generatedFileName = null;
@@ -263,10 +367,13 @@ Format for a ${requestedFileType.toUpperCase()} document.
       generatedFileUrl = `${process.env.ASSET_URL}uploads/file/${generatedFileName}`;
     }
 
+    // --------------------------------------------------
+    // 1️⃣1️⃣ Validation and suggestions (WITH SANITIZATION)
+    // --------------------------------------------------
     const validationPrompt = `
 Is this a meaningful academic question? Reply only "yes" or "no".
 
-"${question}"
+"${sanitizedQuestion}"
 `;
 
     const validCheck = await model.generateContent(validationPrompt);
@@ -278,7 +385,7 @@ Is this a meaningful academic question? Reply only "yes" or "no".
     if (isMeaningful) {
       const suggestions = await model.generateContent(`
 Generate exactly 5 practice questions based on:
-"${question}"
+"${sanitizedQuestion}"
 One per line, plain English, no bullets.
 `);
 
@@ -290,9 +397,49 @@ One per line, plain English, no bullets.
         .slice(0, 5);
     }
 
+    // --------------------------------------------------
+    // FERPA COMPLIANCE: Audit Logging
+    // --------------------------------------------------
+    
+    // Log PII detection events
+    if (questionSanitizationReport.hasPII) {
+      const piiAuditLog = generatePIIAuditLog(
+        questionSanitizationReport,
+        userId,
+        'question_sanitization'
+      );
+      await logApiCall({
+        method: req.method,
+        route: req.originalUrl,
+        userId,
+        statusCode: 200,
+        responseTime: 0,
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+        metadata: piiAuditLog,
+      });
+    }
+
+    if (fileSanitizationReport) {
+      await logApiCall({
+        method: req.method,
+        route: req.originalUrl,
+        userId,
+        statusCode: 200,
+        responseTime: 0,
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+        metadata: fileSanitizationReport,
+      });
+    }
+
+    // Store the ORIGINAL question in database (for student records)
+    // but send only SANITIZED data to AI
     await AIChat.create({
       userId,
-      question: { text: question, sender: "user" },
+      districtId,
+      schoolId,
+      question: { text: question, sender: "user" }, // Store original for FERPA "Right to Inspect"
       answer: { text: answer, sender: "ai" },
       difficulty,
       file: file
@@ -311,11 +458,20 @@ One per line, plain English, no bullets.
           FileType: requestedFileType,
         }
         : null,
+      // FERPA compliance metadata
+      _ferpaMetadata: {
+        questionSanitized: questionSanitizationReport.hasPII,
+        fileScanned: file ? true : false,
+        fileSafe: fileSafeToSend,
+        usedLocalContext: localContext.hasContext,
+        ragSources: localContext.sources,
+        dataSentToAI: 'sanitized_prompt_only',
+      },
     });
 
     res.json({
       success: true,
-      question,
+      question, // Return original question to user
       answer,
       suggestedQuestions,
       fileUsed: file ? file.originalname : null,
@@ -326,6 +482,13 @@ One per line, plain English, no bullets.
           FileType: requestedFileType,
         }
         : null,
+      // FERPA compliance info
+      ferpaCompliance: {
+        questionSanitized: questionSanitizationReport.hasPII,
+        fileScanned: file ? true : false,
+        usedLocalContext: localContext.hasContext,
+        dataProtection: 'active',
+      },
     });
   } catch (err) {
     console.error("AI Error", err);
@@ -333,6 +496,7 @@ One per line, plain English, no bullets.
   }
 };
 
+// FERPA COMPLIANCE: Helper functions for file generation
 async function generatePDF(content, filePath) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
