@@ -12,6 +12,7 @@ import {
   getDeletedDiscussions,
   restoreDiscussion,
   softDeleteDiscussion,
+  editDiscussionInfo,
 } from "../../Contollers/Discussion/discussion.controller.js";
 import { upload } from "../../lib/multer.config.js";
 import { isUser } from "../../middlewares/Auth.Middleware.js";
@@ -391,6 +392,7 @@ router.get("/all", isUser, getDiscussionsOfTeacher);
 router.get("/:id", isUser, getDiscussionbyId);
 router.get("/v2/:id", isUser, resolveEnrollmentFromDiscussion, isEnrolledMiddleware, getDiscussionbyId);
 
+router.put("/editDiscussion/:discussionId", isUser, editDiscussionInfo);
 router.put("/setDueDateForStudent/:discussionId", isUser, setDueDateForStudentsDiscussion);
 router.put("/toggleAllowResubmission/:discussionId", isUser, toggleAllowResubmission);
 

@@ -549,3 +549,38 @@ export const restoreDiscussion = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+export const editDiscussionInfo = async (req, res) => {
+  const { discussionId } = req.params;
+  const { topic, description, category, dueDate, totalMarks } = req.body;
+
+  try {
+    const discussion = await Discussion.findById(discussionId);
+    if (!discussion) {
+      return res.status(404).json({ message: "Discussion not found" });
+    }
+
+    let dueDateObj = {};
+    if (dueDate) {
+      const date = new Date(dueDate);
+      dueDateObj.date = date.toISOString().split("T")[0];
+      dueDateObj.time = date.toISOString().split("T")[1].split(".")[0];
+    }
+
+    // Update fields
+    discussion.topic = topic || discussion.topic;
+    discussion.description = description || discussion.description;
+    discussion.category = category || discussion.category;
+    discussion.totalMarks = totalMarks || discussion.totalMarks;
+    if (dueDate) discussion.dueDate = dueDateObj;
+
+    await discussion.save();
+
+    return res.status(200).json({
+      message: "Discussion updated successfully"
+    });
+  } catch (error) {
+    console.error("Error editing discussion info:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
