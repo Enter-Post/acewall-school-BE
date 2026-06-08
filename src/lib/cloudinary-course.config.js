@@ -17,13 +17,21 @@ export const uploadToCloudinary = async (fileBuffer, folder = "", resourceType =
   try {
     // Hardening: Strict resource_type detection from magic bytes
     let finalResourceType = "raw"; // Default safest
+    let isPdf = false;
     if (resourceType) {
       finalResourceType = resourceType;
     } else {
       const type = await fileTypeFromBuffer(fileBuffer);
+      console.log("type", type)
       if (type) {
-        if (type.mime.startsWith('image/')) finalResourceType = 'image';
-        else if (type.mime.startsWith('video/')) finalResourceType = 'video';
+        if (type.mime.startsWith('image/')) {
+          finalResourceType = 'image';
+        } else if (type.mime.startsWith('video/')) {
+          finalResourceType = 'video';
+        } else if (type.mime === 'application/pdf') {
+          finalResourceType = 'raw';
+          isPdf = true;
+        }
       }
     }
 
@@ -33,7 +41,7 @@ export const uploadToCloudinary = async (fileBuffer, folder = "", resourceType =
           folder,
           resource_type: finalResourceType,
           // If it's a raw file, Cloudinary will force Content-Disposition attachment, preventing XSS
-          format: finalResourceType === 'raw' ? undefined : undefined // raw ignores format conversions anyway
+          format: isPdf ? "pdf" : undefined // raw ignores format conversions anyway
         },
         (error, result) => {
           if (result) {

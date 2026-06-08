@@ -132,7 +132,8 @@ export const getDistrictUsers = async (req, res) => {
         }
 
         // 3. Build the Query Object
-        let query = { districtId: districtId, schoolId: schoolId };
+        const isDeleted = req.query.isDeleted === "true";
+        let query = { districtId: districtId, schoolId: schoolId, isDeleted: isDeleted };
 
         // Filter by role if provided
         if (role) {

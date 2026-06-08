@@ -48,3 +48,41 @@ export const getContentDetail = async (req, res) => {
         res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };
+
+export const getAllContentByType = async (req, res) => {
+    const { type, courseId } = req.params;
+
+    try {
+        if (!courseId || !type) {
+            return res.status(400).json({ message: "Missing required parameters" });
+        }
+
+        let content = [];
+        let query = { course: courseId, isDeleted: false };
+        
+        switch (type.toLowerCase()) {
+            case "assessment":
+            case "assessments":
+                content = await Assessment.find(query).populate("category").sort({ createdAt: -1 });
+                break;
+            case "discussion":
+            case "discussions":
+                content = await Discussion.find(query).populate("category").sort({ createdAt: -1 });
+                break;
+            case "page":
+            case "pages":
+                content = await Pages.find(query).sort({ createdAt: -1 });
+                break;
+            default:
+                return res.status(400).json({ message: "Invalid content type" });
+        }
+
+        res.status(200).json({
+            message: `All ${type} fetched successfully`,
+            content
+        });
+    } catch (error) {
+        console.error(`Error in getAllContentByType (${type}):`, error);
+        res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
+};

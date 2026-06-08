@@ -15,11 +15,13 @@ export const createpage = async (req, res) => {
     const image = req.files?.image?.[0];
     const files = req.files?.files || [];
 
+
     try {
         // Handle local PDF files
         const uploadedFiles = await Promise.all(
             files.map(async (file) => {
-                const result = await uploadToCloudinary(file.buffer, "discussion_files");
+                const result = await uploadToCloudinary(file.buffer, "pages_files");
+                console.log("this is files result", result)
                 return {
                     url: result.secure_url,
                     publicId: result.public_id,
@@ -29,7 +31,6 @@ export const createpage = async (req, res) => {
                 };
             })
         );
-
         // Handle Google Drive PDF if present
         if (googleDrivePdf) {
             try {
@@ -73,6 +74,7 @@ export const createpage = async (req, res) => {
                 console.error("Error parsing Google Drive image:", err);
             }
         }
+
 
         let newPage;
 

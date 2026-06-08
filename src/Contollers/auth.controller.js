@@ -223,6 +223,7 @@ export const initiateSignup = async (req, res) => {
 export const SignupwithoutOTP = async (req, res) => {
   const { firstName, middleName, lastName, role, email, password } = req.body;
   const { districtId, schoolId } = req.user
+
   try {
     // Validate required fields
     if (!firstName || !lastName || !email || !password || !role) {
@@ -725,6 +726,13 @@ export const login = async (req, res) => {
       return res.status(401).json({
         error: true,
         message: "Invalid Credentials",
+      });
+    }
+
+    if (user.isDeleted) {
+      return res.status(403).json({
+        error: true,
+        message: "Your account has been deactivated. Please contact support.",
       });
     }
 
@@ -1321,13 +1329,14 @@ export const allTeacher = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 6;
+    const isDeleted = req.query.isDeleted || false;
     const skip = (page - 1) * limit;
     const search = req.query.search || "";
     const courseId = req.query.courseId || ""; // course filter
     const { districtId, schoolId } = req.user;
 
     // Base query
-    let query = { role: "teacher", districtId, schoolId };
+    let query = { role: "teacher", districtId, schoolId, isDeleted };
 
     // Search filter
     if (search) {
@@ -1341,7 +1350,7 @@ export const allTeacher = async (req, res) => {
     // If courseId is provided, filter teachers who created that course
     if (courseId) {
       // Find all teachers who created the selected course
-      const course = await CourseSch.findOne({ _id: courseId, districtId, schoolId });
+      const course = await CourseSch.findOne({ _id: courseId, districtId, schoolId, isDeleted: false });
       if (course) {
         query._id = course.createdby; // filter by teacher who created this course
       } else {
@@ -1394,12 +1403,13 @@ export const allStudent = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 6;
+    const isDeleted = req.query.isDeleted || false;
     const skip = (page - 1) * limit;
     const search = req.query.search || ""; // get search term
     const { districtId, schoolId } = req.user;
 
     // Base query
-    const query = { role: "student", districtId, schoolId };
+    const query = { role: "student", districtId, schoolId, isDeleted };
 
     // If search provided, add filter (case-insensitive)
     if (search) {
@@ -1445,7 +1455,7 @@ export const getStudentById = async (req, res) => {
 
     // Get student/user info
     const user = await User.findOne({ _id: id, districtId, schoolId }).select(
-      "id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role guardianEmails"
+      "id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role guardianEmails isDeleted"
     );
 
     if (!user) {
@@ -1513,7 +1523,7 @@ export const getTeacherById = async (req, res) => {
   const { districtId, schoolId } = req.user
   try {
     const teacher = await User.findOne({ _id: id, districtId, schoolId }).select(
-      " id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role"
+      " id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role isDeleted"
     );
     if (!teacher) {
       return res.status(404).json({ message: "Teacher not found." });
@@ -1655,24 +1665,47 @@ export const deleteUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Optional: delete profile image
-    if (user.profileImg?.publicId) {
-      console.log(`Deleting profile image: ${user.profileImg.publicId}`);
-      // await cloudinary.v2.uploader.destroy(user.profileImg.publicId);
-    }
-
     // Delete all enrollments first
-    await Enrollment.deleteMany({ student: user._id });
+    await Enrollment.updateMany({ student: user._id }, { isDeleted: true });
     console.log(`Deleted all enrollments for user ${user._id}`);
 
     // Then delete the user
-    await User.findByIdAndDelete(user._id);
+    await User.findByIdAndUpdate(user._id, { isDeleted: true });
 
     res.status(200).json({
       message: "Student and all their enrollments deleted successfully",
     });
   } catch (error) {
     console.error("Failed to delete student:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// RESTORE /admin/restoreUser/:userId
+export const restoreUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Restore enrollments
+    await Enrollment.updateMany({ student: user._id }, { isDeleted: false });
+
+    // Restore user
+    await User.findByIdAndUpdate(user._id, { isDeleted: false });
+
+    res.status(200).json({
+      message: "User and all their enrollments restored successfully",
+    });
+  } catch (error) {
+    console.error("Failed to restore user:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };

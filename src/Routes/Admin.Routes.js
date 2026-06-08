@@ -6,6 +6,7 @@ import {
   getStudentById,
   getTeacherById,
   updateParentEmail,
+  restoreUser,
 } from "../Contollers/auth.controller.js";
 import { getStudentEnrolledCourses } from "../Contollers/enrollment.controller.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
@@ -322,6 +323,36 @@ router.get("/getTeacherById/:id", isUser, getTeacherById);
  *         description: Unauthorized
  */
 router.delete("/users/:userId", isUser, deleteUser);
+
+/**
+ * @swagger
+ * /api/admin/restoreUser/{userId}:
+ *   put:
+ *     summary: Restore a soft-deleted user account
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID to restore
+ *     responses:
+ *       200:
+ *         description: User restored successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       404:
+ *         description: User not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.put("/restoreUser/:userId", isUser, restoreUser);
+
 
 /**
  * @swagger

@@ -57,7 +57,7 @@ export const getAdminById = async (req, res) => {
         console.log("districtId in get admin:", districtId)
 
         const admin = await User.findOne({ _id: id, districtId }).select(
-            " id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role"
+            " id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role isDeleted"
         );
         if (!admin) {
             return res.status(404).json({ message: "Admin not found." });
@@ -213,7 +213,7 @@ export const getDistrictAdmins = async (req, res) => {
             role: "district_admin",
             districtId: new mongoose.Types.ObjectId(districtId)
         }).select(
-            " id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role"
+            " id firstName middleName lastName email profileImg createdAt phone homeAddress mailingAddress pronoun gender role isDeleted"
         );
         if (!admins) {
             return res.status(404).json({ message: "Admins not found." });
