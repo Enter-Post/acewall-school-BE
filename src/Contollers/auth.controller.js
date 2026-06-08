@@ -710,15 +710,17 @@ export const login = async (req, res) => {
 
     const user = await User.findOne({ email: email.toLowerCase().trim() });
 
-    const district = await District.findById(user.districtId);
-    const school = await School.findById(user.schoolId);
-
     if (!user) {
       return res.status(400).json({
         error: true,
         message: "Invalid Credentials",
       });
     }
+
+
+
+    const district = await District.findById(user.districtId);
+    const school = await School.findById(user.schoolId);
 
     const isAuthorized = await bcrypt.compare(password, user.password);
     if (!isAuthorized) {

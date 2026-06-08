@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { fieldEncryption } from "mongoose-field-encryption";
 import Enrollment from "../Models/Enrollement.model.js";
 import Assessment from "./Assessment.model.js";
 
@@ -95,6 +96,13 @@ UserSchema.pre("remove", async function (next) {
     console.error("Error deleting enrollments in pre-remove hook:", err);
     next(err);
   }
+});
+
+// 🔹 Apply field-level encryption for FERPA compliance
+UserSchema.plugin(fieldEncryption, {
+  fields: ["firstName", "lastName", "email", "phone", "homeAddress", "mailingAddress", "guardianEmails"],
+  secret: process.env.DB_ENCRYPTION_KEY,
+  salt: process.env.DB_ENCRYPTION_KEY,
 });
 
 const User = mongoose.model("User", UserSchema);

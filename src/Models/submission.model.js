@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { fieldEncryption } from "mongoose-field-encryption";
 
 const studentAnswerSchema = new mongoose.Schema({
   questionId: { type: mongoose.Schema.Types.ObjectId, required: true }, // From assessment.questions
@@ -68,6 +69,14 @@ const submissionSchema = new mongoose.Schema(
 );
 
 
+// ?? Apply field-level encryption for FERPA compliance - encrypt student answers and feedback
+submissionSchema.plugin(fieldEncryption, {
+  fields: ["answers", "feedback"],
+  secret: process.env.DB_ENCRYPTION_KEY,
+  salt: process.env.DB_ENCRYPTION_KEY,
+});
+
 const Submission = mongoose.model("submission", submissionSchema);
 
 export default Submission;
+

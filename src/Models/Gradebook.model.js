@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { fieldEncryption } from "mongoose-field-encryption";
 
 const gradebookItemSchema = new mongoose.Schema({
     itemId: { type: mongoose.Schema.Types.ObjectId, required: true },
@@ -84,5 +85,19 @@ const GradebookSchema = new mongoose.Schema({
     },
 });
 
+// ?? Apply field-level encryption for FERPA compliance - encrypt grade metrics
+GradebookSchema.plugin(fieldEncryption, {
+  fields: [
+    "finalPercentage",
+    "finalGPA",
+    "finalLetterGrade",
+    "standardGrade.points",
+    "standardGrade.remarks",
+  ],
+  secret: process.env.DB_ENCRYPTION_KEY,
+  salt: process.env.DB_ENCRYPTION_KEY,
+});
+
 const Gradebook = mongoose.model("Gradebook", GradebookSchema);
 export default Gradebook;
+
