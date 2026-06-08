@@ -4,6 +4,7 @@ import {
   courseDiscussions,
   createDiscussion,
   discussionforStudent,
+  editDiscussionInfo,
   getDiscussionbyId,
   getDiscussionsOfTeacher,
   lessonDiscussions,
@@ -277,8 +278,8 @@ router.get("/all", isUser, getDiscussionsOfTeacher);
 router.get("/:id", isUser, getDiscussionbyId);
 router.get("/v2/:id", isUser, resolveEnrollmentFromDiscussion, isEnrolledMiddleware, getDiscussionbyId);
 
+router.put("/editDiscussion/:discussionId", isUser, editDiscussionInfo);
 router.put("/setDueDateForStudent/:discussionId", isUser, setDueDateForStudentsDiscussion);
 router.put("/toggleAllowResubmission/:discussionId", isUser, toggleAllowResubmission);
-
 
 export default router;
