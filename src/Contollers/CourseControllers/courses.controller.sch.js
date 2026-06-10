@@ -1699,8 +1699,13 @@ export const getStudentofCourse = async (req, res) => {
     }
 
     let students = enrollments
-      .filter(enrollment => enrollment.student !== null)
-      .map(enrollment => enrollment.student);
+      .filter(
+        (enrollment) =>
+          enrollment.student !== null &&
+          enrollment.student._id?.toString() !== req.user?._id?.toString() &&
+          enrollment.student._id?.toString() !== req.user?.id?.toString()
+      )
+      .map((enrollment) => enrollment.student);
 
     // Search filter
     if (search) {

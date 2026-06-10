@@ -3,6 +3,7 @@ import Discussion from "../../Models/discussion.model.js";
 import DiscussionComment from "../../Models/discussionComment.model.js";
 import { uploadToCloudinary } from "../../lib/cloudinary-course.config.js";
 import Enrollment from "../../Models/Enrollement.model.js";
+import CourseSch from "../../Models/courses.model.sch.js";
 
 export const createDiscussion = async (req, res) => {
   const {
@@ -350,5 +351,73 @@ export const toggleAllowResubmission = async (req, res) => {
       success: false,
       message: error.message || "Internal Server Error"
     });
+  }
+};
+
+
+export const editDiscussionInfo = async (req, res) => {
+  const { discussionId } = req.params;
+  const { topic, description, category, dueDate, totalMarks } = req.body;
+
+  try {
+    const discussion = await Discussion.findById(discussionId);
+    if (!discussion) {
+      return res.status(404).json({ message: "Discussion not found" });
+    }
+
+    let dueDateObj = {};
+    if (dueDate) {
+      const date = new Date(dueDate);
+      dueDateObj.date = date.toISOString().split("T")[0];
+      dueDateObj.time = date.toISOString().split("T")[1].split(".")[0];
+    }
+
+    // Update fields
+    discussion.topic = topic || discussion.topic;
+    discussion.description = description || discussion.description;
+    discussion.category = category || discussion.category;
+    discussion.totalMarks = totalMarks || discussion.totalMarks;
+    if (dueDate) discussion.dueDate = dueDateObj;
+
+    await discussion.save();
+
+    return res.status(200).json({
+      message: "Discussion updated successfully"
+    });
+  } catch (error) {
+    console.error("Error editing discussion info:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+export const removeDueDateOverride = async (req, res) => {
+  const { overrideId, discussionId } = req.params;
+  try {
+    const discussion = await Discussion.findById(discussionId);
+    if (!discussion) {
+      return res.status(404).json({ message: "Discussion not found" });
+    }
+
+    const course = await CourseSch.findOne({ _id: discussion.course, createdby: req.user._id, districtId: req.user.districtId, schoolId: req.user.schoolId });
+    if (!course) {
+      return res.status(403).json({ message: "You can only delete discussions of your own courses" });
+    }
+    // Remove the override by filtering it out
+    discussion.studentDueDateOverrides = discussion.studentDueDateOverrides.filter(
+      (override) => override._id.toString() !== overrideId
+    );
+    await discussion.save();
+
+    // Fetch updated discussion to return
+    const updatedDiscussion = await Discussion.findById(discussionId);
+
+    return res.status(200).json({
+      message: "Due date override removed successfully",
+      discussion: updatedDiscussion
+    });
+  } catch (error) {
+    console.error("Error removing due date:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };

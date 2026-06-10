@@ -10,6 +10,7 @@ import Submission from "../Models/submission.model.js";
 import Discussion from "../Models/discussion.model.js";
 import nodemailer from "nodemailer";
 import User from "../Models/user.model.js";
+import CourseSch from "../Models/courses.model.sch.js";
 
 export const sendAssessmentReminder = async (req, res) => {
   try {
@@ -1271,5 +1272,36 @@ export const updateLatePolicy = async (req, res) => {
   } catch (err) {
     console.error("Error updating late policy:", err);
     res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+export const removeDueDateOverride = async (req, res) => {
+  const { overrideId, assessmentId } = req.params;
+  try {
+    const assessment = await Assessment.findById(assessmentId);
+    if (!assessment) {
+      return res.status(404).json({ message: "Assessment not found" });
+    }
+
+    const course = await CourseSch.findOne({ _id: assessment.course, createdby: req.user._id, districtId: req.user.districtId, schoolId: req.user.schoolId });
+    if (!course) {
+      return res.status(403).json({ message: "You can only delete assessments of your own courses" });
+    }
+    // Remove the override by filtering it out
+    assessment.studentDueDateOverrides = assessment.studentDueDateOverrides.filter(
+      (override) => override._id.toString() !== overrideId
+    );
+    await assessment.save();
+
+    // Fetch updated assessment to return
+    const updatedAssessment = await Assessment.findById(assessmentId);
+
+    return res.status(200).json({
+      message: "Due date override removed successfully",
+      assessment: updatedAssessment
+    });
+  } catch (error) {
+    console.error("Error removing due date:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
