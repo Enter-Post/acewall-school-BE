@@ -17,16 +17,17 @@ import {
   uploadFiles,
   getDeletedAssessments,
   restoreAssessment,
+  removeDueDateOverride,
 } from "../Contollers/Assessment.controller.js";
 import { upload, safeAnyUpload } from "../lib/multer.config.js";
 import { isUser } from "../middlewares/Auth.Middleware.js";
 import { getResultsMiddleware } from "../middlewares/isSubmitted.middleware.js";
 import { loginRateLimiter } from "../middlewares/rateLimiter.middleware.js";
-import { 
-  preventCrossDistrictAccess, 
-  restrictToOwnSchool, 
+import {
+  preventCrossDistrictAccess,
+  restrictToOwnSchool,
   addDistrictFilter,
-  addSchoolFilter 
+  addSchoolFilter
 } from "../middlewares/district.middleware.js";
 import { createAssessment_updated } from "../Contollers/UPDATED_API_CONTROLLER/assessment.controller.web.js";
 import { isEnrolledMiddleware } from "../middlewares/isEnrolled.middleware.js";
@@ -558,6 +559,7 @@ router.get("/assessmentforTeacher/:assessmentId", isUser, getAssesmentbyID);
  */
 router.post("/createAssessment/updated", safeAnyUpload, isUser, loginRateLimiter, createAssessment_updated);
 router.put(`/setDueDateForStudent/:assessmentId`, isUser, setDueDateForStudent);
+router.delete("/removeDueDateOverride/:overrideId/:assessmentId", isUser, removeDueDateOverride);
 router.put("/setAllowResubmission/:assessmentId", isUser, settingAllowResubmission);
 router.put("/updateLatePolicy/:assessmentId", isUser, updateLatePolicy);
 

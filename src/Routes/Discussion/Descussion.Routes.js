@@ -13,6 +13,7 @@ import {
   restoreDiscussion,
   softDeleteDiscussion,
   editDiscussionInfo,
+  removeDueDateOverride,
 } from "../../Contollers/Discussion/discussion.controller.js";
 import { upload } from "../../lib/multer.config.js";
 import { isUser } from "../../middlewares/Auth.Middleware.js";
@@ -394,6 +395,7 @@ router.get("/v2/:id", isUser, resolveEnrollmentFromDiscussion, isEnrolledMiddlew
 
 router.put("/editDiscussion/:discussionId", isUser, editDiscussionInfo);
 router.put("/setDueDateForStudent/:discussionId", isUser, setDueDateForStudentsDiscussion);
+router.delete("/removeDueDateOverride/:overrideId/:discussionId", isUser, removeDueDateOverride);
 router.put("/toggleAllowResubmission/:discussionId", isUser, toggleAllowResubmission);
 
 export default router;

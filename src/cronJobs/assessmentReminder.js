@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
   secure: true,
   auth: {
     user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS, // ⚠️ use environment variable in production
+    pass: process.env.MAIL_PASS,
   },
 });
 
@@ -62,8 +62,11 @@ cron.schedule("0 * * * *", async () => {
         console.log(`📘 Sending reminder for assessment: ${assessment.title}`);
 
         // 2️⃣ Get all students enrolled in this course
-        const enrollments = await Enrollment.find({ course: assessment.course._id })
+        let enrollments = await Enrollment.find({ course: assessment.course._id })
           .populate("student");
+
+        // Ignore enrollments where student is null
+        enrollments = enrollments.filter((enrollment) => enrollment.student);
 
         if (!enrollments.length) continue;
 
