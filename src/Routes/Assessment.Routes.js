@@ -9,6 +9,7 @@ import {
   getAllassessmentforStudent,
   getAssesmentbyID,
   getAssessmentStats,
+  removeDueDateOverride,
   sendAssessmentReminder,
   setDueDateForStudent,
   setReminderTime,
@@ -538,6 +539,7 @@ router.get("/assessmentforTeacher/:assessmentId", isUser, getAssesmentbyID);
  */
 router.post("/createAssessment/updated", upload.any(), isUser, createAssessment_updated);
 router.put(`/setDueDateForStudent/:assessmentId`, isUser, setDueDateForStudent);
+router.delete("/removeDueDateOverride/:overrideId/:assessmentId", isUser, removeDueDateOverride);
 router.put("/setAllowResubmission/:assessmentId", isUser, settingAllowResubmission);
 router.put("/updateLatePolicy/:assessmentId", isUser, updateLatePolicy);
 

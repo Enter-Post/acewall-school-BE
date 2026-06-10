@@ -8,6 +8,7 @@ import {
   getDiscussionbyId,
   getDiscussionsOfTeacher,
   lessonDiscussions,
+  removeDueDateOverride,
   setDueDateForStudentsDiscussion,
   toggleAllowResubmission,
 } from "../../Contollers/Discussion/discussion.controller.js";
@@ -280,6 +281,7 @@ router.get("/v2/:id", isUser, resolveEnrollmentFromDiscussion, isEnrolledMiddlew
 
 router.put("/editDiscussion/:discussionId", isUser, editDiscussionInfo);
 router.put("/setDueDateForStudent/:discussionId", isUser, setDueDateForStudentsDiscussion);
+router.delete("/removeDueDateOverride/:overrideId/:discussionId", isUser, removeDueDateOverride);
 router.put("/toggleAllowResubmission/:discussionId", isUser, toggleAllowResubmission);
 
 export default router;
